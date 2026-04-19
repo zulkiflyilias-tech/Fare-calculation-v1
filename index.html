@@ -1,513 +1,313 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Rideshare MY | Peninsular Malaysia</title>
-
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-
-<style>
-
-:root{
---primary:#059669;
---bg:#f1f5f9;
---card:rgba(255,255,255,0.95);
---whatsapp:#128C7E
-}
-
-body{
-margin:0;
-display:flex;
-height:100vh;
-font-family:system-ui;
-background:var(--bg)
-}
-
-#map{flex:1}
-
-#sidebar{
-width:380px;
-padding:28px;
-background:var(--card);
-box-shadow:10px 0 30px rgba(0,0,0,0.05);
-display:flex;
-flex-direction:column;
-z-index:999
-}
-
-h2{margin:0;font-size:1.5rem}
-
-.input-group{margin:18px 0;position:relative}
-
-label{
-font-size:.75rem;
-font-weight:700;
-color:#64748b;
-display:flex;
-justify-content:space-between
-}
-
-input{
-width:100%;
-padding:14px;
-border-radius:10px;
-border:1px solid #e2e8f0;
-font-size:15px
-}
-
-input:focus{
-outline:none;
-border-color:var(--primary)
-}
-
-.locate-btn{
-cursor:pointer;
-font-size:.7rem;
-color:#6366f1
-}
-
-.autocomplete-results{
-position:absolute;
-background:white;
-border-radius:10px;
-width:100%;
-max-height:220px;
-overflow:auto;
-display:none;
-border:1px solid #e2e8f0;
-z-index:2000
-}
-
-.autocomplete-item{
-padding:12px;
-cursor:pointer;
-border-bottom:1px solid #f1f5f9
-}
-
-.place-name{
-font-weight:700;
-font-size:.9rem
-}
-
-.place-address{
-font-size:.75rem;
-color:#64748b
-}
-
-.autocomplete-item:hover{
-background:#f8fafc
-}
-
-#results{
-margin-top:auto;
-padding:20px;
-border-radius:14px;
-border:1px solid #e2e8f0;
-background:white;
-display:none
-}
-
-.btn{
-display:block;
-text-align:center;
-padding:14px;
-border-radius:10px;
-background:var(--whatsapp);
-color:white;
-text-decoration:none;
-font-weight:700
-}
-
-@media(max-width:768px){
-
-body{flex-direction:column}
-
-#sidebar{
-width:100%;
-height:auto
-}
-
-#map{height:55%}
-
-}
-
-</style>
-
-</head>
-
-<body>
-
-<div id="sidebar">
-
-<h2>Rideshare MY</h2>
-
-<div class="input-group">
-
-<label>
-Pickup
-<span class="locate-btn" onclick="getLocation()">Use GPS</span>
-</label>
-
-<input id="pickup" placeholder="Enter pickup">
-<div id="pickup-results" class="autocomplete-results"></div>
-
-</div>
-
-<div class="input-group">
-
-<label>Dropoff</label>
-
-<input id="dropoff" placeholder="Where to?">
-<div id="dropoff-results" class="autocomplete-results"></div>
-
-</div>
-
-<div id="results">
-
-<div style="display:flex;justify-content:space-between;margin-bottom:16px">
-
-<div>
-<div id="fare" style="font-size:1.9rem;font-weight:800">RM 0</div>
-<div id="distance" style="color:#64748b">0 km</div>
-</div>
-
-<div style="text-align:right">
-<div id="eta" style="font-weight:700;color:var(--primary)">--</div>
-<div style="font-size:.7rem;color:#94a3b8">Travel Time</div>
-</div>
-
-</div>
-
-<a id="wa" class="btn" target="_blank">
-Book via WhatsApp
-</a>
-
-</div>
-
-</div>
-
-<div id="map"></div>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
 <script>
+const CONFIG = {
+    WHATSAPP: "60108988182",
+    ORS_KEY: "YOUR_API_KEY_HERE",
+    CENTER: [3.139, 101.686],
+    BBOX: "99.6,1.15,104.4,6.95",
+    TRAFFIC_MULTIPLIER: 1.25
+};
 
-const CONFIG={
-WHATSAPP:"60108988182",
-ORS_KEY:"eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0=",
-CENTER:[3.139,101.686],
-BBOX:"99.6,1.15,104.4,6.95",
-TRAFFIC_MULTIPLIER:1.25
+const FARE_CONFIG = {
+    BASE: 5.00,
+    MINUTE: 0.30,
+    MIN_FARE: 8,
+    MIN_DISTANCE_KM: 2,
+    TIERS: [
+        { upTo: 10, rate: 0.70 },
+        { upTo: 25, rate: 0.90 },
+        { upTo: 50, rate: 1.25 },
+        { upTo: 75, rate: 1.55 },
+        { upTo: 120, rate: 1.85 },
+        { upTo: Infinity, rate: 2.00 }
+    ]
+};
+
+const BOUNDS = [[1.15, 99.6], [6.95, 104.4]];
+const $ = id => document.getElementById(id);
+
+let pickupCoord, dropoffCoord, pickupMarker, dropoffMarker, route;
+let cache = {};
+let timer;
+let activeField = "pickup";
+
+const map = L.map("map", { zoomControl: false, maxBounds: BOUNDS })
+    .setView(CONFIG.CENTER, 13);
+
+L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+    attribution: "© OpenStreetMap contributors © CARTO"
+}).addTo(map);
+
+const fetchJSON = url => fetch(url).then(r => r.json());
+
+/* ---------------- FORMATTERS ---------------- */
+
+function formatETA(mins) {
+    const h = Math.floor(mins / 60);
+    const m = Math.round(mins % 60);
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-const FARE={
-BASE:3,
-KM:1.25,
-MIN:8,
-MINUTE:0.40,
-TOLL_CITY:0.06,
-TOLL_HIGHWAY:0.18
+function formatRM(value) {
+    return `RM ${Math.round(value)}`;
 }
 
-const BOUNDS=[[1.15,99.6],[6.95,104.4]]
+/* ---------------- POLYLINE ---------------- */
 
-const $=id=>document.getElementById(id)
-
-let pickupCoord,dropoffCoord
-let pickupMarker,dropoffMarker,route
-let cache={}
-let timer
-
-const map=L.map("map",{zoomControl:false,maxBounds:BOUNDS}).setView(CONFIG.CENTER,13)
-
-L.tileLayer(
-"https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-{attribution:"© OpenStreetMap contributors © CARTO"}
-).addTo(map)
-
-const fetchJSON=url=>fetch(url).then(r=>r.json())
-
-function formatETA(mins){
-const h=Math.floor(mins/60)
-const m=Math.round(mins%60)
-return h>0?`${h}h ${m}m`:`${m}m`
+function decodePolyline(str) {
+    let index = 0, lat = 0, lng = 0, coordinates = [];
+    while (index < str.length) {
+        let b, shift = 0, result = 0;
+        do { b = str.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+        lat += ((result & 1) ? ~(result >> 1) : (result >> 1));
+        shift = 0; result = 0;
+        do { b = str.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+        lng += ((result & 1) ? ~(result >> 1) : (result >> 1));
+        coordinates.push([lat / 1e5, lng / 1e5]);
+    }
+    return coordinates;
 }
 
-function decodePolyline(str){
+/* ---------------- ADDRESS LOGIC ---------------- */
 
-let index=0,lat=0,lng=0,coordinates=[]
+// Prioritize POI names + clean short address
+function buildAddress(p) {
+    if (!p) return "Unknown Location";
 
-while(index<str.length){
+    const poi = p.name;
+    const street = [p.housenumber, p.street].filter(Boolean).join(" ");
+    const area = p.district;
+    const city = p.city || p.town || p.village;
+    const state = p.state;
 
-let b,shift=0,result=0
+    // Priority: POI → Street → Area → City
+    let parts = [];
 
-do{
-b=str.charCodeAt(index++)-63
-result|=(b&0x1f)<<shift
-shift+=5
-}while(b>=0x20)
+    if (poi) parts.push(poi);
+    if (street && street !== poi) parts.push(street);
+    if (area && area !== street) parts.push(area);
+    if (city) parts.push(city);
+    if (state) parts.push(state);
 
-let dlat=((result&1)?~(result>>1):(result>>1))
-lat+=dlat
+    // Remove duplicates + limit to max 3 parts (trim long addresses)
+    const clean = [...new Set(parts)].slice(0, 3);
 
-shift=0
-result=0
-
-do{
-b=str.charCodeAt(index++)-63
-result|=(b&0x1f)<<shift
-shift+=5
-}while(b>=0x20)
-
-let dlng=((result&1)?~(result>>1):(result>>1))
-lng+=dlng
-
-coordinates.push([lat/1e5,lng/1e5])
-
+    return clean.join(", ");
 }
 
-return coordinates
+/* ---------------- GEO ---------------- */
+
+async function reverseGeocode(lat, lng) {
+    try {
+        const res = await fetchJSON(`https://photon.komoot.io/reverse?lon=${lng}&lat=${lat}`);
+        if (res.features?.length) {
+            return buildAddress(res.features[0].properties);
+        }
+    } catch {}
+    return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
 }
 
-function buildAddress(p){
+/* ---------------- MAP POINT ---------------- */
 
-return [
-[p.housenumber,p.street].filter(Boolean).join(" "),
-p.city||p.district,
-p.state,
-p.country
-].filter(Boolean).join(", ")
+function setPoint(type, coord, name) {
+    const isPickup = type === "pickup";
 
+    if (isPickup) pickupCoord = coord;
+    else dropoffCoord = coord;
+
+    $(type).value = name;
+
+    let marker = isPickup ? pickupMarker : dropoffMarker;
+    if (marker) map.removeLayer(marker);
+
+    marker = L.circleMarker(coord, {
+        radius: 7,
+        color: isPickup ? "#059669" : "#ef4444",
+        fillOpacity: 1
+    }).addTo(map);
+
+    if (isPickup) pickupMarker = marker;
+    else dropoffMarker = marker;
+
+    if (pickupCoord && dropoffCoord) routeTrip();
 }
 
-function setPoint(type,coord,name){
+/* ---------------- ROUTING ---------------- */
 
-const isPickup=type==="pickup"
+async function routeTrip() {
+    const key = `${pickupCoord.join(",")}-${dropoffCoord.join(",")}`;
+    if (cache[key]) return draw(cache[key]);
 
-if(isPickup) pickupCoord=coord
-else dropoffCoord=coord
+    try {
+        const res = await fetch("https://api.openrouteservice.org/v2/directions/driving-car", {
+            method: "POST",
+            headers: {
+                Authorization: CONFIG.ORS_KEY,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                coordinates: [
+                    [pickupCoord[1], pickupCoord[0]],
+                    [dropoffCoord[1], dropoffCoord[0]]
+                ]
+            })
+        });
 
-$(type).value=name
+        const data = await res.json();
+        if (!data.routes?.length) return alert("No route found");
 
-let marker=isPickup?pickupMarker:dropoffMarker
+        cache[key] = data.routes[0];
+        draw(data.routes[0]);
 
-if(marker) map.removeLayer(marker)
-
-marker=L.circleMarker(coord,{
-radius:7,
-color:isPickup?"#059669":"#ef4444",
-fillOpacity:1
-}).addTo(map)
-
-if(isPickup) pickupMarker=marker
-else dropoffMarker=marker
-
-if(pickupCoord&&dropoffCoord) routeTrip()
-
+    } catch {
+        alert("Routing service unavailable.");
+    }
 }
 
-async function routeTrip(){
+function draw(r) {
+    if (route) map.removeLayer(route);
 
-const key=`${pickupCoord.join(",")}-${dropoffCoord.join(",")}`
+    const coords = decodePolyline(r.geometry);
+    route = L.polyline(coords, { color: "#059669", weight: 4 }).addTo(map);
 
-if(cache[key]) return draw(cache[key])
+    map.fitBounds(route.getBounds(), { padding: [40, 40] });
 
-try{
+    const km = r.summary.distance / 1000;
+    const mins = (r.summary.duration / 60) * CONFIG.TRAFFIC_MULTIPLIER;
 
-const res=await fetch(
-"https://api.openrouteservice.org/v2/directions/driving-car",
-{
-method:"POST",
-headers:{
-Authorization:CONFIG.ORS_KEY,
-"Content-Type":"application/json"
-},
-body:JSON.stringify({
-coordinates:[
-[pickupCoord[1],pickupCoord[0]],
-[dropoffCoord[1],dropoffCoord[0]]
-]
-})
-}
-)
-
-const data=await res.json()
-
-if(!data.routes || !data.routes.length){
-alert("No route found")
-return
+    calcFare(km, mins);
 }
 
-const r=data.routes[0]
+/* ---------------- FARE ---------------- */
 
-cache[key]=r
+function calcFare(km, mins) {
+    let distanceCost = 0;
+    let remaining = km;
+    let prev = 0;
 
-draw(r)
+    for (const tier of FARE_CONFIG.TIERS) {
+        if (remaining <= 0) break;
 
-}catch(e){
+        const tierDist = Math.min(remaining, tier.upTo - prev);
+        distanceCost += tierDist * tier.rate;
 
-alert("Routing service unavailable. Please try again.")
+        remaining -= tierDist;
+        prev = tier.upTo;
+    }
 
+    const timeCost = mins * FARE_CONFIG.MINUTE;
+    let total = FARE_CONFIG.BASE + distanceCost + timeCost;
+
+    // Minimum fare rule
+    if (km < FARE_CONFIG.MIN_DISTANCE_KM) {
+        total = Math.max(total, FARE_CONFIG.MIN_FARE);
+    }
+
+    total = Math.round(total);
+
+    $("results").style.display = "block";
+    $("fare").innerText = formatRM(total);
+    $("distance").innerText = `${km.toFixed(1)} km`;
+    $("eta").innerText = formatETA(mins);
+
+    const msg = `Ride Booking
+
+From: ${$("pickup").value}
+To: ${$("dropoff").value}
+
+Distance: ${km.toFixed(1)} km
+ETA: ${formatETA(mins)}
+Fare: RM ${total}`;
+
+    $("wa").href = `https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(msg)}`;
 }
 
+/* ---------------- SEARCH ---------------- */
+
+function renderResults(list, id, type) {
+    const el = $(id);
+    el.innerHTML = "";
+
+    list.forEach(i => {
+        const p = i.properties;
+        const name = p.name || p.street || "Location";
+        const addr = buildAddress(p);
+
+        const div = document.createElement("div");
+        div.className = "autocomplete-item";
+        div.innerHTML = `
+            <div class="place-name">${name}</div>
+            <div class="place-address">${addr}</div>
+        `;
+
+        div.onclick = () => {
+            setPoint(type,
+                [i.geometry.coordinates[1], i.geometry.coordinates[0]],
+                name
+            );
+            el.style.display = "none";
+        };
+
+        el.appendChild(div);
+    });
+
+    el.style.display = "block";
 }
 
-function draw(r){
+function search(val, id, type) {
+    clearTimeout(timer);
+    if (val.length < 3) return;
 
-if(route) map.removeLayer(route)
-
-const coords=decodePolyline(r.geometry)
-
-route=L.polyline(coords,{
-color:"#059669",
-weight:4
-}).addTo(map)
-
-map.fitBounds(route.getBounds(),{padding:[40,40]})
-
-const km=r.summary.distance/1000
-const mins=(r.summary.duration/60)*CONFIG.TRAFFIC_MULTIPLIER
-
-calcFare(km,mins)
-
+    timer = setTimeout(async () => {
+        try {
+            const res = await fetchJSON(
+                `https://photon.komoot.io/api/?q=${val}&limit=6&bbox=${CONFIG.BBOX}&lang=en`
+            );
+            renderResults(res.features || [], id, type);
+        } catch {}
+    }, 300);
 }
 
-function calcFare(km,mins){
+/* ---------------- EVENTS ---------------- */
 
-let toll=0
+$("pickup").onfocus = () => activeField = "pickup";
+$("dropoff").onfocus = () => activeField = "dropoff";
 
-if(km<=12){
-toll=km*FARE.TOLL_CITY
-}else{
-toll=(12*FARE.TOLL_CITY)+((km-12)*FARE.TOLL_HIGHWAY)
+$("pickup").oninput = e => search(e.target.value, "pickup-results", "pickup");
+$("dropoff").oninput = e => search(e.target.value, "dropoff-results", "dropoff");
+
+map.on("click", async e => {
+    const lat = e.latlng.lat;
+    const lng = e.latlng.lng;
+
+    $(activeField).value = "Locating...";
+
+    const address = await reverseGeocode(lat, lng);
+    setPoint(activeField, [lat, lng], address);
+});
+
+/* ---------------- GPS ---------------- */
+
+function getLocation() {
+    if (!navigator.geolocation) {
+        alert("Geolocation not supported.");
+        return;
+    }
+
+    activeField = "pickup";
+    $("pickup").value = "Locating...";
+
+    navigator.geolocation.getCurrentPosition(async p => {
+        const lat = p.coords.latitude;
+        const lng = p.coords.longitude;
+
+        const address = await reverseGeocode(lat, lng);
+        setPoint("pickup", [lat, lng], address);
+
+        map.setView([lat, lng], 15);
+
+    }, () => {
+        $("pickup").value = "";
+        alert("GPS access denied.");
+    });
 }
-
-let fare=
-FARE.BASE+
-(km*FARE.KM)+
-(mins*FARE.MINUTE)+
-toll
-
-if(fare<FARE.MIN) fare=FARE.MIN
-
-fare=Math.ceil(fare)
-
-$("results").style.display="block"
-
-$("fare").innerText=`RM ${fare}`
-$("distance").innerText=`${km.toFixed(1)} km`
-$("eta").innerText=formatETA(mins)
-
-const msg=
-`Ride Booking\n\nFrom: ${$("pickup").value}\nTo: ${$("dropoff").value}\n\nDistance: ${km.toFixed(2)} km\nETA: ${formatETA(mins)}\nFare: RM ${fare}`
-
-$("wa").href=
-`https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(msg)}`
-
-}
-
-function renderResults(list,id,type){
-
-const el=$(id)
-
-el.innerHTML=""
-
-list.forEach(i=>{
-
-const p=i.properties
-const name=p.name||p.street||"Location"
-const address=buildAddress(p)
-
-const lat=i.geometry.coordinates[1]
-const lng=i.geometry.coordinates[0]
-
-const div=document.createElement("div")
-
-div.className="autocomplete-item"
-
-div.innerHTML=`
-<div class="place-name">${name}</div>
-<div class="place-address">${address}</div>
-`
-
-div.onclick=()=>{
-
-setPoint(type,[lat,lng],name)
-
-el.style.display="none"
-
-}
-
-el.appendChild(div)
-
-})
-
-el.style.display="block"
-
-}
-
-function search(val,id,type){
-
-clearTimeout(timer)
-
-if(val.length<3) return
-
-timer=setTimeout(async()=>{
-
-let f=[]
-
-try{
-
-const p=await fetchJSON(
-`https://photon.komoot.io/api/?q=${val}&limit=6&bbox=${CONFIG.BBOX}&lang=en`
-)
-
-f=p.features||[]
-
-}catch{}
-
-renderResults(f,id,type)
-
-},350)
-
-}
-
-$("pickup").oninput=e=>search(e.target.value,"pickup-results","pickup")
-$("dropoff").oninput=e=>search(e.target.value,"dropoff-results","dropoff")
-
-map.on("click",e=>{
-
-const lat=e.latlng.lat
-const lng=e.latlng.lng
-
-const name=`${lat.toFixed(5)},${lng.toFixed(5)}`
-
-if(!pickupCoord)
-setPoint("pickup",[lat,lng],name)
-else
-setPoint("dropoff",[lat,lng],name)
-
-})
-
-function getLocation(){
-
-navigator.geolocation.getCurrentPosition(p=>{
-
-const lat=p.coords.latitude
-const lng=p.coords.longitude
-
-setPoint("pickup",[lat,lng],"Current Location")
-
-map.setView([lat,lng],15)
-
-})
-
-}
-
 </script>
-
-</body>
-</html>
