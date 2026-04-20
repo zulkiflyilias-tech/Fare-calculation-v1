@@ -87,7 +87,7 @@
     <div class="input-group">
         <label>Pickup Location</label>
         <div class="search-wrapper">
-            <input id="pickup" placeholder="Search or use GPS..." autocomplete="off">
+            <input id="pickup" placeholder="Search in West Malaysia..." autocomplete="off">
             <button id="gps-trigger" class="gps-btn" title="Use current location">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
             </button>
@@ -125,7 +125,8 @@
         WHATSAPP: "60108988182",
         ORS_KEY: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0=",
         CENTER: [3.139, 101.686],
-        BBOX: "99.6,1.15,104.4,6.95",
+        // Strictly Peninsular Malaysia BBox (MinLon, MinLat, MaxLon, MaxLat)
+        BBOX: "99.5,1.2,103.6,6.8", 
         TRAFFIC_MULTIPLIER: 1.25 
     };
 
@@ -152,9 +153,17 @@
         if (val.length < 3) { $(resultId).style.display = 'none'; return; }
         timer = setTimeout(async () => {
             try {
+                // Modified search: added bbox filtering and location preference
                 const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(val)}&bbox=${CONFIG.BBOX}&limit=8`);
                 const data = await res.json();
-                renderResults(data.features, resultId, type);
+                
+                // Final safety filter: Ensure 'MY' (Malaysia) and avoid East Malaysia coordinates
+                const filtered = data.features.filter(f => {
+                    const lon = f.geometry.coordinates[0];
+                    return f.properties.countrycode === 'MY' && lon < 105; 
+                });
+
+                renderResults(filtered, resultId, type);
             } catch (e) { console.error("Search error"); }
         }, 300);
     }
@@ -179,7 +188,7 @@
                 </div>
             `;
         }).join('');
-        list.style.display = 'block';
+        list.style.display = sorted.length ? 'block' : 'none';
     }
 
     function selectLocation(type, coord, fullLabel) {
@@ -201,10 +210,18 @@
     $("gps-trigger").onclick = () => {
         const btn = $("gps-trigger");
         btn.classList.add('loading');
-        if (!navigator.geolocation) { alert("Geolocation not supported"); btn.classList.remove('loading'); return; }
+        if (!navigator.geolocation) { alert("GPS not supported"); btn.classList.remove('loading'); return; }
         navigator.geolocation.getCurrentPosition(async (pos) => {
             const lat = pos.coords.latitude;
             const lon = pos.coords.longitude;
+            
+            // Check if user is actually in Peninsular Malaysia
+            if (lon > 105 || lat < 1 || lat > 7.5) {
+                alert("GPS detected location outside Peninsular Malaysia.");
+                btn.classList.remove('loading');
+                return;
+            }
+
             try {
                 const res = await fetch(`https://photon.komoot.io/reverse?lon=${lon}&lat=${lat}`);
                 const data = await res.json();
@@ -236,9 +253,7 @@
     }
 
     function processFare(km, mins) {
-        // Updated logic: RM 0.45/min if below 50km, else RM 0.65/min
         const activeMinuteRate = (km < 50) ? 0.45 : 0.65;
-
         let distCost = 0, remaining = km, lastLimit = 0;
         for (const tier of FARE_ENGINE.TIERS) {
             if (remaining <= 0) break;
@@ -247,7 +262,6 @@
             remaining -= currentSegment;
             lastLimit = tier.upTo;
         }
-
         const total = Math.ceil(FARE_ENGINE.BASE + distCost + (mins * activeMinuteRate));
 
         $("results").style.display = 'block';
