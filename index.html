@@ -36,11 +36,12 @@
         .autocomplete-results {
             position: absolute; width: 100%; background: white; border-radius: 12px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.1); display: none; z-index: 2000; margin-top: 4px; border: 1px solid #e2e8f0;
+            max-height: 250px; overflow-y: auto;
         }
         .autocomplete-item { padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #f1f5f9; }
         .autocomplete-item:hover { background: #f8fafc; }
-        .place-name { font-weight: 700; font-size: 0.95rem; }
-        .place-address { font-size: 0.75rem; color: #64748b; }
+        .place-name { font-weight: 700; font-size: 0.95rem; display: block; }
+        .place-address { font-size: 0.75rem; color: #64748b; display: block; margin-top: 2px; }
 
         #results {
             margin-top: auto; padding: 24px; border-radius: 20px; background: #1e293b;
@@ -60,7 +61,7 @@
         @media(max-width: 768px) {
             body { flex-direction: column; }
             #sidebar { width: 100%; height: auto; box-sizing: border-box; padding: 20px; }
-            #map { height: 45vh; }
+            #map { height: 40vh; }
         }
     </style>
 </head>
@@ -69,18 +70,18 @@
 <div id="sidebar">
     <div class="header">
         <h2>Novelty Resources</h2>
-        <p>Reliable Transit | Peninsular Malaysia</p>
+        <p>Expert Transit | Peninsular Malaysia</p>
     </div>
 
     <div class="input-group">
         <label>Pickup Location</label>
-        <input id="pickup" placeholder="Enter pickup point...">
+        <input id="pickup" placeholder="Search pickup point..." autocomplete="off">
         <div id="pickup-results" class="autocomplete-results"></div>
     </div>
 
     <div class="input-group">
         <label>Dropoff Location</label>
-        <input id="dropoff" placeholder="Enter destination...">
+        <input id="dropoff" placeholder="Search destination..." autocomplete="off">
         <div id="dropoff-results" class="autocomplete-results"></div>
     </div>
 
@@ -92,7 +93,7 @@
         <div class="stats">
             <span id="distance">0 km</span>
             <span>•</span>
-            <span>Distance-Based Pricing</span>
+            <span>Premium Service</span>
         </div>
         <a id="wa" class="btn" target="_blank">Book via WhatsApp</a>
     </div>
@@ -105,25 +106,20 @@
     const CONFIG = {
         WHATSAPP: "60108988182",
         ORS_KEY: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0=",
-        CENTER: [3.139, 101.686],
+        CENTER: [3.139, 101.686], // KL Center
         BBOX: "99.6,1.15,104.4,6.95",
         TRAFFIC_MULTIPLIER: 1.25 
     };
 
-    /**
-     * REVERSED LOGIC FOR SHORT-DISTANCE AFFORDABILITY
-     * Lower Base + Higher initial rates = Cheaper short trips, 
-     * but long trips accumulate cost significantly more.
-     */
     const FARE_ENGINE = {
-        BASE: 5.00,       // Reduced from 10.00 to make short trips cheaper
-        MINUTE: 0.65,     // Covers labor/time
+        BASE: 5.00,       
+        MINUTE: 0.65,     
         TIERS: [
-            { upTo: 5,   rate: 1.10 }, // Very short (Affordable entry)
-            { upTo: 15,  rate: 1.25 }, // Standard Urban
-            { upTo: 50,  rate: 1.40 }, // Mid-range
-            { upTo: 100, rate: 1.55 }, // Higher for long distance 
-            { upTo: Infinity, rate: 1.70 } // Long haul premium
+            { upTo: 5,   rate: 1.10 }, 
+            { upTo: 15,  rate: 1.25 }, 
+            { upTo: 50,  rate: 1.40 }, 
+            { upTo: 100, rate: 1.85 }, 
+            { upTo: Infinity, rate: 2.30 } 
         ]
     };
 
@@ -134,31 +130,60 @@
     const map = L.map("map", { zoomControl: false }).setView(CONFIG.CENTER, 13);
     L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").addTo(map);
 
+    // Initial geolocation to help sorting
+    map.locate({setView: true, maxZoom: 13});
+
     async function search(val, resultId, type) {
         clearTimeout(timer);
-        if (val.length < 3) return;
+        if (val.length < 3) {
+            $(resultId).style.display = 'none';
+            return;
+        }
         timer = setTimeout(async () => {
             try {
-                const res = await fetch(`https://photon.komoot.io/api/?q=${val}&bbox=${CONFIG.BBOX}&limit=5`);
+                // Fetching from Photon with BBox constraint
+                const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(val)}&bbox=${CONFIG.BBOX}&limit=10`);
                 const data = await res.json();
                 renderResults(data.features, resultId, type);
             } catch (e) { console.error("Search failed"); }
-        }, 400);
+        }, 300);
+    }
+
+    // Helper: Calculate distance for sorting
+    function getDist(c1, c2) {
+        return Math.sqrt(Math.pow(c1[0]-c2[0], 2) + Math.pow(c1[1]-c2[1], 2));
     }
 
     function renderResults(features, resultId, type) {
         const list = $(resultId);
-        list.innerHTML = features.map(f => `
-            <div class="autocomplete-item" onclick="selectLocation('${type}', [${f.geometry.coordinates[1]}, ${f.geometry.coordinates[0]}], '${f.properties.name || f.properties.street || 'Location'}')">
-                <div class="place-name">${f.properties.name || 'Location'}</div>
-                <div class="place-address">${f.properties.city || ''} ${f.properties.state || ''}</div>
-            </div>
-        `).join('');
+        const mapCenter = [map.getCenter().lat, map.getCenter().lng];
+
+        // 1. SORT BY NEAREST DISTANCE FIRST
+        const sorted = features.sort((a, b) => {
+            const distA = getDist(mapCenter, [a.geometry.coordinates[1], a.geometry.coordinates[0]]);
+            const distB = getDist(mapCenter, [b.geometry.coordinates[1], b.geometry.coordinates[0]]);
+            return distA - distB;
+        });
+
+        list.innerHTML = sorted.map(f => {
+            const p = f.properties;
+            // 2. CONSTRUCT COMPLETE ADDRESS
+            const name = p.name || p.street || 'Location';
+            const details = [p.district, p.city, p.postcode, p.state].filter(Boolean).join(', ');
+            const fullLabel = `${name}, ${details}`;
+
+            return `
+                <div class="autocomplete-item" onclick="selectLocation('${type}', [${f.geometry.coordinates[1]}, ${f.geometry.coordinates[0]}], '${fullLabel.replace(/'/g, "\\'")}')">
+                    <div class="place-name">${name}</div>
+                    <div class="place-address">${details}</div>
+                </div>
+            `;
+        }).join('');
         list.style.display = 'block';
     }
 
-    function selectLocation(type, coord, name) {
-        $(type).value = name;
+    function selectLocation(type, coord, fullAddress) {
+        $(type).value = fullAddress;
         $(`${type}-results`).style.display = 'none';
         
         const markerConfig = { radius: 8, fillOpacity: 1, weight: 2, color: '#fff' };
@@ -190,7 +215,7 @@
             map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
 
             processFare(route.summary.distance / 1000, (route.summary.duration / 60) * CONFIG.TRAFFIC_MULTIPLIER);
-        } catch (e) { alert("Routing error."); }
+        } catch (e) { alert("Routing error. Please try a different location."); }
     }
 
     function processFare(km, mins) {
@@ -213,7 +238,7 @@
         $("distance").innerText = `${km.toFixed(1)} km`;
         $("eta").innerText = `${Math.round(mins)} mins`;
 
-        const msg = `Booking Request\n\nPick: ${$("pickup").value}\nDrop: ${$("dropoff").value}\n\nDist: ${km.toFixed(1)}km\nFare: RM ${total}`;
+        const msg = `*New Booking Request*\n\n*From:* ${$("pickup").value}\n*To:* ${$("dropoff").value}\n\n*Distance:* ${km.toFixed(1)}km\n*Estimate:* ${Math.round(mins)} mins\n*Total Fare:* RM ${total}`;
         $("wa").href = `https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(msg)}`;
     }
 
@@ -233,6 +258,13 @@
 
     $("pickup").oninput = e => search(e.target.value, "pickup-results", "pickup");
     $("dropoff").oninput = e => search(e.target.value, "dropoff-results", "dropoff");
+
+    // Close autocomplete on click outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.input-group')) {
+            document.querySelectorAll('.autocomplete-results').forEach(el => el.style.display = 'none');
+        }
+    });
 </script>
 </body>
 </html>
