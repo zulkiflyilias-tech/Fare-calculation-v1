@@ -131,7 +131,6 @@
 
     const FARE_ENGINE = {
         BASE: 5.00,       
-        MINUTE: 0.65,     
         TIERS: [
             { upTo: 5,   rate: 1.10 }, 
             { upTo: 15,  rate: 1.25 }, 
@@ -148,8 +147,6 @@
     const map = L.map("map", { zoomControl: false }).setView(CONFIG.CENTER, 13);
     L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").addTo(map);
 
-    // --- SEARCH & ADDRESS LOGIC ---
-
     async function search(val, resultId, type) {
         clearTimeout(timer);
         if (val.length < 3) { $(resultId).style.display = 'none'; return; }
@@ -165,8 +162,6 @@
     function renderResults(features, resultId, type) {
         const list = $(resultId);
         const mapCenter = [map.getCenter().lat, map.getCenter().lng];
-
-        // Sort results by nearest to current map view
         const sorted = features.sort((a, b) => {
             const getD = c => Math.sqrt(Math.pow(mapCenter[0]-c[1], 2) + Math.pow(mapCenter[1]-c[0], 2));
             return getD(a.geometry.coordinates) - getD(b.geometry.coordinates);
@@ -177,7 +172,6 @@
             const name = p.name || p.street || 'Selected Point';
             const address = [p.street, p.district, p.city, p.postcode].filter(Boolean).join(', ');
             const fullStr = `${name}${address ? ', ' + address : ''}`;
-
             return `
                 <div class="autocomplete-item" onclick="selectLocation('${type}', [${f.geometry.coordinates[1]}, ${f.geometry.coordinates[0]}], '${fullStr.replace(/'/g, "\\'")}')">
                     <span class="place-name">${name}</span>
@@ -191,7 +185,6 @@
     function selectLocation(type, coord, fullLabel) {
         $(type).value = fullLabel;
         $(`${type}-results`).style.display = 'none';
-        
         const mCfg = { radius: 8, fillOpacity: 1, weight: 2, color: '#fff' };
         if (type === 'pickup') {
             pickupCoord = coord;
@@ -205,44 +198,26 @@
         if (pickupCoord && dropoffCoord) calculateRoute();
     }
 
-    // --- GPS CURRENT LOCATION LOGIC ---
-
     $("gps-trigger").onclick = () => {
         const btn = $("gps-trigger");
         btn.classList.add('loading');
-
-        if (!navigator.geolocation) {
-            alert("Geolocation not supported by your browser.");
-            btn.classList.remove('loading');
-            return;
-        }
-
+        if (!navigator.geolocation) { alert("Geolocation not supported"); btn.classList.remove('loading'); return; }
         navigator.geolocation.getCurrentPosition(async (pos) => {
             const lat = pos.coords.latitude;
             const lon = pos.coords.longitude;
-            
             try {
-                // Reverse geocoding to get address name
                 const res = await fetch(`https://photon.komoot.io/reverse?lon=${lon}&lat=${lat}`);
                 const data = await res.json();
                 const p = data.features[0].properties;
-                const name = p.name || p.street || "My Current Location";
+                const name = p.name || p.street || "Current Location";
                 const address = [p.street, p.district, p.city, p.postcode].filter(Boolean).join(', ');
                 const fullLabel = `${name}${address ? ', ' + address : ''}`;
-
                 selectLocation('pickup', [lat, lon], fullLabel);
                 map.setView([lat, lon], 16);
-            } catch (e) {
-                selectLocation('pickup', [lat, lon], "Pinned Location (" + lat.toFixed(4) + ", " + lon.toFixed(4) + ")");
-            }
+            } catch (e) { selectLocation('pickup', [lat, lon], "Pinned Location"); }
             btn.classList.remove('loading');
-        }, (err) => {
-            alert("Unable to retrieve location. Please check permissions.");
-            btn.classList.remove('loading');
-        }, { enableHighAccuracy: true });
+        }, () => { btn.classList.remove('loading'); }, { enableHighAccuracy: true });
     };
-
-    // --- ROUTING & FARE ---
 
     async function calculateRoute() {
         try {
@@ -253,16 +228,17 @@
             });
             const data = await res.json();
             const route = data.routes[0];
-            
             if (routeLayer) map.removeLayer(routeLayer);
             routeLayer = L.polyline(decodePoly(route.geometry), { color: '#059669', weight: 6, opacity: 0.8 }).addTo(map);
             map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
-
             processFare(route.summary.distance / 1000, (route.summary.duration / 60) * CONFIG.TRAFFIC_MULTIPLIER);
-        } catch (e) { alert("Route calculation failed."); }
+        } catch (e) { console.error("Route error"); }
     }
 
     function processFare(km, mins) {
+        // Updated logic: RM 0.45/min if below 50km, else RM 0.65/min
+        const activeMinuteRate = (km < 50) ? 0.45 : 0.65;
+
         let distCost = 0, remaining = km, lastLimit = 0;
         for (const tier of FARE_ENGINE.TIERS) {
             if (remaining <= 0) break;
@@ -271,7 +247,8 @@
             remaining -= currentSegment;
             lastLimit = tier.upTo;
         }
-        const total = Math.ceil(FARE_ENGINE.BASE + distCost + (mins * FARE_ENGINE.MINUTE));
+
+        const total = Math.ceil(FARE_ENGINE.BASE + distCost + (mins * activeMinuteRate));
 
         $("results").style.display = 'block';
         $("fare").innerText = `RM ${total}`;
