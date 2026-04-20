@@ -27,29 +27,40 @@
 
         .input-group { margin-bottom: 20px; position: relative; }
         label { display: block; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; margin-bottom: 6px; color: #94a3b8; letter-spacing: 0.5px; }
+        
+        .search-wrapper { position: relative; display: flex; align-items: center; }
         input {
-            width: 100%; box-sizing: border-box; padding: 14px 16px; border: 2px solid #f1f5f9;
-            border-radius: 12px; font-size: 15px; transition: all 0.2s; background: #fdfdfd;
+            width: 100%; box-sizing: border-box; padding: 14px 45px 14px 16px; border: 2px solid #f1f5f9;
+            border-radius: 12px; font-size: 14px; transition: all 0.2s; background: #fdfdfd;
         }
         input:focus { outline: none; border-color: var(--primary); background: #fff; box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.1); }
+
+        .gps-btn {
+            position: absolute; right: 12px; background: none; border: none; cursor: pointer;
+            color: var(--primary); padding: 8px; border-radius: 8px; display: flex; align-items: center;
+        }
+        .gps-btn:hover { background: #ecfdf5; }
+        .gps-btn.loading { animation: spin 1s linear infinite; opacity: 0.6; }
+
+        @keyframes spin { 100% { transform: rotate(360deg); } }
 
         .autocomplete-results {
             position: absolute; width: 100%; background: white; border-radius: 12px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.1); display: none; z-index: 2000; margin-top: 4px; border: 1px solid #e2e8f0;
-            max-height: 250px; overflow-y: auto;
+            max-height: 280px; overflow-y: auto;
         }
         .autocomplete-item { padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #f1f5f9; }
         .autocomplete-item:hover { background: #f8fafc; }
-        .place-name { font-weight: 700; font-size: 0.95rem; display: block; }
-        .place-address { font-size: 0.75rem; color: #64748b; display: block; margin-top: 2px; }
+        .place-name { font-weight: 700; font-size: 0.9rem; display: block; color: var(--text-main); }
+        .place-address { font-size: 0.75rem; color: #64748b; display: block; margin-top: 2px; line-height: 1.4; }
 
         #results {
             margin-top: auto; padding: 24px; border-radius: 20px; background: #1e293b;
             color: white; display: none; box-shadow: 0 10px 20px rgba(0,0,0,0.1);
         }
         .fare-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
-        #fare { font-size: 2.4rem; font-weight: 800; color: #fff; }
-        .stats { display: flex; gap: 12px; font-size: 0.85rem; color: #94a3b8; }
+        #fare { font-size: 2.2rem; font-weight: 800; color: #fff; }
+        .stats { display: flex; gap: 12px; font-size: 0.8rem; color: #94a3b8; }
 
         .btn {
             display: block; width: 100%; text-align: center; padding: 16px; border-radius: 14px;
@@ -61,7 +72,7 @@
         @media(max-width: 768px) {
             body { flex-direction: column; }
             #sidebar { width: 100%; height: auto; box-sizing: border-box; padding: 20px; }
-            #map { height: 40vh; }
+            #map { height: 35vh; }
         }
     </style>
 </head>
@@ -70,18 +81,25 @@
 <div id="sidebar">
     <div class="header">
         <h2>Novelty Resources</h2>
-        <p>Expert Transit | Peninsular Malaysia</p>
+        <p>Premium Transit | Peninsular Malaysia</p>
     </div>
 
     <div class="input-group">
         <label>Pickup Location</label>
-        <input id="pickup" placeholder="Search pickup point..." autocomplete="off">
+        <div class="search-wrapper">
+            <input id="pickup" placeholder="Search or use GPS..." autocomplete="off">
+            <button id="gps-trigger" class="gps-btn" title="Use current location">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+            </button>
+        </div>
         <div id="pickup-results" class="autocomplete-results"></div>
     </div>
 
     <div class="input-group">
         <label>Dropoff Location</label>
-        <input id="dropoff" placeholder="Search destination..." autocomplete="off">
+        <div class="search-wrapper">
+            <input id="dropoff" placeholder="Search destination..." autocomplete="off">
+        </div>
         <div id="dropoff-results" class="autocomplete-results"></div>
     </div>
 
@@ -93,7 +111,7 @@
         <div class="stats">
             <span id="distance">0 km</span>
             <span>•</span>
-            <span>Premium Service</span>
+            <span>Reliable Engine</span>
         </div>
         <a id="wa" class="btn" target="_blank">Book via WhatsApp</a>
     </div>
@@ -106,7 +124,7 @@
     const CONFIG = {
         WHATSAPP: "60108988182",
         ORS_KEY: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0=",
-        CENTER: [3.139, 101.686], // KL Center
+        CENTER: [3.139, 101.686],
         BBOX: "99.6,1.15,104.4,6.95",
         TRAFFIC_MULTIPLIER: 1.25 
     };
@@ -130,75 +148,101 @@
     const map = L.map("map", { zoomControl: false }).setView(CONFIG.CENTER, 13);
     L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").addTo(map);
 
-    // Initial geolocation to help sorting
-    map.locate({setView: true, maxZoom: 13});
+    // --- SEARCH & ADDRESS LOGIC ---
 
     async function search(val, resultId, type) {
         clearTimeout(timer);
-        if (val.length < 3) {
-            $(resultId).style.display = 'none';
-            return;
-        }
+        if (val.length < 3) { $(resultId).style.display = 'none'; return; }
         timer = setTimeout(async () => {
             try {
-                // Fetching from Photon with BBox constraint
-                const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(val)}&bbox=${CONFIG.BBOX}&limit=10`);
+                const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(val)}&bbox=${CONFIG.BBOX}&limit=8`);
                 const data = await res.json();
                 renderResults(data.features, resultId, type);
-            } catch (e) { console.error("Search failed"); }
+            } catch (e) { console.error("Search error"); }
         }, 300);
-    }
-
-    // Helper: Calculate distance for sorting
-    function getDist(c1, c2) {
-        return Math.sqrt(Math.pow(c1[0]-c2[0], 2) + Math.pow(c1[1]-c2[1], 2));
     }
 
     function renderResults(features, resultId, type) {
         const list = $(resultId);
         const mapCenter = [map.getCenter().lat, map.getCenter().lng];
 
-        // 1. SORT BY NEAREST DISTANCE FIRST
+        // Sort results by nearest to current map view
         const sorted = features.sort((a, b) => {
-            const distA = getDist(mapCenter, [a.geometry.coordinates[1], a.geometry.coordinates[0]]);
-            const distB = getDist(mapCenter, [b.geometry.coordinates[1], b.geometry.coordinates[0]]);
-            return distA - distB;
+            const getD = c => Math.sqrt(Math.pow(mapCenter[0]-c[1], 2) + Math.pow(mapCenter[1]-c[0], 2));
+            return getD(a.geometry.coordinates) - getD(b.geometry.coordinates);
         });
 
         list.innerHTML = sorted.map(f => {
             const p = f.properties;
-            // 2. CONSTRUCT COMPLETE ADDRESS
-            const name = p.name || p.street || 'Location';
-            const details = [p.district, p.city, p.postcode, p.state].filter(Boolean).join(', ');
-            const fullLabel = `${name}, ${details}`;
+            const name = p.name || p.street || 'Selected Point';
+            const address = [p.street, p.district, p.city, p.postcode].filter(Boolean).join(', ');
+            const fullStr = `${name}${address ? ', ' + address : ''}`;
 
             return `
-                <div class="autocomplete-item" onclick="selectLocation('${type}', [${f.geometry.coordinates[1]}, ${f.geometry.coordinates[0]}], '${fullLabel.replace(/'/g, "\\'")}')">
-                    <div class="place-name">${name}</div>
-                    <div class="place-address">${details}</div>
+                <div class="autocomplete-item" onclick="selectLocation('${type}', [${f.geometry.coordinates[1]}, ${f.geometry.coordinates[0]}], '${fullStr.replace(/'/g, "\\'")}')">
+                    <span class="place-name">${name}</span>
+                    <span class="place-address">${address}</span>
                 </div>
             `;
         }).join('');
         list.style.display = 'block';
     }
 
-    function selectLocation(type, coord, fullAddress) {
-        $(type).value = fullAddress;
+    function selectLocation(type, coord, fullLabel) {
+        $(type).value = fullLabel;
         $(`${type}-results`).style.display = 'none';
         
-        const markerConfig = { radius: 8, fillOpacity: 1, weight: 2, color: '#fff' };
+        const mCfg = { radius: 8, fillOpacity: 1, weight: 2, color: '#fff' };
         if (type === 'pickup') {
             pickupCoord = coord;
             if (pickupMarker) map.removeLayer(pickupMarker);
-            pickupMarker = L.circleMarker(coord, { ...markerConfig, fillColor: '#059669' }).addTo(map);
+            pickupMarker = L.circleMarker(coord, { ...mCfg, fillColor: '#059669' }).addTo(map);
         } else {
             dropoffCoord = coord;
             if (dropoffMarker) map.removeLayer(dropoffMarker);
-            dropoffMarker = L.circleMarker(coord, { ...markerConfig, fillColor: '#1e293b' }).addTo(map);
+            dropoffMarker = L.circleMarker(coord, { ...mCfg, fillColor: '#1e293b' }).addTo(map);
         }
-
         if (pickupCoord && dropoffCoord) calculateRoute();
     }
+
+    // --- GPS CURRENT LOCATION LOGIC ---
+
+    $("gps-trigger").onclick = () => {
+        const btn = $("gps-trigger");
+        btn.classList.add('loading');
+
+        if (!navigator.geolocation) {
+            alert("Geolocation not supported by your browser.");
+            btn.classList.remove('loading');
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            
+            try {
+                // Reverse geocoding to get address name
+                const res = await fetch(`https://photon.komoot.io/reverse?lon=${lon}&lat=${lat}`);
+                const data = await res.json();
+                const p = data.features[0].properties;
+                const name = p.name || p.street || "My Current Location";
+                const address = [p.street, p.district, p.city, p.postcode].filter(Boolean).join(', ');
+                const fullLabel = `${name}${address ? ', ' + address : ''}`;
+
+                selectLocation('pickup', [lat, lon], fullLabel);
+                map.setView([lat, lon], 16);
+            } catch (e) {
+                selectLocation('pickup', [lat, lon], "Pinned Location (" + lat.toFixed(4) + ", " + lon.toFixed(4) + ")");
+            }
+            btn.classList.remove('loading');
+        }, (err) => {
+            alert("Unable to retrieve location. Please check permissions.");
+            btn.classList.remove('loading');
+        }, { enableHighAccuracy: true });
+    };
+
+    // --- ROUTING & FARE ---
 
     async function calculateRoute() {
         try {
@@ -215,14 +259,11 @@
             map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
 
             processFare(route.summary.distance / 1000, (route.summary.duration / 60) * CONFIG.TRAFFIC_MULTIPLIER);
-        } catch (e) { alert("Routing error. Please try a different location."); }
+        } catch (e) { alert("Route calculation failed."); }
     }
 
     function processFare(km, mins) {
-        let distCost = 0;
-        let remaining = km;
-        let lastLimit = 0;
-
+        let distCost = 0, remaining = km, lastLimit = 0;
         for (const tier of FARE_ENGINE.TIERS) {
             if (remaining <= 0) break;
             let currentSegment = Math.min(remaining, tier.upTo - lastLimit);
@@ -230,7 +271,6 @@
             remaining -= currentSegment;
             lastLimit = tier.upTo;
         }
-
         const total = Math.ceil(FARE_ENGINE.BASE + distCost + (mins * FARE_ENGINE.MINUTE));
 
         $("results").style.display = 'block';
@@ -238,7 +278,7 @@
         $("distance").innerText = `${km.toFixed(1)} km`;
         $("eta").innerText = `${Math.round(mins)} mins`;
 
-        const msg = `*New Booking Request*\n\n*From:* ${$("pickup").value}\n*To:* ${$("dropoff").value}\n\n*Distance:* ${km.toFixed(1)}km\n*Estimate:* ${Math.round(mins)} mins\n*Total Fare:* RM ${total}`;
+        const msg = `*Booking Request*\n\n*Pickup:* ${$("pickup").value}\n*Dropoff:* ${$("dropoff").value}\n\n*Distance:* ${km.toFixed(1)}km\n*Fare:* RM ${total}`;
         $("wa").href = `https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(msg)}`;
     }
 
@@ -258,9 +298,7 @@
 
     $("pickup").oninput = e => search(e.target.value, "pickup-results", "pickup");
     $("dropoff").oninput = e => search(e.target.value, "dropoff-results", "dropoff");
-
-    // Close autocomplete on click outside
-    document.addEventListener('click', (e) => {
+    document.addEventListener('click', e => {
         if (!e.target.closest('.input-group')) {
             document.querySelectorAll('.autocomplete-results').forEach(el => el.style.display = 'none');
         }
