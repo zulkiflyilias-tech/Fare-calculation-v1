@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rideshare MY | Executive Tier Engine</title>
+    <title>Novelty Resources | Transit Engine</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <style>
         :root {
@@ -69,7 +69,7 @@
 <div id="sidebar">
     <div class="header">
         <h2>Novelty Resources</h2>
-        <p>Premium Transit | Peninsular Malaysia</p>
+        <p>Reliable Transit | Peninsular Malaysia</p>
     </div>
 
     <div class="input-group">
@@ -92,7 +92,7 @@
         <div class="stats">
             <span id="distance">0 km</span>
             <span>•</span>
-            <span>Professional Class</span>
+            <span>Distance-Based Pricing</span>
         </div>
         <a id="wa" class="btn" target="_blank">Book via WhatsApp</a>
     </div>
@@ -107,19 +107,23 @@
         ORS_KEY: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0=",
         CENTER: [3.139, 101.686],
         BBOX: "99.6,1.15,104.4,6.95",
-        TRAFFIC_MULTIPLIER: 1.35 // Higher buffer for professional time value
+        TRAFFIC_MULTIPLIER: 1.25 
     };
 
-    // CALCULATED FOR: RM3500 Wage + EPF/SOCSO + RM4.02/L Fuel + 2018 Saga Wear/Tear
+    /**
+     * REVERSED LOGIC FOR SHORT-DISTANCE AFFORDABILITY
+     * Lower Base + Higher initial rates = Cheaper short trips, 
+     * but long trips accumulate cost significantly more.
+     */
     const FARE_ENGINE = {
-        BASE: 10.00,      // Covers professional labor overhead, insurance, and initial fuel burn
-        MINUTE: 0.70,     // RM 42/hr - Covers RM3.5k salary + contributions + idling fuel
+        BASE: 5.00,       // Reduced from 10.00 to make short trips cheaper
+        MINUTE: 0.65,     // Covers labor/time
         TIERS: [
-            { upTo: 10,  rate: 1.50 }, // Urban premium (Low MPG, high wear)
-            { upTo: 30,  rate: 1.35 }, // Standard city/suburban
-            { upTo: 70,  rate: 1.20 }, // Inter-district
-            { upTo: 150, rate: 1.10 }, // Interstate highway
-            { upTo: Infinity, rate: 1.00 } // Long-distance cap
+            { upTo: 5,   rate: 1.10 }, // Very short (Affordable entry)
+            { upTo: 15,  rate: 1.25 }, // Standard Urban
+            { upTo: 50,  rate: 1.40 }, // Mid-range
+            { upTo: 100, rate: 1.55 }, // Higher for long distance 
+            { upTo: Infinity, rate: 1.70 } // Long haul premium
         ]
     };
 
@@ -186,7 +190,7 @@
             map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
 
             processFare(route.summary.distance / 1000, (route.summary.duration / 60) * CONFIG.TRAFFIC_MULTIPLIER);
-        } catch (e) { alert("Routing error. Please check coordinates."); }
+        } catch (e) { alert("Routing error."); }
     }
 
     function processFare(km, mins) {
@@ -202,15 +206,14 @@
             lastLimit = tier.upTo;
         }
 
-        const timeCost = mins * FARE_ENGINE.MINUTE;
-        const total = Math.ceil(FARE_ENGINE.BASE + distCost + timeCost);
+        const total = Math.ceil(FARE_ENGINE.BASE + distCost + (mins * FARE_ENGINE.MINUTE));
 
         $("results").style.display = 'block';
         $("fare").innerText = `RM ${total}`;
         $("distance").innerText = `${km.toFixed(1)} km`;
         $("eta").innerText = `${Math.round(mins)} mins`;
 
-        const msg = `Novelty Resources Booking\n\nPick: ${$("pickup").value}\nDrop: ${$("dropoff").value}\n\nDistance: ${km.toFixed(1)}km\nFinal Fare: RM ${total}`;
+        const msg = `Booking Request\n\nPick: ${$("pickup").value}\nDrop: ${$("dropoff").value}\n\nDist: ${km.toFixed(1)}km\nFare: RM ${total}`;
         $("wa").href = `https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(msg)}`;
     }
 
