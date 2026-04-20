@@ -1,313 +1,235 @@
-<script>
-const CONFIG = {
-    WHATSAPP: "60108988182",
-    ORS_KEY: "YOUR_API_KEY_HERE",
-    CENTER: [3.139, 101.686],
-    BBOX: "99.6,1.15,104.4,6.95",
-    TRAFFIC_MULTIPLIER: 1.25
-};
-
-const FARE_CONFIG = {
-    BASE: 5.00,
-    MINUTE: 0.30,
-    MIN_FARE: 8,
-    MIN_DISTANCE_KM: 2,
-    TIERS: [
-        { upTo: 10, rate: 0.70 },
-        { upTo: 25, rate: 0.90 },
-        { upTo: 50, rate: 1.25 },
-        { upTo: 75, rate: 1.55 },
-        { upTo: 120, rate: 1.85 },
-        { upTo: Infinity, rate: 2.00 }
-    ]
-};
-
-const BOUNDS = [[1.15, 99.6], [6.95, 104.4]];
-const $ = id => document.getElementById(id);
-
-let pickupCoord, dropoffCoord, pickupMarker, dropoffMarker, route;
-let cache = {};
-let timer;
-let activeField = "pickup";
-
-const map = L.map("map", { zoomControl: false, maxBounds: BOUNDS })
-    .setView(CONFIG.CENTER, 13);
-
-L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-    attribution: "© OpenStreetMap contributors © CARTO"
-}).addTo(map);
-
-const fetchJSON = url => fetch(url).then(r => r.json());
-
-/* ---------------- FORMATTERS ---------------- */
-
-function formatETA(mins) {
-    const h = Math.floor(mins / 60);
-    const m = Math.round(mins % 60);
-    return h > 0 ? `${h}h ${m}m` : `${m}m`;
-}
-
-function formatRM(value) {
-    return `RM ${Math.round(value)}`;
-}
-
-/* ---------------- POLYLINE ---------------- */
-
-function decodePolyline(str) {
-    let index = 0, lat = 0, lng = 0, coordinates = [];
-    while (index < str.length) {
-        let b, shift = 0, result = 0;
-        do { b = str.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
-        lat += ((result & 1) ? ~(result >> 1) : (result >> 1));
-        shift = 0; result = 0;
-        do { b = str.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
-        lng += ((result & 1) ? ~(result >> 1) : (result >> 1));
-        coordinates.push([lat / 1e5, lng / 1e5]);
-    }
-    return coordinates;
-}
-
-/* ---------------- ADDRESS LOGIC ---------------- */
-
-// Prioritize POI names + clean short address
-function buildAddress(p) {
-    if (!p) return "Unknown Location";
-
-    const poi = p.name;
-    const street = [p.housenumber, p.street].filter(Boolean).join(" ");
-    const area = p.district;
-    const city = p.city || p.town || p.village;
-    const state = p.state;
-
-    // Priority: POI → Street → Area → City
-    let parts = [];
-
-    if (poi) parts.push(poi);
-    if (street && street !== poi) parts.push(street);
-    if (area && area !== street) parts.push(area);
-    if (city) parts.push(city);
-    if (state) parts.push(state);
-
-    // Remove duplicates + limit to max 3 parts (trim long addresses)
-    const clean = [...new Set(parts)].slice(0, 3);
-
-    return clean.join(", ");
-}
-
-/* ---------------- GEO ---------------- */
-
-async function reverseGeocode(lat, lng) {
-    try {
-        const res = await fetchJSON(`https://photon.komoot.io/reverse?lon=${lng}&lat=${lat}`);
-        if (res.features?.length) {
-            return buildAddress(res.features[0].properties);
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rideshare MY | Executive Tier Engine</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <style>
+        :root {
+            --primary: #059669;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --whatsapp: #25D366;
+            --text-main: #1e293b;
         }
-    } catch {}
-    return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-}
 
-/* ---------------- MAP POINT ---------------- */
+        body { margin: 0; display: flex; height: 100vh; font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text-main); }
+        #map { flex: 1; }
+        #sidebar {
+            width: 400px; padding: 24px; background: var(--card);
+            box-shadow: 4px 0 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; z-index: 1000;
+        }
 
-function setPoint(type, coord, name) {
-    const isPickup = type === "pickup";
+        .header { margin-bottom: 24px; }
+        .header h2 { margin: 0; color: var(--primary); font-size: 1.6rem; letter-spacing: -0.5px; }
+        .header p { margin: 4px 0 0; font-size: 0.85rem; color: #64748b; font-weight: 500; }
 
-    if (isPickup) pickupCoord = coord;
-    else dropoffCoord = coord;
+        .input-group { margin-bottom: 20px; position: relative; }
+        label { display: block; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; margin-bottom: 6px; color: #94a3b8; letter-spacing: 0.5px; }
+        input {
+            width: 100%; box-sizing: border-box; padding: 14px 16px; border: 2px solid #f1f5f9;
+            border-radius: 12px; font-size: 15px; transition: all 0.2s; background: #fdfdfd;
+        }
+        input:focus { outline: none; border-color: var(--primary); background: #fff; box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.1); }
 
-    $(type).value = name;
+        .autocomplete-results {
+            position: absolute; width: 100%; background: white; border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1); display: none; z-index: 2000; margin-top: 4px; border: 1px solid #e2e8f0;
+        }
+        .autocomplete-item { padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #f1f5f9; }
+        .autocomplete-item:hover { background: #f8fafc; }
+        .place-name { font-weight: 700; font-size: 0.95rem; }
+        .place-address { font-size: 0.75rem; color: #64748b; }
 
-    let marker = isPickup ? pickupMarker : dropoffMarker;
-    if (marker) map.removeLayer(marker);
+        #results {
+            margin-top: auto; padding: 24px; border-radius: 20px; background: #1e293b;
+            color: white; display: none; box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .fare-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+        #fare { font-size: 2.4rem; font-weight: 800; color: #fff; }
+        .stats { display: flex; gap: 12px; font-size: 0.85rem; color: #94a3b8; }
 
-    marker = L.circleMarker(coord, {
-        radius: 7,
-        color: isPickup ? "#059669" : "#ef4444",
-        fillOpacity: 1
-    }).addTo(map);
+        .btn {
+            display: block; width: 100%; text-align: center; padding: 16px; border-radius: 14px;
+            background: var(--whatsapp); color: white; text-decoration: none; font-weight: 800;
+            margin-top: 18px; transition: transform 0.2s;
+        }
+        .btn:active { transform: scale(0.98); }
 
-    if (isPickup) pickupMarker = marker;
-    else dropoffMarker = marker;
+        @media(max-width: 768px) {
+            body { flex-direction: column; }
+            #sidebar { width: 100%; height: auto; box-sizing: border-box; padding: 20px; }
+            #map { height: 45vh; }
+        }
+    </style>
+</head>
+<body>
 
-    if (pickupCoord && dropoffCoord) routeTrip();
-}
+<div id="sidebar">
+    <div class="header">
+        <h2>Novelty Resources</h2>
+        <p>Premium Transit | Peninsular Malaysia</p>
+    </div>
 
-/* ---------------- ROUTING ---------------- */
+    <div class="input-group">
+        <label>Pickup Location</label>
+        <input id="pickup" placeholder="Enter pickup point...">
+        <div id="pickup-results" class="autocomplete-results"></div>
+    </div>
 
-async function routeTrip() {
-    const key = `${pickupCoord.join(",")}-${dropoffCoord.join(",")}`;
-    if (cache[key]) return draw(cache[key]);
+    <div class="input-group">
+        <label>Dropoff Location</label>
+        <input id="dropoff" placeholder="Enter destination...">
+        <div id="dropoff-results" class="autocomplete-results"></div>
+    </div>
 
-    try {
-        const res = await fetch("https://api.openrouteservice.org/v2/directions/driving-car", {
-            method: "POST",
-            headers: {
-                Authorization: CONFIG.ORS_KEY,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                coordinates: [
-                    [pickupCoord[1], pickupCoord[0]],
-                    [dropoffCoord[1], dropoffCoord[0]]
-                ]
-            })
-        });
+    <div id="results">
+        <div class="fare-row">
+            <div id="fare">RM 0</div>
+            <div id="eta" style="color: #4ade80; font-weight: 700;">-- mins</div>
+        </div>
+        <div class="stats">
+            <span id="distance">0 km</span>
+            <span>•</span>
+            <span>Professional Class</span>
+        </div>
+        <a id="wa" class="btn" target="_blank">Book via WhatsApp</a>
+    </div>
+</div>
 
-        const data = await res.json();
-        if (!data.routes?.length) return alert("No route found");
+<div id="map"></div>
 
-        cache[key] = data.routes[0];
-        draw(data.routes[0]);
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    const CONFIG = {
+        WHATSAPP: "60108988182",
+        ORS_KEY: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0=",
+        CENTER: [3.139, 101.686],
+        BBOX: "99.6,1.15,104.4,6.95",
+        TRAFFIC_MULTIPLIER: 1.35 // Higher buffer for professional time value
+    };
 
-    } catch {
-        alert("Routing service unavailable.");
+    // CALCULATED FOR: RM3500 Wage + EPF/SOCSO + RM4.02/L Fuel + 2018 Saga Wear/Tear
+    const FARE_ENGINE = {
+        BASE: 10.00,      // Covers professional labor overhead, insurance, and initial fuel burn
+        MINUTE: 0.70,     // RM 42/hr - Covers RM3.5k salary + contributions + idling fuel
+        TIERS: [
+            { upTo: 10,  rate: 1.50 }, // Urban premium (Low MPG, high wear)
+            { upTo: 30,  rate: 1.35 }, // Standard city/suburban
+            { upTo: 70,  rate: 1.20 }, // Inter-district
+            { upTo: 150, rate: 1.10 }, // Interstate highway
+            { upTo: Infinity, rate: 1.00 } // Long-distance cap
+        ]
+    };
+
+    const $ = id => document.getElementById(id);
+    let pickupCoord, dropoffCoord, routeLayer, pickupMarker, dropoffMarker;
+    let timer;
+
+    const map = L.map("map", { zoomControl: false }).setView(CONFIG.CENTER, 13);
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").addTo(map);
+
+    async function search(val, resultId, type) {
+        clearTimeout(timer);
+        if (val.length < 3) return;
+        timer = setTimeout(async () => {
+            try {
+                const res = await fetch(`https://photon.komoot.io/api/?q=${val}&bbox=${CONFIG.BBOX}&limit=5`);
+                const data = await res.json();
+                renderResults(data.features, resultId, type);
+            } catch (e) { console.error("Search failed"); }
+        }, 400);
     }
-}
 
-function draw(r) {
-    if (route) map.removeLayer(route);
-
-    const coords = decodePolyline(r.geometry);
-    route = L.polyline(coords, { color: "#059669", weight: 4 }).addTo(map);
-
-    map.fitBounds(route.getBounds(), { padding: [40, 40] });
-
-    const km = r.summary.distance / 1000;
-    const mins = (r.summary.duration / 60) * CONFIG.TRAFFIC_MULTIPLIER;
-
-    calcFare(km, mins);
-}
-
-/* ---------------- FARE ---------------- */
-
-function calcFare(km, mins) {
-    let distanceCost = 0;
-    let remaining = km;
-    let prev = 0;
-
-    for (const tier of FARE_CONFIG.TIERS) {
-        if (remaining <= 0) break;
-
-        const tierDist = Math.min(remaining, tier.upTo - prev);
-        distanceCost += tierDist * tier.rate;
-
-        remaining -= tierDist;
-        prev = tier.upTo;
+    function renderResults(features, resultId, type) {
+        const list = $(resultId);
+        list.innerHTML = features.map(f => `
+            <div class="autocomplete-item" onclick="selectLocation('${type}', [${f.geometry.coordinates[1]}, ${f.geometry.coordinates[0]}], '${f.properties.name || f.properties.street || 'Location'}')">
+                <div class="place-name">${f.properties.name || 'Location'}</div>
+                <div class="place-address">${f.properties.city || ''} ${f.properties.state || ''}</div>
+            </div>
+        `).join('');
+        list.style.display = 'block';
     }
 
-    const timeCost = mins * FARE_CONFIG.MINUTE;
-    let total = FARE_CONFIG.BASE + distanceCost + timeCost;
+    function selectLocation(type, coord, name) {
+        $(type).value = name;
+        $(`${type}-results`).style.display = 'none';
+        
+        const markerConfig = { radius: 8, fillOpacity: 1, weight: 2, color: '#fff' };
+        if (type === 'pickup') {
+            pickupCoord = coord;
+            if (pickupMarker) map.removeLayer(pickupMarker);
+            pickupMarker = L.circleMarker(coord, { ...markerConfig, fillColor: '#059669' }).addTo(map);
+        } else {
+            dropoffCoord = coord;
+            if (dropoffMarker) map.removeLayer(dropoffMarker);
+            dropoffMarker = L.circleMarker(coord, { ...markerConfig, fillColor: '#1e293b' }).addTo(map);
+        }
 
-    // Minimum fare rule
-    if (km < FARE_CONFIG.MIN_DISTANCE_KM) {
-        total = Math.max(total, FARE_CONFIG.MIN_FARE);
+        if (pickupCoord && dropoffCoord) calculateRoute();
     }
 
-    total = Math.round(total);
-
-    $("results").style.display = "block";
-    $("fare").innerText = formatRM(total);
-    $("distance").innerText = `${km.toFixed(1)} km`;
-    $("eta").innerText = formatETA(mins);
-
-    const msg = `Ride Booking
-
-From: ${$("pickup").value}
-To: ${$("dropoff").value}
-
-Distance: ${km.toFixed(1)} km
-ETA: ${formatETA(mins)}
-Fare: RM ${total}`;
-
-    $("wa").href = `https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(msg)}`;
-}
-
-/* ---------------- SEARCH ---------------- */
-
-function renderResults(list, id, type) {
-    const el = $(id);
-    el.innerHTML = "";
-
-    list.forEach(i => {
-        const p = i.properties;
-        const name = p.name || p.street || "Location";
-        const addr = buildAddress(p);
-
-        const div = document.createElement("div");
-        div.className = "autocomplete-item";
-        div.innerHTML = `
-            <div class="place-name">${name}</div>
-            <div class="place-address">${addr}</div>
-        `;
-
-        div.onclick = () => {
-            setPoint(type,
-                [i.geometry.coordinates[1], i.geometry.coordinates[0]],
-                name
-            );
-            el.style.display = "none";
-        };
-
-        el.appendChild(div);
-    });
-
-    el.style.display = "block";
-}
-
-function search(val, id, type) {
-    clearTimeout(timer);
-    if (val.length < 3) return;
-
-    timer = setTimeout(async () => {
+    async function calculateRoute() {
         try {
-            const res = await fetchJSON(
-                `https://photon.komoot.io/api/?q=${val}&limit=6&bbox=${CONFIG.BBOX}&lang=en`
-            );
-            renderResults(res.features || [], id, type);
-        } catch {}
-    }, 300);
-}
+            const res = await fetch("https://api.openrouteservice.org/v2/directions/driving-car", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": CONFIG.ORS_KEY },
+                body: JSON.stringify({ coordinates: [[pickupCoord[1], pickupCoord[0]], [dropoffCoord[1], dropoffCoord[0]]] })
+            });
+            const data = await res.json();
+            const route = data.routes[0];
+            
+            if (routeLayer) map.removeLayer(routeLayer);
+            routeLayer = L.polyline(decodePoly(route.geometry), { color: '#059669', weight: 6, opacity: 0.8 }).addTo(map);
+            map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
 
-/* ---------------- EVENTS ---------------- */
-
-$("pickup").onfocus = () => activeField = "pickup";
-$("dropoff").onfocus = () => activeField = "dropoff";
-
-$("pickup").oninput = e => search(e.target.value, "pickup-results", "pickup");
-$("dropoff").oninput = e => search(e.target.value, "dropoff-results", "dropoff");
-
-map.on("click", async e => {
-    const lat = e.latlng.lat;
-    const lng = e.latlng.lng;
-
-    $(activeField).value = "Locating...";
-
-    const address = await reverseGeocode(lat, lng);
-    setPoint(activeField, [lat, lng], address);
-});
-
-/* ---------------- GPS ---------------- */
-
-function getLocation() {
-    if (!navigator.geolocation) {
-        alert("Geolocation not supported.");
-        return;
+            processFare(route.summary.distance / 1000, (route.summary.duration / 60) * CONFIG.TRAFFIC_MULTIPLIER);
+        } catch (e) { alert("Routing error. Please check coordinates."); }
     }
 
-    activeField = "pickup";
-    $("pickup").value = "Locating...";
+    function processFare(km, mins) {
+        let distCost = 0;
+        let remaining = km;
+        let lastLimit = 0;
 
-    navigator.geolocation.getCurrentPosition(async p => {
-        const lat = p.coords.latitude;
-        const lng = p.coords.longitude;
+        for (const tier of FARE_ENGINE.TIERS) {
+            if (remaining <= 0) break;
+            let currentSegment = Math.min(remaining, tier.upTo - lastLimit);
+            distCost += currentSegment * tier.rate;
+            remaining -= currentSegment;
+            lastLimit = tier.upTo;
+        }
 
-        const address = await reverseGeocode(lat, lng);
-        setPoint("pickup", [lat, lng], address);
+        const timeCost = mins * FARE_ENGINE.MINUTE;
+        const total = Math.ceil(FARE_ENGINE.BASE + distCost + timeCost);
 
-        map.setView([lat, lng], 15);
+        $("results").style.display = 'block';
+        $("fare").innerText = `RM ${total}`;
+        $("distance").innerText = `${km.toFixed(1)} km`;
+        $("eta").innerText = `${Math.round(mins)} mins`;
 
-    }, () => {
-        $("pickup").value = "";
-        alert("GPS access denied.");
-    });
-}
+        const msg = `Novelty Resources Booking\n\nPick: ${$("pickup").value}\nDrop: ${$("dropoff").value}\n\nDistance: ${km.toFixed(1)}km\nFinal Fare: RM ${total}`;
+        $("wa").href = `https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(msg)}`;
+    }
+
+    function decodePoly(str) {
+        let index = 0, lat = 0, lng = 0, coordinates = [];
+        while (index < str.length) {
+            let b, shift = 0, result = 0;
+            do { b = str.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+            lat += ((result & 1) ? ~(result >> 1) : (result >> 1));
+            shift = 0; result = 0;
+            do { b = str.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+            lng += ((result & 1) ? ~(result >> 1) : (result >> 1));
+            coordinates.push([lat / 1e5, lng / 1e5]);
+        }
+        return coordinates;
+    }
+
+    $("pickup").oninput = e => search(e.target.value, "pickup-results", "pickup");
+    $("dropoff").oninput = e => search(e.target.value, "dropoff-results", "dropoff");
 </script>
+</body>
+</html>
