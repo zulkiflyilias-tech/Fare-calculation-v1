@@ -1,299 +1,1541 @@
-<!DOCTYPE html>
+ 
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Novelty Resources | Transit Engine</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-    <style>
-        :root {
-            --primary: #059669;
-            --bg: #f8fafc;
-            --card: #ffffff;
-            --whatsapp: #25D366;
-            --text-main: #1e293b;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
+  <title>Rideshare MY — Booking Interface</title>
 
-        body { margin: 0; display: flex; height: 100vh; font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text-main); }
-        #map { flex: 1; }
-        #sidebar {
-            width: 400px; padding: 24px; background: var(--card);
-            box-shadow: 4px 0 15px rgba(0,0,0,0.08); display: flex; flex-direction: column; z-index: 1000;
-        }
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Fraunces:opsz,wght@9..144,600;9..144,800&display=swap" rel="stylesheet">
 
-        .header { margin-bottom: 24px; }
-        .header h2 { margin: 0; color: var(--primary); font-size: 1.6rem; letter-spacing: -0.5px; }
-        .header p { margin: 4px 0 0; font-size: 0.85rem; color: #64748b; font-weight: 500; }
+  <style>
+    :root{
+      /* Brand */
+      --primary:#059669;
+      --primary-2:#16a34a;
+      --primary-dark:#047857;
+      --whatsapp:#25D366;
 
-        .input-group { margin-bottom: 20px; position: relative; }
-        label { display: block; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; margin-bottom: 6px; color: #94a3b8; letter-spacing: 0.5px; }
-        
-        .search-wrapper { position: relative; display: flex; align-items: center; }
-        input {
-            width: 100%; box-sizing: border-box; padding: 14px 45px 14px 16px; border: 2px solid #f1f5f9;
-            border-radius: 12px; font-size: 14px; transition: all 0.2s; background: #fdfdfd;
-        }
-        input:focus { outline: none; border-color: var(--primary); background: #fff; box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.1); }
+      /* Surface */
+      --bg:#f3f4f6;
+      --card:#ffffff;
+      --card-2:#f9fafb;
+      --stroke:#e5e7eb;
 
-        .gps-btn {
-            position: absolute; right: 12px; background: none; border: none; cursor: pointer;
-            color: var(--primary); padding: 8px; border-radius: 8px; display: flex; align-items: center;
-        }
-        .gps-btn:hover { background: #ecfdf5; }
-        .gps-btn.loading { animation: spin 1s linear infinite; opacity: 0.6; }
+      /* Text */
+      --text:#0f172a;
+      --muted:#6b7280;
 
-        @keyframes spin { 100% { transform: rotate(360deg); } }
+      /* Effects */
+      --shadow-sm: 0 6px 18px rgba(15, 23, 42, .08);
+      --shadow-md: 0 18px 50px rgba(15, 23, 42, .16);
+      --shadow-lg: 0 30px 80px rgba(15, 23, 42, .20);
 
-        .autocomplete-results {
-            position: absolute; width: 100%; background: white; border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1); display: none; z-index: 2000; margin-top: 4px; border: 1px solid #e2e8f0;
-            max-height: 280px; overflow-y: auto;
-        }
-        .autocomplete-item { padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #f1f5f9; }
-        .autocomplete-item:hover { background: #f8fafc; }
-        .place-name { font-weight: 700; font-size: 0.9rem; display: block; color: var(--text-main); }
-        .place-address { font-size: 0.75rem; color: #64748b; display: block; margin-top: 2px; line-height: 1.4; }
+      --r-12: 12px;
+      --r-16: 16px;
+      --r-20: 20px;
+      --r-24: 24px;
 
-        #results {
-            margin-top: auto; padding: 24px; border-radius: 20px; background: #1e293b;
-            color: white; display: none; box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-        }
-        .fare-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
-        #fare { font-size: 2.2rem; font-weight: 800; color: #fff; }
-        .stats { display: flex; gap: 12px; font-size: 0.8rem; color: #94a3b8; }
+      --ease: cubic-bezier(.2,.8,.2,1);
 
-        .btn {
-            display: block; width: 100%; text-align: center; padding: 16px; border-radius: 14px;
-            background: var(--whatsapp); color: white; text-decoration: none; font-weight: 800;
-            margin-top: 18px; transition: transform 0.2s;
-        }
-        .btn:active { transform: scale(0.98); }
-
-        @media(max-width: 768px) {
-            body { flex-direction: column; }
-            #sidebar { width: 100%; height: auto; box-sizing: border-box; padding: 20px; }
-            #map { height: 35vh; }
-        }
-    </style>
-</head>
-<body>
-
-<div id="sidebar">
-    <div class="header">
-        <h2>Novelty Resources</h2>
-        <p>Premium Transit | Peninsular Malaysia</p>
-    </div>
-
-    <div class="input-group">
-        <label>Pickup Location</label>
-        <div class="search-wrapper">
-            <input id="pickup" placeholder="Search in West Malaysia..." autocomplete="off">
-            <button id="gps-trigger" class="gps-btn" title="Use current location">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-            </button>
-        </div>
-        <div id="pickup-results" class="autocomplete-results"></div>
-    </div>
-
-    <div class="input-group">
-        <label>Dropoff Location</label>
-        <div class="search-wrapper">
-            <input id="dropoff" placeholder="Search destination..." autocomplete="off">
-        </div>
-        <div id="dropoff-results" class="autocomplete-results"></div>
-    </div>
-
-    <div id="results">
-        <div class="fare-row">
-            <div id="fare">RM 0</div>
-            <div id="eta" style="color: #4ade80; font-weight: 700;">-- mins</div>
-        </div>
-        <div class="stats">
-            <span id="distance">0 km</span>
-            <span>•</span>
-            <span>Reliable Engine</span>
-        </div>
-        <a id="wa" class="btn" target="_blank">Book via WhatsApp</a>
-    </div>
-</div>
-
-<div id="map"></div>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-    const CONFIG = {
-        WHATSAPP: "60108988182",
-        ORS_KEY: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0=",
-        CENTER: [3.139, 101.686],
-        // Strictly Peninsular Malaysia BBox (MinLon, MinLat, MaxLon, MaxLat)
-        BBOX: "99.5,1.2,103.6,6.8", 
-        TRAFFIC_MULTIPLIER: 1.25 
-    };
-
-    const FARE_ENGINE = {
-        BASE: 5.00,       
-        TIERS: [
-            { upTo: 5,   rate: 1.10 }, 
-            { upTo: 15,  rate: 1.25 }, 
-            { upTo: 50,  rate: 1.40 }, 
-            { upTo: 100, rate: 1.85 }, 
-            { upTo: Infinity, rate: 2.30 } 
-        ]
-    };
-
-    const $ = id => document.getElementById(id);
-    let pickupCoord, dropoffCoord, routeLayer, pickupMarker, dropoffMarker;
-    let timer;
-
-    const map = L.map("map", { zoomControl: false }).setView(CONFIG.CENTER, 13);
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").addTo(map);
-
-    async function search(val, resultId, type) {
-        clearTimeout(timer);
-        if (val.length < 3) { $(resultId).style.display = 'none'; return; }
-        timer = setTimeout(async () => {
-            try {
-                // Modified search: added bbox filtering and location preference
-                const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(val)}&bbox=${CONFIG.BBOX}&limit=8`);
-                const data = await res.json();
-                
-                // Final safety filter: Ensure 'MY' (Malaysia) and avoid East Malaysia coordinates
-                const filtered = data.features.filter(f => {
-                    const lon = f.geometry.coordinates[0];
-                    return f.properties.countrycode === 'MY' && lon < 105; 
-                });
-
-                renderResults(filtered, resultId, type);
-            } catch (e) { console.error("Search error"); }
-        }, 300);
+      /* Map "KL-ish" tint */
+      --map-a:#0b2b24;
+      --map-b:#062b45;
+      --map-c:#0c5a4a;
+      --map-d:#0f172a;
     }
 
-    function renderResults(features, resultId, type) {
-        const list = $(resultId);
-        const mapCenter = [map.getCenter().lat, map.getCenter().lng];
-        const sorted = features.sort((a, b) => {
-            const getD = c => Math.sqrt(Math.pow(mapCenter[0]-c[1], 2) + Math.pow(mapCenter[1]-c[0], 2));
-            return getD(a.geometry.coordinates) - getD(b.geometry.coordinates);
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: Manrope, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow:hidden;
+    }
+
+    /* App shell */
+    .app{
+      height:100%;
+      display:flex;
+      flex-direction:column;
+      position:relative;
+    }
+
+    /* Subtle texture + “map” background (no external images) */
+    .map{
+      position:relative;
+      flex:1;
+      min-height:280px;
+      overflow:hidden;
+      isolation:isolate;
+    }
+
+    .map::before{
+      content:"";
+      position:absolute; inset:-40px;
+      background:
+        radial-gradient(800px 500px at 20% 20%, rgba(22,163,74,.22), transparent 60%),
+        radial-gradient(700px 520px at 75% 30%, rgba(56,189,248,.18), transparent 60%),
+        radial-gradient(650px 520px at 50% 85%, rgba(5,150,105,.16), transparent 60%),
+        linear-gradient(135deg, rgba(15,23,42,.95), rgba(6,43,69,.92));
+      filter:saturate(1.05);
+      z-index:0;
+    }
+
+    /* Street grid pattern */
+    .map::after{
+      content:"";
+      position:absolute; inset:0;
+      background:
+        linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px),
+        radial-gradient(1200px 600px at 30% 40%, rgba(255,255,255,.10), transparent 65%);
+      background-size: 40px 40px, 40px 40px, auto;
+      opacity:.7;
+      mix-blend-mode: overlay;
+      z-index:1;
+      pointer-events:none;
+    }
+
+    /* “Roads” as bezier-like strokes (SVG overlay) */
+    .map-svg{
+      position:absolute; inset:0;
+      z-index:2;
+      opacity:.95;
+      pointer-events:none;
+    }
+
+    /* Markers + route */
+    .route-layer{
+      position:absolute; inset:0;
+      z-index:3;
+      pointer-events:none;
+    }
+
+    .marker{
+      position:absolute;
+      width:18px; height:18px;
+      transform:translate(-50%,-50%);
+      border-radius:999px;
+      background: #fff;
+      border: 3px solid rgba(255,255,255,.65);
+      box-shadow: 0 10px 22px rgba(0,0,0,.22);
+      display:grid;
+      place-items:center;
+    }
+    .marker .dot{
+      width:8px; height:8px; border-radius:999px;
+      background: var(--primary);
+      box-shadow: 0 0 0 10px rgba(5,150,105,.18);
+    }
+    .marker.drop .dot{
+      background: #22c55e;
+      box-shadow: 0 0 0 10px rgba(34,197,94,.16);
+    }
+
+    .route{
+      position:absolute; inset:0;
+      opacity:1;
+    }
+
+    .route path{
+      stroke: rgba(34,197,94,.92);
+      stroke-width: 6;
+      fill:none;
+      stroke-linecap:round;
+      stroke-linejoin:round;
+      filter: drop-shadow(0 10px 20px rgba(0,0,0,.28));
+    }
+    .route path.glow{
+      stroke: rgba(16,185,129,.25);
+      stroke-width: 14;
+    }
+    .route path.dash{
+      stroke: rgba(255,255,255,.72);
+      stroke-width: 2.5;
+      stroke-dasharray: 6 10;
+      opacity:.85;
+    }
+
+    /* Top booking panel */
+    header{
+      position:absolute;
+      left:0; right:0; top:0;
+      z-index:20;
+      padding: 12px 12px 0 12px;
+      pointer-events:none; /* allow map drag if we had it; panel enables inside */
+    }
+
+    .panel{
+      pointer-events:auto;
+      background: rgba(255,255,255,.92);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(229,231,235,.9);
+      border-radius: var(--r-24);
+      box-shadow: var(--shadow-md);
+      overflow:hidden;
+    }
+
+    .panel-top{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding: 14px 14px 10px 14px;
+      border-bottom: 1px solid rgba(229,231,235,.85);
+    }
+
+    .brand{
+      display:flex; align-items:baseline; gap:10px;
+      min-width: 0;
+    }
+    .brand .logo{
+      width:34px; height:34px; border-radius:12px;
+      background:
+        radial-gradient(18px 18px at 30% 30%, rgba(255,255,255,.9), rgba(255,255,255,0) 60%),
+        linear-gradient(135deg, var(--primary), var(--primary-dark));
+      box-shadow: 0 10px 24px rgba(5,150,105,.22);
+      display:grid;
+      place-items:center;
+      position:relative;
+      overflow:hidden;
+    }
+    .brand .logo::after{
+      content:"";
+      position:absolute; inset:-20px;
+      background: conic-gradient(from 180deg, rgba(255,255,255,.0), rgba(255,255,255,.55), rgba(255,255,255,0));
+      opacity:.25;
+      animation: shimmer 6s linear infinite;
+    }
+    @keyframes shimmer{
+      from{ transform: rotate(0deg); }
+      to{ transform: rotate(360deg); }
+    }
+    .brand h1{
+      font-family: Fraunces, serif;
+      font-size: 18px;
+      line-height:1.05;
+      margin:0;
+      letter-spacing:-.02em;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .brand .sub{
+      display:block;
+      font-size:11px;
+      color: var(--muted);
+      font-weight:700;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      margin-top:2px;
+    }
+
+    .top-actions{
+      display:flex; gap:8px; align-items:center;
+    }
+
+    .pill{
+      border:1px solid rgba(229,231,235,.9);
+      background: rgba(249,250,251,.85);
+      border-radius: 999px;
+      padding: 7px 10px;
+      display:flex; align-items:center; gap:8px;
+      box-shadow: 0 10px 20px rgba(15, 23, 42, .06);
+    }
+    .pill small{
+      font-weight:800;
+      font-size:11px;
+      color: var(--muted);
+      letter-spacing:.04em;
+      text-transform:uppercase;
+    }
+    .toggle{
+      display:flex;
+      background: white;
+      border:1px solid rgba(229,231,235,.9);
+      border-radius:999px;
+      overflow:hidden;
+    }
+    .toggle button{
+      border:0;
+      padding:8px 10px;
+      background:transparent;
+      font-weight:800;
+      font-size:12px;
+      color: var(--muted);
+      cursor:pointer;
+      transition: all .2s var(--ease);
+    }
+    .toggle button[aria-pressed="true"]{
+      background: rgba(5,150,105,.12);
+      color: var(--primary-dark);
+    }
+
+    /* Inputs area */
+    .panel-body{
+      padding: 12px 14px 14px 14px;
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .input-row{
+      position:relative;
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:10px;
+    }
+
+    .field{
+      position:relative;
+    }
+
+    label{
+      display:block;
+      font-size:10px;
+      font-weight:900;
+      margin-bottom:6px;
+      color: var(--muted);
+      text-transform:uppercase;
+      letter-spacing: .10em;
+    }
+
+    .control{
+      position:relative;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      background: rgba(249,250,251,.92);
+      border: 1.5px solid rgba(229,231,235,.95);
+      border-radius: 16px;
+      padding: 10px 10px 10px 12px;
+      transition: box-shadow .2s var(--ease), border-color .2s var(--ease), background .2s var(--ease);
+    }
+    .control:focus-within{
+      background:#fff;
+      border-color: rgba(5,150,105,.85);
+      box-shadow: 0 0 0 5px rgba(5,150,105,.12);
+    }
+
+    .pin{
+      width:28px; height:28px;
+      border-radius: 12px;
+      display:grid; place-items:center;
+      background: rgba(5,150,105,.10);
+      border:1px solid rgba(5,150,105,.16);
+      color: var(--primary-dark);
+      flex:0 0 auto;
+    }
+    .pin.drop{
+      background: rgba(34,197,94,.10);
+      border-color: rgba(34,197,94,.18);
+      color: #0f766e;
+    }
+
+    input{
+      border:0;
+      outline:0;
+      background:transparent;
+      font-size:15px;
+      width:100%;
+      padding: 6px 2px;
+      color: var(--text);
+      font-weight:700;
+      letter-spacing:-.01em;
+    }
+    input::placeholder{
+      color: rgba(107,114,128,.9);
+      font-weight:700;
+    }
+
+    .right-actions{
+      display:flex; align-items:center; gap:6px;
+      flex:0 0 auto;
+    }
+
+    .icon-btn{
+      width:34px; height:34px;
+      border-radius: 12px;
+      border:1px solid rgba(229,231,235,.9);
+      background: rgba(255,255,255,.92);
+      cursor:pointer;
+      display:grid;
+      place-items:center;
+      transition: transform .15s var(--ease), box-shadow .2s var(--ease), background .2s var(--ease);
+      box-shadow: 0 10px 18px rgba(15, 23, 42, .06);
+    }
+    .icon-btn:hover{
+      transform: translateY(-1px);
+      box-shadow: 0 16px 26px rgba(15, 23, 42, .10);
+      background:#fff;
+    }
+    .icon-btn:active{
+      transform: translateY(0) scale(.98);
+    }
+
+    .swap-fab{
+      position:absolute;
+      right: 22px;
+      top: 118px;
+      z-index: 30;
+      pointer-events:auto;
+    }
+    .swap-fab .icon-btn{
+      width:42px; height:42px;
+      border-radius: 999px;
+      border:1px solid rgba(229,231,235,.95);
+    }
+
+    /* Autocomplete */
+    .ac{
+      position:absolute;
+      left:0; right:0;
+      top: calc(100% + 6px);
+      background: rgba(255,255,255,.96);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(229,231,235,.92);
+      border-radius: 16px;
+      overflow:hidden;
+      box-shadow: var(--shadow-md);
+      display:none;
+      z-index: 50;
+      max-height: 280px;
+    }
+
+    .ac[aria-hidden="false"]{ display:block; }
+
+    .ac .item{
+      padding: 12px 12px;
+      display:flex;
+      gap:10px;
+      align-items:flex-start;
+      cursor:pointer;
+      border-bottom: 1px solid rgba(243,244,246,.9);
+      transition: background .15s var(--ease);
+    }
+    .ac .item:hover{ background: rgba(5,150,105,.08); }
+    .ac .item:last-child{ border-bottom:0; }
+
+    .item .mini{
+      width:30px; height:30px;
+      border-radius: 12px;
+      background: rgba(15,23,42,.06);
+      display:grid; place-items:center;
+      color: rgba(15,23,42,.75);
+      flex:0 0 auto;
+      margin-top:1px;
+    }
+    .item .t{
+      min-width:0;
+    }
+    .item .name{
+      font-weight:800;
+      font-size: 13.5px;
+      letter-spacing:-.01em;
+      margin:0;
+      line-height:1.2;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .item .addr{
+      margin:3px 0 0 0;
+      font-size: 11px;
+      color: var(--muted);
+      line-height:1.3;
+      display:-webkit-box;
+      -webkit-line-clamp:2;
+      -webkit-box-orient:vertical;
+      overflow:hidden;
+    }
+
+    /* Bottom sheet */
+    .sheet{
+      position:absolute;
+      left:0; right:0; bottom:0;
+      z-index:40;
+      padding: 0 12px 12px 12px;
+      pointer-events:none;
+    }
+
+    .sheet-card{
+      pointer-events:auto;
+      background: rgba(255,255,255,.92);
+      backdrop-filter: blur(12px);
+      border:1px solid rgba(229,231,235,.9);
+      border-radius: 24px;
+      box-shadow: var(--shadow-lg);
+      overflow:hidden;
+      transform: translateY(110%);
+      transition: transform .35s var(--ease);
+    }
+    .sheet-card[data-open="true"]{
+      transform: translateY(0);
+    }
+
+    .grab{
+      display:flex;
+      justify-content:center;
+      padding:10px 0 0 0;
+    }
+    .grab span{
+      width: 54px;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(107,114,128,.25);
+    }
+
+    .sheet-inner{
+      padding: 12px 14px 14px 14px;
+      display:grid;
+      gap: 12px;
+    }
+
+    .fare-row{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:12px;
+    }
+
+    .fare{
+      margin:0;
+      font-size: clamp(30px, 5.4vw, 40px);
+      letter-spacing:-.04em;
+      font-weight: 900;
+      color: var(--primary-dark);
+      line-height:1;
+    }
+
+    .meta{
+      display:flex; flex-wrap:wrap; gap:8px;
+      justify-content:flex-end;
+      align-items:center;
+    }
+
+    .badge{
+      background: rgba(5,150,105,.10);
+      color: var(--primary-dark);
+      border: 1px solid rgba(5,150,105,.18);
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-weight: 900;
+      font-size: 11px;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      white-space:nowrap;
+    }
+    .badge.dim{
+      background: rgba(15,23,42,.06);
+      border-color: rgba(15,23,42,.08);
+      color: rgba(15,23,42,.75);
+      letter-spacing:.02em;
+      text-transform:none;
+      font-weight:800;
+    }
+
+    .divider{
+      height:1px;
+      background: rgba(229,231,235,.9);
+    }
+
+    /* Ride types (list/gallery allowed) */
+    .rides{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:10px;
+    }
+    .ride{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      padding: 12px 12px;
+      border-radius: 18px;
+      background: rgba(249,250,251,.95);
+      border: 1px solid rgba(229,231,235,.92);
+      cursor:pointer;
+      transition: transform .18s var(--ease), box-shadow .2s var(--ease), border-color .2s var(--ease), background .2s var(--ease);
+    }
+    .ride:hover{
+      transform: translateY(-1px);
+      box-shadow: 0 16px 30px rgba(15,23,42,.10);
+      background:#fff;
+    }
+    .ride[aria-selected="true"]{
+      border-color: rgba(5,150,105,.55);
+      box-shadow: 0 0 0 4px rgba(5,150,105,.12);
+      background:#fff;
+    }
+
+    .ride .icon{
+      width:46px; height:46px;
+      border-radius: 16px;
+      background:
+        radial-gradient(18px 18px at 30% 25%, rgba(255,255,255,.85), rgba(255,255,255,0) 60%),
+        linear-gradient(135deg, rgba(5,150,105,.92), rgba(4,120,87,.95));
+      box-shadow: 0 16px 30px rgba(5,150,105,.20);
+      display:grid; place-items:center;
+      color:white;
+      flex:0 0 auto;
+      position:relative;
+      overflow:hidden;
+    }
+    .ride .icon::after{
+      content:"";
+      position:absolute; inset:-30px;
+      background: conic-gradient(from 140deg, rgba(255,255,255,0), rgba(255,255,255,.55), rgba(255,255,255,0));
+      opacity:.18;
+      animation: shimmer 7s linear infinite;
+    }
+
+    .ride .info{ min-width:0; flex:1; }
+    .ride .title{
+      margin:0;
+      font-weight: 900;
+      letter-spacing:-.02em;
+      font-size: 14.5px;
+      line-height:1.2;
+    }
+    .ride .desc{
+      margin:4px 0 0 0;
+      font-size: 11.5px;
+      color: var(--muted);
+      font-weight:700;
+      line-height:1.3;
+    }
+
+    .ride .price{
+      text-align:right;
+      flex:0 0 auto;
+    }
+    .ride .price strong{
+      display:block;
+      font-size: 14px;
+      letter-spacing:-.02em;
+      font-weight: 900;
+    }
+    .ride .price span{
+      display:block;
+      font-size: 11px;
+      color: var(--muted);
+      font-weight:800;
+      margin-top:2px;
+      white-space:nowrap;
+    }
+
+    /* Actions */
+    .actions{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:10px;
+    }
+    .btn{
+      border:0;
+      border-radius: 16px;
+      padding: 12px 14px;
+      font-weight: 900;
+      cursor:pointer;
+      letter-spacing: -.01em;
+      transition: transform .15s var(--ease), box-shadow .2s var(--ease), filter .2s var(--ease), background .2s var(--ease);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      min-height: 48px;
+      user-select:none;
+    }
+    .btn:active{ transform: scale(.99); }
+
+    .btn.primary{
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color:white;
+      box-shadow: 0 18px 40px rgba(5,150,105,.26);
+    }
+    .btn.primary:hover{ filter: brightness(1.02); box-shadow: 0 24px 60px rgba(5,150,105,.30); }
+
+    .btn.whatsapp{
+      background: linear-gradient(135deg, var(--whatsapp), #12b981);
+      color:#062b24;
+      box-shadow: 0 18px 40px rgba(37, 211, 102, .22);
+    }
+
+    .fineprint{
+      margin:0;
+      font-size: 11px;
+      color: rgba(107,114,128,.95);
+      font-weight:700;
+      line-height:1.4;
+    }
+
+    /* Toast */
+    .toast{
+      position:absolute;
+      left: 12px; right: 12px;
+      bottom: 12px;
+      z-index: 60;
+      display:grid;
+      justify-items:center;
+      pointer-events:none;
+    }
+    .toast > div{
+      pointer-events:auto;
+      max-width: 560px;
+      width: 100%;
+      background: rgba(15,23,42,.92);
+      color: rgba(255,255,255,.92);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 18px;
+      padding: 12px 12px;
+      display:flex;
+      align-items:flex-start;
+      gap:10px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.35);
+      transform: translateY(24px);
+      opacity:0;
+      transition: transform .25s var(--ease), opacity .25s var(--ease);
+    }
+    .toast[data-show="true"] > div{
+      transform: translateY(0);
+      opacity:1;
+    }
+    .toast .ticon{
+      width:34px; height:34px;
+      border-radius: 14px;
+      background: rgba(255,255,255,.10);
+      display:grid; place-items:center;
+      flex:0 0 auto;
+      margin-top:1px;
+    }
+    .toast p{
+      margin:0;
+      font-weight:800;
+      line-height:1.35;
+      font-size: 12.5px;
+    }
+    .toast p span{
+      display:block;
+      font-weight:700;
+      color: rgba(255,255,255,.72);
+      margin-top:2px;
+      font-size: 11.5px;
+    }
+
+    /* Reveal animation */
+    [data-reveal]{
+      opacity:0;
+      transform: translateY(10px);
+    }
+    .reveal-in{
+      animation: reveal .55s var(--ease) forwards;
+    }
+    @keyframes reveal{
+      to{ opacity:1; transform: translateY(0); }
+    }
+
+    /* Desktop refinements */
+    @media (min-width: 900px){
+      header{ padding: 16px 16px 0 16px; }
+      .panel{
+        max-width: 520px;
+        margin: 0 auto;
+      }
+      .swap-fab{ right: calc(50% - 260px + 18px); }
+      .sheet{ padding: 0 16px 16px 16px; }
+      .sheet-card{
+        max-width: 560px;
+        margin: 0 auto;
+      }
+      .rides{
+        grid-template-columns: 1fr 1fr;
+      }
+      .actions{
+        grid-template-columns: 1.2fr .8fr;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      *{ animation:none !important; transition:none !important; scroll-behavior:auto !important; }
+      .sheet-card{ transform:none !important; }
+      [data-reveal]{ opacity:1 !important; transform:none !important; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <div class="map" aria-label="Map preview (stylized)">
+      <!-- Decorative “roads” SVG -->
+      <svg class="map-svg" viewBox="0 0 1200 800" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="roadGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="rgba(255,255,255,.22)"/>
+            <stop offset="1" stop-color="rgba(255,255,255,.08)"/>
+          </linearGradient>
+          <filter id="softGlow">
+            <feGaussianBlur stdDeviation="1.4" result="b"/>
+            <feColorMatrix in="b" type="matrix"
+              values="1 0 0 0 0
+                      0 1 0 0 0
+                      0 0 1 0 0
+                      0 0 0 .55 0" result="g"/>
+            <feMerge>
+              <feMergeNode in="g"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+        <g stroke="url(#roadGrad)" stroke-width="3.2" fill="none" opacity=".95" filter="url(#softGlow)">
+          <path d="M-40,520 C180,430 220,680 430,610 C610,550 720,260 980,320 C1110,350 1180,520 1260,500"/>
+          <path d="M-60,210 C130,280 250,150 420,220 C620,310 710,140 880,160 C1040,180 1140,80 1260,140"/>
+          <path d="M40,840 C180,650 300,720 470,590 C650,450 720,520 860,410 C1030,280 1090,420 1260,340"/>
+          <path d="M230,-50 C260,120 380,180 520,250 C730,360 800,300 980,420 C1120,500 1120,620 1080,860"/>
+          <path d="M620,-40 C600,140 700,220 820,280 C960,350 960,540 860,650 C760,760 760,820 880,900"/>
+        </g>
+      </svg>
+
+      <!-- Route + markers -->
+      <div class="route-layer">
+        <svg class="route" viewBox="0 0 1200 800" preserveAspectRatio="none" aria-hidden="true">
+          <path class="glow" id="routeGlow" d="M 260 560 C 380 480, 460 520, 560 470 C 660 420, 740 320, 860 340 C 980 360, 1040 450, 1040 520" />
+          <path id="routeMain" d="M 260 560 C 380 480, 460 520, 560 470 C 660 420, 740 320, 860 340 C 980 360, 1040 450, 1040 520" />
+          <path class="dash" id="routeDash" d="M 260 560 C 380 480, 460 520, 560 470 C 660 420, 740 320, 860 340 C 980 360, 1040 450, 1040 520" />
+        </svg>
+
+        <div class="marker pick" id="mPick" style="left: 22%; top: 70%;" aria-hidden="true"><div class="dot"></div></div>
+        <div class="marker drop" id="mDrop" style="left: 86%; top: 65%;" aria-hidden="true"><div class="dot"></div></div>
+      </div>
+
+      <header>
+        <div class="panel" role="region" aria-label="Booking panel" data-reveal style="animation-delay: 60ms;">
+          <div class="panel-top">
+            <div class="brand">
+              <div class="logo" aria-hidden="true">
+                <!-- tiny glyph -->
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M7 16.5c1.2 1.2 2.9 1.8 5 1.8 4.4 0 8-2.6 8-6.2 0-3.6-3.6-6.2-8-6.2-4.4 0-8 2.6-8 6.2 0 1.5.6 2.9 1.6 4l-.6 3.9 4-1.5z"
+                        stroke="rgba(255,255,255,.92)" stroke-width="1.8" stroke-linejoin="round"/>
+                  <path d="M9 11.6h6M9 14.2h4" stroke="rgba(255,255,255,.92)" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+              </div>
+              <div style="min-width:0">
+                <h1>Rideshare MY <span class="sub">Book • Estimate • Share</span></h1>
+              </div>
+            </div>
+
+            <div class="top-actions">
+              <div class="pill" aria-label="Trip mode">
+                <small>Mode</small>
+                <div class="toggle" role="group" aria-label="Trip mode toggle">
+                  <button type="button" id="btnNow" aria-pressed="true">Now</button>
+                  <button type="button" id="btnLater" aria-pressed="false">Later</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel-body">
+            <div class="input-row">
+              <div class="field">
+                <label for="pickup">Pickup</label>
+                <div class="control">
+                  <div class="pin" aria-hidden="true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 22s7-4.4 7-12a7 7 0 1 0-14 0c0 7.6 7 12 7 12z" stroke="currentColor" stroke-width="1.8"/>
+                      <path d="M12 11.2a2.4 2.4 0 1 0 0-4.8 2.4 2.4 0 0 0 0 4.8z" stroke="currentColor" stroke-width="1.8"/>
+                    </svg>
+                  </div>
+                  <input id="pickup" name="pickup" autocomplete="off" placeholder="e.g., KLCC, Pavilion, Bangsar" />
+                  <div class="right-actions">
+                    <button class="icon-btn" id="btnMyLoc" type="button" aria-label="Use my location">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M12 22s4-4.5 4-10a4 4 0 1 0-8 0c0 5.5 4 10 4 10z" stroke="rgba(15,23,42,.85)" stroke-width="1.8"/>
+                        <path d="M12 12.3a1.6 1.6 0 1 0 0-3.2 1.6 1.6 0 0 0 0 3.2z" stroke="rgba(15,23,42,.85)" stroke-width="1.8"/>
+                      </svg>
+                    </button>
+                    <button class="icon-btn" id="btnClearPick" type="button" aria-label="Clear pickup">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M18 6 6 18M6 6l12 12" stroke="rgba(15,23,42,.85)" stroke-width="1.8" stroke-linecap="round"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="ac" id="acPick" aria-hidden="true" role="listbox" aria-label="Pickup suggestions"></div>
+              </div>
+
+              <div class="field">
+                <label for="dropoff">Drop-off</label>
+                <div class="control">
+                  <div class="pin drop" aria-hidden="true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 22s7-4.4 7-12a7 7 0 1 0-14 0c0 7.6 7 12 7 12z" stroke="currentColor" stroke-width="1.8"/>
+                      <path d="M9.5 10.2l1.8 1.8 3.7-3.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </div>
+                  <input id="dropoff" name="dropoff" autocomplete="off" placeholder="e.g., Mid Valley, Sunway, Mont Kiara" />
+                  <div class="right-actions">
+                    <button class="icon-btn" id="btnClearDrop" type="button" aria-label="Clear drop-off">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M18 6 6 18M6 6l12 12" stroke="rgba(15,23,42,.85)" stroke-width="1.8" stroke-linecap="round"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="ac" id="acDrop" aria-hidden="true" role="listbox" aria-label="Drop-off suggestions"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div class="swap-fab" aria-hidden="false">
+        <button class="icon-btn" id="btnSwap" type="button" aria-label="Swap pickup and drop-off">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M7 7h12l-3-3" stroke="rgba(5,150,105,.95)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M17 17H5l3 3" stroke="rgba(5,150,105,.95)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="sheet" aria-label="Results">
+        <section class="sheet-card" id="sheet" data-open="false">
+          <div class="grab" aria-hidden="true"><span></span></div>
+
+          <div class="sheet-inner">
+            <div class="fare-row" data-reveal style="animation-delay: 100ms;">
+              <div>
+                <p class="fare" id="fareText">RM —</p>
+              </div>
+              <div class="meta">
+                <span class="badge" id="modeBadge">NOW</span>
+                <span class="badge dim" id="tripMeta">— km • — min</span>
+              </div>
+            </div>
+
+            <div class="divider" aria-hidden="true"></div>
+
+            <div class="rides" role="list" aria-label="Ride options" data-reveal style="animation-delay: 160ms;">
+              <div class="ride" role="listitem" tabindex="0" aria-selected="true" data-tier="saver">
+                <div class="icon" aria-hidden="true">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <path d="M6 14.5h12l-1.2-4.2a3 3 0 0 0-2.9-2.2H10.1a3 3 0 0 0-2.9 2.2L6 14.5Z" stroke="white" stroke-width="1.8" stroke-linejoin="round"/>
+                    <path d="M7 14.5v2.2a1.4 1.4 0 0 0 1.4 1.4h.6M17 14.5v2.2a1.4 1.4 0 0 1-1.4 1.4h-.6" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+                    <path d="M9 18.1h6" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+                  </svg>
+                </div>
+                <div class="info">
+                  <p class="title">Saver</p>
+                  <p class="desc">Best value • Standard pickup</p>
+                </div>
+                <div class="price">
+                  <strong id="priceSaver">RM —</strong>
+                  <span id="etaSaver">ETA — min</span>
+                </div>
+              </div>
+
+              <div class="ride" role="listitem" tabindex="0" aria-selected="false" data-tier="comfort">
+                <div class="icon" aria-hidden="true" style="background:linear-gradient(135deg, rgba(15,23,42,.92), rgba(5,150,105,.88)); box-shadow: 0 16px 30px rgba(15,23,42,.20);">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <path d="M7 14.5h10l-1.1-4a3 3 0 0 0-2.9-2.3H10.9A3 3 0 0 0 8 10.5l-1 4Z" stroke="white" stroke-width="1.8" stroke-linejoin="round"/>
+                    <path d="M8 14.5v2.2A1.3 1.3 0 0 0 9.3 18H10M16 14.5v2.2A1.3 1.3 0 0 1 14.7 18H14" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+                    <path d="M9.5 11.2h5" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+                  </svg>
+                </div>
+                <div class="info">
+                  <p class="title">Comfort</p>
+                  <p class="desc">Quieter ride • Higher-rated drivers</p>
+                </div>
+                <div class="price">
+                  <strong id="priceComfort">RM —</strong>
+                  <span id="etaComfort">ETA — min</span>
+                </div>
+              </div>
+
+              <div class="ride" role="listitem" tabindex="0" aria-selected="false" data-tier="xl">
+                <div class="icon" aria-hidden="true" style="background:linear-gradient(135deg, rgba(34,197,94,.95), rgba(59,130,246,.80)); box-shadow: 0 16px 30px rgba(59,130,246,.18);">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <path d="M5.5 14.5h13l-1.3-4.2a3 3 0 0 0-2.9-2.2h-4.6a3 3 0 0 0-2.9 2.2L5.5 14.5Z" stroke="white" stroke-width="1.8" stroke-linejoin="round"/>
+                    <path d="M6.5 14.5v2.2A1.4 1.4 0 0 0 7.9 18h.7M17.5 14.5v2.2A1.4 1.4 0 0 1 16.1 18h-.7" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+                    <path d="M9 10.8h6" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+                  </svg>
+                </div>
+                <div class="info">
+                  <p class="title">XL</p>
+                  <p class="desc">More space • Up to 6 seats</p>
+                </div>
+                <div class="price">
+                  <strong id="priceXL">RM —</strong>
+                  <span id="etaXL">ETA — min</span>
+                </div>
+              </div>
+
+              <div class="ride" role="listitem" tabindex="0" aria-selected="false" data-tier="premium">
+                <div class="icon" aria-hidden="true" style="background:linear-gradient(135deg, rgba(2,132,199,.95), rgba(15,23,42,.92)); box-shadow: 0 16px 30px rgba(2,132,199,.18);">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <path d="M7 15.2h10l-1-4a3 3 0 0 0-2.9-2.3H10.9A3 3 0 0 0 8 11.2l-1 4Z" stroke="white" stroke-width="1.8" stroke-linejoin="round"/>
+                    <path d="M8.2 15.2v2a1.4 1.4 0 0 0 1.4 1.4h.6M15.8 15.2v2a1.4 1.4 0 0 1-1.4 1.4h-.6" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+                    <path d="M10 12.4h4" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+                    <path d="M9.2 9.5 12 6.8l2.8 2.7" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <div class="info">
+                  <p class="title">Premium</p>
+                  <p class="desc">Priority matching • Newer cars</p>
+                </div>
+                <div class="price">
+                  <strong id="pricePremium">RM —</strong>
+                  <span id="etaPremium">ETA — min</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="divider" aria-hidden="true"></div>
+
+            <div class="actions" data-reveal style="animation-delay: 220ms;">
+              <button class="btn primary" id="btnConfirm" type="button">
+                <span id="confirmLabel">Confirm ride</span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M5 12h12" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+                  <path d="M13 6l6 6-6 6" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+
+              <button class="btn whatsapp" id="btnWhatsApp" type="button" aria-label="Send booking to WhatsApp">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M7 20.2l1-3.4A8.2 8.2 0 1 1 20.2 7a8.2 8.2 0 0 1-12 13.2Z" stroke="rgba(6,43,36,.9)" stroke-width="1.8" stroke-linejoin="round"/>
+                  <path d="M10.4 9.7c.2-.4.4-.4.6-.4h.6c.2 0 .4 0 .5.4l.6 1.5c.1.3 0 .5-.2.7l-.4.4c-.1.1-.2.3-.1.5.2.4.6 1 1.1 1.4.5.5 1.1.8 1.5 1 .2.1.4 0 .5-.1l.5-.5c.2-.2.4-.2.7-.1l1.4.7c.3.2.4.3.4.5 0 .3 0 .8-.4 1.2-.4.4-1 .7-1.8.5-1.2-.3-2.4-.9-3.6-2.1-1.2-1.2-1.9-2.4-2.2-3.6-.2-.8.2-1.4.6-1.8Z"
+                        fill="rgba(6,43,36,.9)"/>
+                </svg>
+                WhatsApp
+              </button>
+            </div>
+
+            <p class="fineprint" data-reveal style="animation-delay: 260ms;">
+              Estimates only. Final price may vary by traffic, tolls, and pickup time. If you choose “Later”, we’ll include your scheduled time in the booking message.
+            </p>
+          </div>
+        </section>
+      </div>
+
+      <div class="toast" id="toast" data-show="false" aria-live="polite" aria-atomic="true">
+        <div>
+          <div class="ticon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M12 22s7-4.4 7-12a7 7 0 1 0-14 0c0 7.6 7 12 7 12z" stroke="rgba(255,255,255,.9)" stroke-width="1.8"/>
+              <path d="M12 13.2v-5" stroke="rgba(255,255,255,.9)" stroke-width="1.8" stroke-linecap="round"/>
+              <path d="M12 16.8h.01" stroke="rgba(255,255,255,.9)" stroke-width="3.2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <p id="toastText">Tip<span>Start by choosing a pickup and drop-off.</span></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- Data: curated KL-area style locations (offline, no API calls) ---
+    const PLACES = [
+      { name: "KLCC (Petronas Twin Towers)", addr: "Kuala Lumpur City Centre, 50088 Kuala Lumpur", x: 860, y: 340, tag: "Landmark" },
+      { name: "Pavilion Kuala Lumpur", addr: "Bukit Bintang, 55100 Kuala Lumpur", x: 820, y: 380, tag: "Mall" },
+      { name: "Suria KLCC", addr: "Jalan Ampang, KLCC", x: 875, y: 350, tag: "Mall" },
+      { name: "Bukit Bintang", addr: "Shopping & nightlife district", x: 780, y: 410, tag: "District" },
+      { name: "Bangsar Village", addr: "Bangsar, 59100 Kuala Lumpur", x: 610, y: 510, tag: "Neighbourhood" },
+      { name: "Mid Valley Megamall", addr: "Lingkaran Syed Putra, 59200 Kuala Lumpur", x: 560, y: 560, tag: "Mall" },
+      { name: "KL Sentral", addr: "Kuala Lumpur Sentral, 50470 Kuala Lumpur", x: 630, y: 460, tag: "Transit" },
+      { name: "Masjid Jamek", addr: "City centre, near Klang River", x: 690, y: 420, tag: "Landmark" },
+      { name: "Petaling Street (Chinatown)", addr: "Jalan Petaling, City Centre", x: 705, y: 455, tag: "Market" },
+      { name: "Sunway Pyramid", addr: "Bandar Sunway, 47500 Subang Jaya", x: 420, y: 600, tag: "Mall" },
+      { name: "Mont Kiara", addr: "50480 Kuala Lumpur", x: 640, y: 320, tag: "Neighbourhood" },
+      { name: "Publika", addr: "Solaris Dutamas, 50480 Kuala Lumpur", x: 610, y: 300, tag: "Mall" },
+      { name: "Subang Airport (SZB)", addr: "47200 Subang, Selangor", x: 280, y: 560, tag: "Airport" },
+      { name: "Kuala Lumpur International Airport (KLIA)", addr: "64000 Sepang, Selangor", x: 1040, y: 520, tag: "Airport" },
+      { name: "Putrajaya Sentral", addr: "62000 Putrajaya", x: 980, y: 590, tag: "Transit" },
+      { name: "IOI City Mall", addr: "Putrajaya, 62502", x: 940, y: 640, tag: "Mall" }
+    ];
+
+    // --- Helpers ---
+    const $ = (sel, root = document) => root.querySelector(sel);
+    const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const fmtRM = (n) => "RM " + n.toFixed(2);
+
+    // --- Elements ---
+    const pickup = $("#pickup");
+    const dropoff = $("#dropoff");
+    const acPick = $("#acPick");
+    const acDrop = $("#acDrop");
+
+    const mPick = $("#mPick");
+    const mDrop = $("#mDrop");
+
+    const routeMain = $("#routeMain");
+    const routeGlow = $("#routeGlow");
+    const routeDash = $("#routeDash");
+
+    const sheet = $("#sheet");
+    const fareText = $("#fareText");
+    const tripMeta = $("#tripMeta");
+    const modeBadge = $("#modeBadge");
+
+    const btnSwap = $("#btnSwap");
+    const btnMyLoc = $("#btnMyLoc");
+    const btnClearPick = $("#btnClearPick");
+    const btnClearDrop = $("#btnClearDrop");
+    const btnConfirm = $("#btnConfirm");
+    const btnWhatsApp = $("#btnWhatsApp");
+
+    const btnNow = $("#btnNow");
+    const btnLater = $("#btnLater");
+
+    const toast = $("#toast");
+    const toastText = $("#toastText");
+
+    const priceSaver = $("#priceSaver");
+    const priceComfort = $("#priceComfort");
+    const priceXL = $("#priceXL");
+    const pricePremium = $("#pricePremium");
+
+    const etaSaver = $("#etaSaver");
+    const etaComfort = $("#etaComfort");
+    const etaXL = $("#etaXL");
+    const etaPremium = $("#etaPremium");
+
+    // --- State ---
+    const state = {
+      mode: "now", // now | later
+      scheduleISO: null,
+      pickupPlace: null,
+      dropPlace: null,
+      tier: "saver"
+    };
+
+    // Pricing model (simple but believable)
+    const TIERS = {
+      saver:   { label: "Saver",   base: 3.00, perKm: 1.35, min: 7.00, etaBias: 0 },
+      comfort: { label: "Comfort", base: 4.50, perKm: 1.65, min: 10.00, etaBias: 1 },
+      xl:      { label: "XL",      base: 6.00, perKm: 2.10, min: 14.00, etaBias: 2 },
+      premium: { label: "Premium", base: 8.00, perKm: 2.80, min: 18.00, etaBias: 0 }
+    };
+
+    function showToast(title, detail, ms=2600){
+      toastText.innerHTML = `${title}<span>${detail || ""}</span>`;
+      toast.dataset.show = "true";
+      window.clearTimeout(showToast._t);
+      showToast._t = window.setTimeout(()=> toast.dataset.show = "false", ms);
+    }
+
+    function setMode(mode){
+      state.mode = mode;
+      btnNow.setAttribute("aria-pressed", String(mode === "now"));
+      btnLater.setAttribute("aria-pressed", String(mode === "later"));
+      modeBadge.textContent = mode.toUpperCase();
+      if(mode === "later" && !state.scheduleISO){
+        // default schedule: +30 minutes
+        const d = new Date(Date.now() + 30 * 60000);
+        state.scheduleISO = d.toISOString();
+        showToast("Scheduled ride", `Set for ${d.toLocaleString([], { weekday:"short", hour:"2-digit", minute:"2-digit" })}. Tap “Later” again to edit.`);
+      }
+      updateResults();
+    }
+
+    function promptSchedule(){
+      const current = state.scheduleISO ? new Date(state.scheduleISO) : new Date(Date.now() + 30*60000);
+      const pad = (n) => String(n).padStart(2, "0");
+      const def = `${current.getFullYear()}-${pad(current.getMonth()+1)}-${pad(current.getDate())}T${pad(current.getHours())}:${pad(current.getMinutes())}`;
+      const val = window.prompt("Schedule pickup (YYYY-MM-DDTHH:MM)", def);
+      if(!val) return;
+      const dt = new Date(val);
+      if(Number.isNaN(dt.getTime())){
+        showToast("Invalid time", "Use the suggested format like 2026-04-26T18:30.");
+        return;
+      }
+      state.scheduleISO = dt.toISOString();
+      showToast("Scheduled ride updated", dt.toLocaleString([], { weekday:"short", hour:"2-digit", minute:"2-digit" }));
+      updateResults();
+    }
+
+    // “My location” without geolocation API (offline): pick a plausible point near city
+    function useMyLocation(){
+      const faux = { name: "Current Location", addr: "Near you (approx.)", x: 640, y: 470, tag: "Device" };
+      state.pickupPlace = faux;
+      pickup.value = faux.name;
+      closeAutocomplete(acPick);
+      showToast("Pickup set", "Using your current location (approx.).");
+      updateResults(true);
+    }
+
+    function clearField(which){
+      if(which === "pick"){
+        pickup.value = "";
+        state.pickupPlace = null;
+        closeAutocomplete(acPick);
+      } else {
+        dropoff.value = "";
+        state.dropPlace = null;
+        closeAutocomplete(acDrop);
+      }
+      updateResults(true);
+    }
+
+    function swapPlaces(){
+      const p = state.pickupPlace;
+      const d = state.dropPlace;
+      state.pickupPlace = d;
+      state.dropPlace = p;
+      pickup.value = d ? d.name : "";
+      dropoff.value = p ? p.name : "";
+      updateResults(true);
+    }
+
+    // Autocomplete
+    function openAutocomplete(el){ el.setAttribute("aria-hidden", "false"); }
+    function closeAutocomplete(el){ el.setAttribute("aria-hidden", "true"); el.innerHTML = ""; }
+
+    function scoreMatch(q, place){
+      const s = (place.name + " " + place.addr + " " + place.tag).toLowerCase();
+      const idx = s.indexOf(q);
+      if(idx === -1) return -Infinity;
+      // prefer earlier matches & name hits
+      let score = 100 - idx;
+      if(place.name.toLowerCase().includes(q)) score += 20;
+      if(place.tag.toLowerCase().includes(q)) score += 6;
+      return score;
+    }
+
+    function renderAutocomplete(target, listEl, q){
+      const query = q.trim().toLowerCase();
+      if(!query){
+        closeAutocomplete(listEl);
+        return;
+      }
+      const results = PLACES
+        .map(p => ({ p, score: scoreMatch(query, p) }))
+        .filter(x => x.score > -Infinity)
+        .sort((a,b) => b.score - a.score)
+        .slice(0, 7)
+        .map(x => x.p);
+
+      if(!results.length){
+        listEl.innerHTML = `<div class="item" style="cursor:default">
+          <div class="mini" aria-hidden="true">?</div>
+          <div class="t"><p class="name">No matches</p><p class="addr">Try “KLCC”, “Bangsar”, “Mid Valley”, “KLIA”…</p></div>
+        </div>`;
+        openAutocomplete(listEl);
+        return;
+      }
+
+      listEl.innerHTML = results.map((p, i) => `
+        <div class="item" role="option" data-idx="${i}">
+          <div class="mini" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M12 22s7-4.4 7-12a7 7 0 1 0-14 0c0 7.6 7 12 7 12z" stroke="currentColor" stroke-width="1.7"/>
+            </svg>
+          </div>
+          <div class="t">
+            <p class="name">${escapeHtml(p.name)}</p>
+            <p class="addr">${escapeHtml(p.tag)} • ${escapeHtml(p.addr)}</p>
+          </div>
+        </div>
+      `).join("");
+
+      // click handlers
+      $$(".item", listEl).forEach((item, idx) => {
+        item.addEventListener("click", () => {
+          const p = results[idx];
+          if(target === "pick"){
+            state.pickupPlace = p;
+            pickup.value = p.name;
+            closeAutocomplete(acPick);
+          } else {
+            state.dropPlace = p;
+            dropoff.value = p.name;
+            closeAutocomplete(acDrop);
+          }
+          updateResults(true);
+        });
+      });
+
+      openAutocomplete(listEl);
+    }
+
+    function escapeHtml(str){
+      return String(str).replace(/[&<>"']/g, (m) => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+      }[m]));
+    }
+
+    // Route & estimation
+    function distanceKm(a, b){
+      const dx = (a.x - b.x);
+      const dy = (a.y - b.y);
+      // Normalize pixels -> km (tuned for this canvas)
+      const px = Math.sqrt(dx*dx + dy*dy);
+      return px / 55; // ~ realistic for this layout
+    }
+
+    function durationMin(km, tierKey){
+      // base speed + traffic factor
+      const traffic = 1.0 + (Math.sin((km+1.2)*1.4) * 0.08) + (Math.random()*0.06);
+      const speed = 28; // km/h average city
+      let min = (km / speed) * 60 * traffic;
+      min += 4.5; // dispatch + lights
+      min += TIERS[tierKey].etaBias;
+      return Math.max(6, min);
+    }
+
+    function priceRM(km, tierKey){
+      const t = TIERS[tierKey];
+      const surge = (state.mode === "now") ? (1.00 + (Math.random()*0.06)) : 1.00;
+      let p = (t.base + km * t.perKm) * surge;
+      p = Math.max(t.min, p);
+      // round to 0.10
+      return Math.round(p * 10) / 10;
+    }
+
+    function setMarker(el, place, fallback){
+      const p = place || fallback;
+      el.style.left = (p.x/12) + "%"; // because viewBox 1200 -> 100%
+      el.style.top  = (p.y/8) + "%";  // because viewBox 800 -> 100%
+    }
+
+    function setRoute(a, b){
+      const p1 = a, p2 = b;
+      // control points for a pleasing curve
+      const cx1 = p1.x + (p2.x - p1.x) * 0.35;
+      const cy1 = p1.y - 90;
+      const cx2 = p1.x + (p2.x - p1.x) * 0.72;
+      const cy2 = p2.y - 80;
+
+      const d = `M ${p1.x} ${p1.y} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${p2.x} ${p2.y}`;
+      routeMain.setAttribute("d", d);
+      routeGlow.setAttribute("d", d);
+      routeDash.setAttribute("d", d);
+
+      // animate dash offset subtly
+      animateDash();
+    }
+
+    let dashRAF = null;
+    function animateDash(){
+      if(window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      const path = routeDash;
+      let offset = 0;
+      cancelAnimationFrame(dashRAF);
+      const tick = () => {
+        offset = (offset + 0.9) % 1000;
+        path.style.strokeDashoffset = String(-offset);
+        dashRAF = requestAnimationFrame(tick);
+      };
+      tick();
+    }
+
+    function setSelectedTier(tier){
+      state.tier = tier;
+      $$(".ride").forEach(r => r.setAttribute("aria-selected", String(r.dataset.tier === tier)));
+      updateResults();
+    }
+
+    function openSheet(){
+      sheet.dataset.open = "true";
+      // stagger reveal elements inside sheet
+      const items = $$("[data-reveal]", sheet);
+      items.forEach((el, i) => {
+        el.classList.remove("reveal-in");
+        // force reflow to restart animation
+        void el.offsetWidth;
+        el.classList.add("reveal-in");
+        el.style.animationDelay = (80 + i*60) + "ms";
+      });
+    }
+
+    function closeSheet(){
+      sheet.dataset.open = "false";
+    }
+
+    function updateConfirmLabel(){
+      const tierLabel = TIERS[state.tier].label;
+      if(state.mode === "later" && state.scheduleISO){
+        const d = new Date(state.scheduleISO);
+        const t = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        $("#confirmLabel").textContent = `Confirm ${tierLabel} • ${t}`;
+      } else {
+        $("#confirmLabel").textContent = `Confirm ${tierLabel}`;
+      }
+    }
+
+    function updateResults(recenter=false){
+      // marker fallbacks (default positions)
+      const fallbackPick = { x: 260, y: 560 };
+      const fallbackDrop = { x: 1040, y: 520 };
+
+      setMarker(mPick, state.pickupPlace, fallbackPick);
+      setMarker(mDrop, state.dropPlace, fallbackDrop);
+
+      if(state.pickupPlace && state.dropPlace){
+        setRoute(state.pickupPlace, state.dropPlace);
+        const km = distanceKm(state.pickupPlace, state.dropPlace);
+        const min = durationMin(km, state.tier);
+
+        tripMeta.textContent = `${km.toFixed(1)} km • ${Math.round(min)} min`;
+
+        // Update tier prices & ETAs consistently with same km
+        const tierKeys = ["saver","comfort","xl","premium"];
+        tierKeys.forEach(k => {
+          const pr = priceRM(km, k);
+          const eta = Math.round(durationMin(km, k) + (k === "premium" ? -1 : 0));
+          if(k === "saver"){ priceSaver.textContent = fmtRM(pr); etaSaver.textContent = `ETA ${eta} min`; }
+          if(k === "comfort"){ priceComfort.textContent = fmtRM(pr); etaComfort.textContent = `ETA ${eta} min`; }
+          if(k === "xl"){ priceXL.textContent = fmtRM(pr); etaXL.textContent = `ETA ${eta} min`; }
+          if(k === "premium"){ pricePremium.textContent = fmtRM(pr); etaPremium.textContent = `ETA ${eta} min`; }
         });
 
-        list.innerHTML = sorted.map(f => {
-            const p = f.properties;
-            const name = p.name || p.street || 'Selected Point';
-            const address = [p.street, p.district, p.city, p.postcode].filter(Boolean).join(', ');
-            const fullStr = `${name}${address ? ', ' + address : ''}`;
-            return `
-                <div class="autocomplete-item" onclick="selectLocation('${type}', [${f.geometry.coordinates[1]}, ${f.geometry.coordinates[0]}], '${fullStr.replace(/'/g, "\\'")}')">
-                    <span class="place-name">${name}</span>
-                    <span class="place-address">${address}</span>
-                </div>
-            `;
-        }).join('');
-        list.style.display = sorted.length ? 'block' : 'none';
-    }
+        // Selected tier fare display
+        const selectedPrice = priceRM(km, state.tier);
+        fareText.textContent = fmtRM(selectedPrice);
 
-    function selectLocation(type, coord, fullLabel) {
-        $(type).value = fullLabel;
-        $(`${type}-results`).style.display = 'none';
-        const mCfg = { radius: 8, fillOpacity: 1, weight: 2, color: '#fff' };
-        if (type === 'pickup') {
-            pickupCoord = coord;
-            if (pickupMarker) map.removeLayer(pickupMarker);
-            pickupMarker = L.circleMarker(coord, { ...mCfg, fillColor: '#059669' }).addTo(map);
-        } else {
-            dropoffCoord = coord;
-            if (dropoffMarker) map.removeLayer(dropoffMarker);
-            dropoffMarker = L.circleMarker(coord, { ...mCfg, fillColor: '#1e293b' }).addTo(map);
+        updateConfirmLabel();
+        openSheet();
+      } else {
+        fareText.textContent = "RM —";
+        tripMeta.textContent = "— km • — min";
+        updateConfirmLabel();
+        closeSheet();
+        if(recenter){
+          showToast("Add both locations", "Choose a pickup and drop-off to see fare & options.");
         }
-        if (pickupCoord && dropoffCoord) calculateRoute();
+      }
     }
 
-    $("gps-trigger").onclick = () => {
-        const btn = $("gps-trigger");
-        btn.classList.add('loading');
-        if (!navigator.geolocation) { alert("GPS not supported"); btn.classList.remove('loading'); return; }
-        navigator.geolocation.getCurrentPosition(async (pos) => {
-            const lat = pos.coords.latitude;
-            const lon = pos.coords.longitude;
-            
-            // Check if user is actually in Peninsular Malaysia
-            if (lon > 105 || lat < 1 || lat > 7.5) {
-                alert("GPS detected location outside Peninsular Malaysia.");
-                btn.classList.remove('loading');
-                return;
-            }
+    function buildBookingText(){
+      const p = state.pickupPlace?.name || "(not set)";
+      const d = state.dropPlace?.name || "(not set)";
+      const tierLabel = TIERS[state.tier].label;
+      const modeLine = state.mode === "later" && state.scheduleISO
+        ? `Schedule: ${new Date(state.scheduleISO).toLocaleString()}`
+        : "Schedule: Now";
 
-            try {
-                const res = await fetch(`https://photon.komoot.io/reverse?lon=${lon}&lat=${lat}`);
-                const data = await res.json();
-                const p = data.features[0].properties;
-                const name = p.name || p.street || "Current Location";
-                const address = [p.street, p.district, p.city, p.postcode].filter(Boolean).join(', ');
-                const fullLabel = `${name}${address ? ', ' + address : ''}`;
-                selectLocation('pickup', [lat, lon], fullLabel);
-                map.setView([lat, lon], 16);
-            } catch (e) { selectLocation('pickup', [lat, lon], "Pinned Location"); }
-            btn.classList.remove('loading');
-        }, () => { btn.classList.remove('loading'); }, { enableHighAccuracy: true });
-    };
+      const fare = fareText.textContent.replace("RM ", "RM");
+      const meta = tripMeta.textContent;
 
-    async function calculateRoute() {
-        try {
-            const res = await fetch("https://api.openrouteservice.org/v2/directions/driving-car", {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "Authorization": CONFIG.ORS_KEY },
-                body: JSON.stringify({ coordinates: [[pickupCoord[1], pickupCoord[0]], [dropoffCoord[1], dropoffCoord[0]]] })
-            });
-            const data = await res.json();
-            const route = data.routes[0];
-            if (routeLayer) map.removeLayer(routeLayer);
-            routeLayer = L.polyline(decodePoly(route.geometry), { color: '#059669', weight: 6, opacity: 0.8 }).addTo(map);
-            map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
-            processFare(route.summary.distance / 1000, (route.summary.duration / 60) * CONFIG.TRAFFIC_MULTIPLIER);
-        } catch (e) { console.error("Route error"); }
+      return [
+        "Rideshare MY — Booking Request",
+        `Pickup: ${p}`,
+        `Drop-off: ${d}`,
+        `Ride: ${tierLabel}`,
+        `${modeLine}`,
+        `Estimate: ${fare} • ${meta}`,
+        "",
+        "Notes: (optional) Add building / gate / unit number."
+      ].join("\n");
     }
 
-    function processFare(km, mins) {
-        const activeMinuteRate = (km < 50) ? 0.45 : 0.65;
-        let distCost = 0, remaining = km, lastLimit = 0;
-        for (const tier of FARE_ENGINE.TIERS) {
-            if (remaining <= 0) break;
-            let currentSegment = Math.min(remaining, tier.upTo - lastLimit);
-            distCost += currentSegment * tier.rate;
-            remaining -= currentSegment;
-            lastLimit = tier.upTo;
-        }
-        const total = Math.ceil(FARE_ENGINE.BASE + distCost + (mins * activeMinuteRate));
-
-        $("results").style.display = 'block';
-        $("fare").innerText = `RM ${total}`;
-        $("distance").innerText = `${km.toFixed(1)} km`;
-        $("eta").innerText = `${Math.round(mins)} mins`;
-
-        const msg = `*Booking Request*\n\n*Pickup:* ${$("pickup").value}\n*Dropoff:* ${$("dropoff").value}\n\n*Distance:* ${km.toFixed(1)}km\n*Fare:* RM ${total}`;
-        $("wa").href = `https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(msg)}`;
+    function confirmRide(){
+      if(!state.pickupPlace || !state.dropPlace){
+        showToast("Missing locations", "Please set both pickup and drop-off.");
+        return;
+      }
+      // In a real app, you'd POST to backend. Here we show a polished confirmation.
+      const msg = buildBookingText();
+      showToast("Ride confirmed (demo)", "We prepared a shareable request. Use WhatsApp to send it.");
+      // also copy to clipboard if available
+      if(navigator.clipboard?.writeText){
+        navigator.clipboard.writeText(msg).catch(()=>{});
+      }
     }
 
-    function decodePoly(str) {
-        let index = 0, lat = 0, lng = 0, coordinates = [];
-        while (index < str.length) {
-            let b, shift = 0, result = 0;
-            do { b = str.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
-            lat += ((result & 1) ? ~(result >> 1) : (result >> 1));
-            shift = 0; result = 0;
-            do { b = str.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
-            lng += ((result & 1) ? ~(result >> 1) : (result >> 1));
-            coordinates.push([lat / 1e5, lng / 1e5]);
-        }
-        return coordinates;
+    function sendWhatsApp(){
+      if(!state.pickupPlace || !state.dropPlace){
+        showToast("Missing locations", "Please set both pickup and drop-off first.");
+        return;
+      }
+      const text = buildBookingText();
+      const url = "https://wa.me/?text=" + encodeURIComponent(text);
+      window.open(url, "_blank", "noopener,noreferrer");
     }
 
-    $("pickup").oninput = e => search(e.target.value, "pickup-results", "pickup");
-    $("dropoff").oninput = e => search(e.target.value, "dropoff-results", "dropoff");
-    document.addEventListener('click', e => {
-        if (!e.target.closest('.input-group')) {
-            document.querySelectorAll('.autocomplete-results').forEach(el => el.style.display = 'none');
-        }
+    // --- Events ---
+    pickup.addEventListener("input", () => renderAutocomplete("pick", acPick, pickup.value));
+    dropoff.addEventListener("input", () => renderAutocomplete("drop", acDrop, dropoff.value));
+
+    pickup.addEventListener("focus", () => renderAutocomplete("pick", acPick, pickup.value));
+    dropoff.addEventListener("focus", () => renderAutocomplete("drop", acDrop, dropoff.value));
+
+    document.addEventListener("click", (e) => {
+      const inPick = e.target.closest(".field") && e.target.closest(".field").contains(pickup);
+      const inDrop = e.target.closest(".field") && e.target.closest(".field").contains(dropoff);
+      if(!e.target.closest("#acPick") && e.target !== pickup) closeAutocomplete(acPick);
+      if(!e.target.closest("#acDrop") && e.target !== dropoff) closeAutocomplete(acDrop);
+      if(!inPick && !inDrop){
+        // nothing
+      }
     });
-</script>
+
+    btnSwap.addEventListener("click", swapPlaces);
+    btnMyLoc.addEventListener("click", useMyLocation);
+    btnClearPick.addEventListener("click", () => clearField("pick"));
+    btnClearDrop.addEventListener("click", () => clearField("drop"));
+
+    btnConfirm.addEventListener("click", confirmRide);
+    btnWhatsApp.addEventListener("click", sendWhatsApp);
+
+    btnNow.addEventListener("click", () => setMode("now"));
+    btnLater.addEventListener("click", () => {
+      if(state.mode !== "later") setMode("later");
+      else promptSchedule();
+    });
+
+    // Ride selection
+    $$(".ride").forEach(el => {
+      el.addEventListener("click", () => setSelectedTier(el.dataset.tier));
+      el.addEventListener("keydown", (e) => {
+        if(e.key === "Enter" || e.key === " "){
+          e.preventDefault();
+          setSelectedTier(el.dataset.tier);
+        }
+      });
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener("keydown", (e) => {
+      if(e.key === "Escape"){
+        closeAutocomplete(acPick);
+        closeAutocomplete(acDrop);
+      }
+      if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k"){
+        e.preventDefault();
+        pickup.focus();
+      }
+    });
+
+    // Initial UI reveal
+    function initReveal(){
+      const headPanel = document.querySelector("[data-reveal]");
+      if(headPanel){
+        headPanel.classList.add("reveal-in");
+      }
+      showToast("Tip", "Type a location (KLCC, Bangsar, Mid Valley, KLIA) to begin.", 3400);
+    }
+
+    // Default demo route to show the interface immediately
+    function setDemo(){
+      state.pickupPlace = PLACES.find(p => p.name.startsWith("Bangsar")) || PLACES[4];
+      state.dropPlace = PLACES.find(p => p.name.startsWith("KLCC")) || PLACES[0];
+      pickup.value = state.pickupPlace.name;
+      dropoff.value = state.dropPlace.name;
+      updateResults();
+    }
+
+    // Run
+    initReveal();
+    setDemo();
+  </script>
 </body>
 </html>
+ 
