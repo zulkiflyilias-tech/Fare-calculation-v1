@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - Expert v4.1</title>
+    <title>Rideshare MY - Expert v4.2</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
@@ -394,12 +394,11 @@
             $("eta").innerText = `${fareData.time} min`;
             $("mode-badge").innerText = fareData.mode;
 
-            // CHANGE: "eHailing Booking Request"
             const summary = `*eHailing Booking Request*\nMode: ${fareData.mode}\nFrom: ${$("pickup").value}\nTo: ${$("dropoff").value}\nEst. Distance: ${fareData.km} km\nEst. Time: ${fareData.time} min\nEst. Fare: RM ${displayFare}${useFullFare ? ' (Inc. Fee)' : ''}`;
             
             $("wa-btn").href = `https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(summary)}`;
             
-            // CHANGE: Directions link updated to Universal Google Maps URL for immediate app opening
+            // Fixed Google Maps Direction URL
             $("nav-btn").href = `https://www.google.com/maps/dir/?api=1&origin=${pickupCoord[0]},${pickupCoord[1]}&destination=${dropoffCoord[0]},${dropoffCoord[1]}&travelmode=driving`;
             
             window.lastSummaryText = summary;
