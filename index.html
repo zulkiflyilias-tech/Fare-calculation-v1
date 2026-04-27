@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - Professional v3.6</title>
+    <title>Rideshare MY - Professional v3.7</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
@@ -306,11 +306,11 @@
                 const seconds = route.summary.duration;
                 const mins = seconds / 60;
                 
-                // EXACT MALAYSIA BUDGET TAXI CALCULATION
+                // --- FARE CALCULATION ---
                 const flagOff = 3.00;
                 const firstKm = 1.0;
 
-                // 1. Distance Fare: RM 0.25 per 200m = RM 1.25 per km
+                // 1. Distance Fare: RM 1.25 per km
                 let distFare = 0;
                 if (km > firstKm) {
                     distFare = (km - firstKm) * 1.25;
@@ -320,7 +320,7 @@
                 const timeFare = (seconds / 36) * 0.25;
 
                 let subtotal = flagOff + distFare + timeFare;
-                let mode = "Metered Rate";
+                let mode = "Standard Rate";
 
                 // 3. Midnight Surcharge (50% of total fare)
                 const sched = new Date($("departure-time").value);
@@ -330,8 +330,12 @@
                     mode = "Midnight Rate";
                 }
 
-                // 4. Final Fare (Rounded up to nearest Ringgit)
-                const finalFare = Math.ceil(subtotal);
+                // 4. Management Fee (Add 20%)
+                const totalWithManagement = subtotal * 1.20;
+
+                // 5. Applied Rounding Logic
+                // If .49 or less, round down. If .50 or more, round up.
+                const finalFare = Math.round(totalWithManagement);
 
                 $("fare").innerText = `RM ${finalFare}`;
                 $("distance").innerText = `${km.toFixed(1)} km`;
