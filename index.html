@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - Expert v3.9</title>
+    <title>Rideshare MY - Expert v4.0</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
@@ -150,7 +150,9 @@
             display: none;
         }
 
-        #fare { font-size: 34px; font-weight: 800; color: var(--primary); margin: 0; }
+        #fare { font-size: 32px; font-weight: 800; color: var(--primary); margin: 0; }
+        .sub-fare { font-size: 14px; color: var(--gray-text); margin-bottom: 8px; }
+        
         .mode-badge {
             background:#ecfdf5; 
             color:var(--primary); 
@@ -160,7 +162,18 @@
             font-weight:700;
         }
 
-        .btn-group { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 20px; }
+        .fee-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 12px 0;
+            font-size: 13px;
+            background: #f9fafb;
+            padding: 8px 12px;
+            border-radius: 10px;
+        }
+
+        .btn-group { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 15px; }
         .btn { 
             padding: 12px 4px; 
             border-radius: 10px; 
@@ -216,10 +229,19 @@
     <div id="results" class="results-card">
         <div id="loading-state">Calculating route...</div>
         <div id="fare-content" style="display:none;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <h2 id="fare">RM 0</h2>
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <div>
+                    <h2 id="fare">RM 0</h2>
+                    <div id="base-fare-display" class="sub-fare">Base: RM 0</div>
+                </div>
                 <span id="mode-badge" class="mode-badge">Standard Rate</span>
             </div>
+
+            <div class="fee-toggle">
+                <input type="checkbox" id="include-fee" checked>
+                <label for="include-fee">Include 20% Management Fee in WhatsApp</label>
+            </div>
+
             <div style="margin: 10px 0; font-size:14px; color:#4b5563;">
                 📏 <b id="distance">0 km</b> | ⏱️ <b id="eta">0 min</b>
             </div>
@@ -242,7 +264,7 @@
 
         const $ = id => document.getElementById(id);
         let pickupCoord, dropoffCoord, routeLayer, pickupMarker, dropoffMarker, searchTimer;
-        let lastSummaryText = "";
+        let fareData = { base: 0, total: 0, km: 0, time: 0, mode: "" };
 
         const map = L.map("map", { zoomControl: false, attributionControl: false }).setView(CONFIG.CENTER, 13);
         L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").addTo(map);
@@ -254,10 +276,7 @@
         async function searchPlaces(query, resultId, type) {
             $(`clear-${type}`).style.display = query.length > 0 ? 'flex' : 'none';
             clearTimeout(searchTimer);
-            if (query.length < 3) { 
-                $(resultId).style.display = 'none'; 
-                return; 
-            }
+            if (query.length < 3) { $(resultId).style.display = 'none'; return; }
             searchTimer = setTimeout(async () => {
                 const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&bbox=${CONFIG.BBOX}&limit=6`);
                 const data = await res.json();
@@ -308,7 +327,6 @@
 
         async function calculate() {
             if (!pickupCoord || !dropoffCoord) return;
-            
             $("results").style.display = 'block';
             $("fare-content").style.display = 'none';
             $("loading-state").style.display = 'block';
@@ -326,14 +344,10 @@
                 map.fitBounds(routeLayer.getBounds(), { padding: [80, 80] });
 
                 const km = route.summary.distance / 1000;
-                
-                // --- ENHANCED FARE LOGIC ---
                 const sched = new Date($("departure-time").value);
                 const h = sched.getHours();
-                const m = sched.getMinutes();
-                const timeInMins = h * 60 + m;
+                const timeInMins = h * 60 + sched.getMinutes();
 
-                // Define Rush Hours (7:00-9:30 & 17:00-20:00)
                 const isRushHour = (timeInMins >= 420 && timeInMins <= 570) || (timeInMins >= 1020 && timeInMins <= 1200);
                 const isMidnight = (h >= 0 && h < 6);
 
@@ -342,32 +356,46 @@
                 if (isMidnight) mode = "Midnight Rate";
 
                 const baseSeconds = route.summary.duration;
-                const trafficAdjustedSeconds = baseSeconds * trafficFactor;
-                const trafficAdjustedMins = Math.ceil(trafficAdjustedSeconds / 60);
+                const trafficAdjustedMins = Math.ceil((baseSeconds * trafficFactor) / 60);
                 
                 const flagOff = 3.00;
                 const firstKm = 1.0;
                 let distFare = km > firstKm ? (km - firstKm) * 1.25 : 0;
-                let timeFare = (trafficAdjustedSeconds / 36) * 0.25;
+                let timeFare = (baseSeconds * trafficFactor / 36) * 0.25;
 
                 let subtotal = flagOff + distFare + timeFare;
                 if (isMidnight) subtotal *= 1.5;
 
-                const finalFare = Math.round(subtotal * 1.20); // Operating margin
+                fareData = {
+                    base: Math.round(subtotal),
+                    total: Math.round(subtotal * 1.20),
+                    km: km.toFixed(1),
+                    time: trafficAdjustedMins,
+                    mode: mode
+                };
 
-                $("fare").innerText = `RM ${finalFare}`;
-                $("distance").innerText = `${km.toFixed(1)} km`;
-                $("eta").innerText = `${trafficAdjustedMins} min`;
-                $("mode-badge").innerText = mode;
-                
-                lastSummaryText = `*Taxi Booking Request*\nMode: ${mode}\nFrom: ${$("pickup").value}\nTo: ${$("dropoff").value}\nEst. Distance: ${km.toFixed(1)} km\nEst. Time: ${trafficAdjustedMins} min\nEst. Fare: RM ${finalFare}`;
-                
-                $("wa-btn").href = `https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(lastSummaryText)}`;
-                $("nav-btn").onclick = () => window.location.href = `google.navigation:q=${dropoffCoord[0]},${dropoffCoord[1]}`;
-
+                updateUI();
                 $("loading-state").style.display = 'none';
                 $("fare-content").style.display = 'block';
             } catch (e) { $("loading-state").innerText = "Calculation error."; }
+        }
+
+        function updateUI() {
+            const useFullFare = $("include-fee").checked;
+            const displayFare = useFullFare ? fareData.total : fareData.base;
+            
+            $("fare").innerText = `RM ${displayFare}`;
+            $("base-fare-display").innerText = `Base: RM ${fareData.base} | Inc. 20%: RM ${fareData.total}`;
+            $("distance").innerText = `${fareData.km} km`;
+            $("eta").innerText = `${fareData.time} min`;
+            $("mode-badge").innerText = fareData.mode;
+
+            const summary = `*Taxi Booking Request*\nMode: ${fareData.mode}\nFrom: ${$("pickup").value}\nTo: ${$("dropoff").value}\nEst. Distance: ${fareData.km} km\nEst. Time: ${fareData.time} min\nEst. Fare: RM ${displayFare}${useFullFare ? ' (Inc. Fee)' : ''}`;
+            
+            $("wa-btn").href = `https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(summary)}`;
+            
+            // Store for copy button
+            window.lastSummaryText = summary;
         }
 
         function decodePoly(str) {
@@ -388,19 +416,16 @@
         $("pickup").oninput = e => searchPlaces(e.target.value, "pickup-results", "pickup");
         $("dropoff").oninput = e => searchPlaces(e.target.value, "dropoff-results", "dropoff");
         $("departure-time").onchange = () => { if(pickupCoord && dropoffCoord) calculate(); };
+        $("include-fee").onchange = updateUI;
         $("clear-pickup").onclick = () => clearInput('pickup');
         $("clear-dropoff").onclick = () => clearInput('dropoff');
 
         $("copy-btn").onclick = () => {
-            navigator.clipboard.writeText(lastSummaryText.replace(/\*/g, '')).then(() => {
+            navigator.clipboard.writeText(window.lastSummaryText.replace(/\*/g, '')).then(() => {
                 const btn = $("copy-btn");
-                const oldText = btn.innerText;
                 btn.innerText = "Copied!";
                 btn.style.background = "#059669";
-                setTimeout(() => { 
-                    btn.innerText = oldText; 
-                    btn.style.background = "var(--copy)";
-                }, 2000);
+                setTimeout(() => { btn.innerText = "Copy Text"; btn.style.background = "var(--copy)"; }, 2000);
             });
         };
 
@@ -426,8 +451,6 @@
             pickupMarker = m2; dropoffMarker = m1;
             if(pickupMarker) pickupMarker.setStyle({color: '#3b82f6'});
             if(dropoffMarker) dropoffMarker.setStyle({color: '#ef4444'});
-            $(`clear-pickup`).style.display = $("pickup").value ? 'flex' : 'none';
-            $(`clear-dropoff`).style.display = $("dropoff").value ? 'flex' : 'none';
             if (pickupCoord && dropoffCoord) calculate();
         };
     </script>
