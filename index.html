@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - Professional v3.6</title>
+    <title>Rideshare MY - Professional v3.6.1</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
@@ -225,20 +225,24 @@
         }
 
         async function calculate() {
+            if (!pickupCoord || !dropoffCoord) return;
+
             $("results").style.display = 'block';
             $("fare-content").style.display = 'none';
             $("loading-state").style.display = 'block';
 
             try {
-                const wp = `${pickupCoord[1]},${pickupCoord[0]}|${dropoffCoord[1]},${dropoffCoord[0]}`;
+                // Correct waypoints format for Geoapify: lat,lon|lat,lon
+                const wp = `${pickupCoord[0]},${pickupCoord[1]}|${dropoffCoord[0]},${dropoffCoord[1]}`;
                 const url = `https://api.geoapify.com/v1/routing?waypoints=${wp}&mode=drive&apiKey=${CONFIG.GEOAPIFY_KEY}`;
                 
                 const res = await fetch(url);
                 const data = await res.json();
 
-                if (!data.features?.length) throw new Error("No route found");
+                if (!data.features || data.features.length === 0) throw new Error("No route found");
                 
-                const props = data.features[0].properties;
+                const feature = data.features[0];
+                const props = feature.properties;
                 const km = props.distance / 1000;
                 const mins = props.time / 60;
 
@@ -263,6 +267,7 @@
                 $("eta").innerText = `${Math.round(mins)} min`;
                 $("mode-badge").innerText = mode;
 
+                // FIXED Template literal for Google Maps
                 const navUrl = `https://www.google.com/maps/dir/?api=1&origin=${pickupCoord[0]},${pickupCoord[1]}&destination=${dropoffCoord[0]},${dropoffCoord[1]}&travelmode=driving`;
                 $("nav-btn").href = navUrl;
 
@@ -270,14 +275,20 @@
                 $("wa-btn").href = `https://wa.me/${CONFIG.WHATSAPP}?text=${msg}`;
 
                 if (routeLayer) map.removeLayer(routeLayer);
-                const polyCoords = data.features[0].geometry.coordinates[0].map(c => [c[1], c[0]]);
+                
+                // Handle both LineString and MultiLineString geometries
+                const geometry = feature.geometry;
+                const rawCoords = geometry.type === 'MultiLineString' ? geometry.coordinates[0] : geometry.coordinates;
+                const polyCoords = rawCoords.map(c => [c[1], c[0]]);
+
                 routeLayer = L.polyline(polyCoords, { color: '#059669', weight: 6 }).addTo(map);
                 map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
 
                 $("loading-state").style.display = 'none';
                 $("fare-content").style.display = 'block';
             } catch (e) {
-                $("loading-state").innerHTML = '<span style="color:#ef4444">Error fetching route. Please try again.</span>';
+                console.error(e);
+                $("loading-state").innerHTML = '<span style="color:#ef4444">Routing failed. Please check your connection or locations.</span>';
             }
         }
 
@@ -336,13 +347,18 @@
         $("swap-btn").onclick = () => {
             const v1 = $("pickup").value, v2 = $("dropoff").value;
             const c1 = pickupCoord, c2 = dropoffCoord;
+            if(!c1 || !c2) return;
+            
             $("pickup").value = v2; $("dropoff").value = v1;
             pickupCoord = c2; dropoffCoord = c1;
+            
             if (pickupMarker) map.removeLayer(pickupMarker);
             if (dropoffMarker) map.removeLayer(dropoffMarker);
-            if (pickupCoord) pickupMarker = L.circleMarker(pickupCoord, {color: '#3b82f6', fillOpacity: 1, radius: 8}).addTo(map);
-            if (dropoffCoord) dropoffMarker = L.circleMarker(dropoffCoord, {color: '#ef4444', fillOpacity: 1, radius: 8}).addTo(map);
-            if (pickupCoord && dropoffCoord) calculate();
+            
+            pickupMarker = L.circleMarker(pickupCoord, {color: '#3b82f6', fillOpacity: 1, radius: 8}).addTo(map);
+            dropoffMarker = L.circleMarker(dropoffCoord, {color: '#ef4444', fillOpacity: 1, radius: 8}).addTo(map);
+            
+            calculate();
         };
 
         document.addEventListener('click', e => {
