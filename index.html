@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - Professional v3.5</title>
+    <title>Rideshare MY - Professional v3.6</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
@@ -39,10 +39,11 @@
         }
 
         input {
-            width: 100%; padding: 12px 110px 12px 14px;
+            width: 100%; padding: 12px 115px 12px 14px;
             border: 1.5px solid #e5e7eb; border-radius: 12px;
             box-sizing: border-box; font-size: 15px; outline: none;
             background: #f9fafb; transition: all 0.2s ease;
+            text-overflow: ellipsis;
         }
 
         input:focus { border-color: var(--primary); background: white; box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.1); }
@@ -108,7 +109,7 @@
             <label>Pickup Location</label>
             <input type="text" id="pickup" placeholder="Search for pickup..." autocomplete="off">
             <div class="btn-container">
-                <button class="icon-btn reset" id="reset-btn" title="Reset All">✕</button>
+                <button class="icon-btn reset" onclick="clearInput('pickup')" title="Clear Pickup">✕</button>
                 <button class="icon-btn" id="gps-trigger" title="Use GPS">📍</button>
             </div>
             <div id="pickup-results" class="autocomplete-list"></div>
@@ -119,12 +120,18 @@
         <div class="input-group">
             <label>Destination</label>
             <input type="text" id="dropoff" placeholder="Search for destination..." autocomplete="off">
+            <div class="btn-container">
+                <button class="icon-btn reset" onclick="clearInput('dropoff')" title="Clear Destination">✕</button>
+            </div>
             <div id="dropoff-results" class="autocomplete-list"></div>
         </div>
 
         <div class="input-group" style="margin-bottom: 0;">
             <label>Travel Schedule</label>
-            <input type="datetime-local" id="departure-time">
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="datetime-local" id="departure-time">
+                <button class="icon-btn" id="reset-all" title="Reset All" style="color: var(--danger); border: 1px solid #eee; border-radius: 8px;">🔄</button>
+            </div>
         </div>
     </div>
 
@@ -157,7 +164,7 @@
             GEOAPIFY_KEY: "2b559c27fae04fbb819d32bda10c0d05",
             CENTER: [3.139, 101.686],
             BBOX: "99.5,1.2,103.6,6.8",
-            MIN_FARE: 10.00 // NEW: Minimum Fare Floor
+            MIN_FARE: 10.00 
         };
 
         const $ = id => document.getElementById(id);
@@ -235,7 +242,6 @@
                 const km = props.distance / 1000;
                 const mins = props.time / 60;
 
-                // FARE ENGINE
                 const baseFare = 4.00;
                 let distCost = (km <= 80) ? (km * 1.30) : (80 * 1.30) + ((km - 80) * 1.95);
                 const hr = new Date($("departure-time").value).getHours();
@@ -244,7 +250,6 @@
                 if (hr >= 0 && hr < 6) { multiplier = 1.5; mode += " (Midnight)"; }
                 else if ((hr >= 7 && hr < 10) || (hr >= 17 && hr < 20)) { distCost += (mins * 0.40); mode += " (Peak)"; }
 
-                // APPLY MINIMUM FARE LOGIC
                 let calculatedFare = (baseFare + distCost) * multiplier;
                 if (calculatedFare < CONFIG.MIN_FARE) {
                     calculatedFare = CONFIG.MIN_FARE;
@@ -276,18 +281,45 @@
             }
         }
 
-        // Reset Handler
-        $("reset-btn").onclick = () => {
-            $("pickup").value = "";
-            $("dropoff").value = "";
-            pickupCoord = null;
-            dropoffCoord = null;
-            if (pickupMarker) map.removeLayer(pickupMarker);
-            if (dropoffMarker) map.removeLayer(dropoffMarker);
+        function clearInput(type) {
+            $(type).value = "";
+            $(`${type}-results`).style.display = 'none';
+            if (type === 'pickup') {
+                if (pickupMarker) map.removeLayer(pickupMarker);
+                pickupCoord = null;
+            } else {
+                if (dropoffMarker) map.removeLayer(dropoffMarker);
+                dropoffCoord = null;
+            }
             if (routeLayer) map.removeLayer(routeLayer);
             $("results").style.display = 'none';
+        }
+
+        $("reset-all").onclick = () => {
+            clearInput('pickup');
+            clearInput('dropoff');
             map.setView(CONFIG.CENTER, 13);
             setDefaultTime();
+        };
+
+        $("gps-trigger").onclick = () => {
+            if (!navigator.geolocation) return alert("GPS not supported");
+            $("pickup").value = "Locating...";
+            navigator.geolocation.getCurrentPosition(async (p) => {
+                const lat = p.coords.latitude;
+                const lon = p.coords.longitude;
+                try {
+                    const res = await fetch(`https://api.geoapify.com/v1/geocode/reverse?lat=${lat}&lon=${lon}&apiKey=${CONFIG.GEOAPIFY_KEY}`);
+                    const data = await res.json();
+                    const addr = (data.features && data.features.length > 0) ? data.features[0].properties.formatted : "Current Location";
+                    selectLoc('pickup', [lat, lon], addr);
+                } catch (e) {
+                    selectLoc('pickup', [lat, lon], "Current Location");
+                }
+            }, () => {
+                $("pickup").value = "";
+                alert("GPS Permission Denied");
+            });
         };
 
         window.onload = () => {
@@ -298,31 +330,18 @@
             }
         };
 
-        $("gps-trigger").onclick = () => {
-            if (!navigator.geolocation) return alert("GPS not supported");
-            navigator.geolocation.getCurrentPosition(p => {
-                selectLoc('pickup', [p.coords.latitude, p.coords.longitude], "Current Location");
-            });
-        };
-
         $("pickup").oninput = e => searchPlaces(e.target.value, "pickup-results", "pickup");
         $("dropoff").oninput = e => searchPlaces(e.target.value, "dropoff-results", "dropoff");
         
         $("swap-btn").onclick = () => {
             const v1 = $("pickup").value, v2 = $("dropoff").value;
             const c1 = pickupCoord, c2 = dropoffCoord;
-            
-            $("pickup").value = v2; 
-            $("dropoff").value = v1;
-            pickupCoord = c2; 
-            dropoffCoord = c1;
-            
-            // Re-render markers to match colors
+            $("pickup").value = v2; $("dropoff").value = v1;
+            pickupCoord = c2; dropoffCoord = c1;
             if (pickupMarker) map.removeLayer(pickupMarker);
             if (dropoffMarker) map.removeLayer(dropoffMarker);
             if (pickupCoord) pickupMarker = L.circleMarker(pickupCoord, {color: '#3b82f6', fillOpacity: 1, radius: 8}).addTo(map);
             if (dropoffCoord) dropoffMarker = L.circleMarker(dropoffCoord, {color: '#ef4444', fillOpacity: 1, radius: 8}).addTo(map);
-
             if (pickupCoord && dropoffCoord) calculate();
         };
 
