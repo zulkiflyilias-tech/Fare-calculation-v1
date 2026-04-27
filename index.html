@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - Expert v4.0</title>
+    <title>Rideshare MY - Expert v4.1</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
@@ -151,7 +151,7 @@
         }
 
         #fare { font-size: 32px; font-weight: 800; color: var(--primary); margin: 0; }
-        .sub-fare { font-size: 14px; color: var(--gray-text); margin-bottom: 8px; }
+        .sub-fare { font-size: 13px; color: var(--gray-text); margin-bottom: 8px; font-weight: 500; }
         
         .mode-badge {
             background:#ecfdf5; 
@@ -171,6 +171,7 @@
             background: #f9fafb;
             padding: 8px 12px;
             border-radius: 10px;
+            border: 1px solid #e5e7eb;
         }
 
         .btn-group { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 15px; }
@@ -184,6 +185,9 @@
             color: white; 
             border: none;
             cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .btn-wa { background: var(--whatsapp); }
         .btn-nav { background: #3b82f6; }
@@ -232,14 +236,14 @@
             <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                 <div>
                     <h2 id="fare">RM 0</h2>
-                    <div id="base-fare-display" class="sub-fare">Base: RM 0</div>
+                    <div id="base-fare-display" class="sub-fare">Base: RM 0 | Inc. 20%: RM 0</div>
                 </div>
                 <span id="mode-badge" class="mode-badge">Standard Rate</span>
             </div>
 
             <div class="fee-toggle">
-                <input type="checkbox" id="include-fee" checked>
-                <label for="include-fee">Include 20% Management Fee in WhatsApp</label>
+                <input type="checkbox" id="include-fee" checked style="width: auto; padding: 0;">
+                <label for="include-fee">Include 20% Fee in Message</label>
             </div>
 
             <div style="margin: 10px 0; font-size:14px; color:#4b5563;">
@@ -248,7 +252,7 @@
             <div class="btn-group">
                 <a id="wa-btn" class="btn btn-wa" target="_blank">WhatsApp</a>
                 <button id="copy-btn" class="btn btn-copy">Copy Text</button>
-                <div id="nav-btn" class="btn btn-nav">Directions</div>
+                <a id="nav-btn" class="btn btn-nav" target="_blank">Directions</a>
             </div>
         </div>
     </div>
@@ -390,11 +394,14 @@
             $("eta").innerText = `${fareData.time} min`;
             $("mode-badge").innerText = fareData.mode;
 
-            const summary = `*Taxi Booking Request*\nMode: ${fareData.mode}\nFrom: ${$("pickup").value}\nTo: ${$("dropoff").value}\nEst. Distance: ${fareData.km} km\nEst. Time: ${fareData.time} min\nEst. Fare: RM ${displayFare}${useFullFare ? ' (Inc. Fee)' : ''}`;
+            // CHANGE: "eHailing Booking Request"
+            const summary = `*eHailing Booking Request*\nMode: ${fareData.mode}\nFrom: ${$("pickup").value}\nTo: ${$("dropoff").value}\nEst. Distance: ${fareData.km} km\nEst. Time: ${fareData.time} min\nEst. Fare: RM ${displayFare}${useFullFare ? ' (Inc. Fee)' : ''}`;
             
             $("wa-btn").href = `https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(summary)}`;
             
-            // Store for copy button
+            // CHANGE: Directions link updated to Universal Google Maps URL for immediate app opening
+            $("nav-btn").href = `https://www.google.com/maps/dir/?api=1&origin=${pickupCoord[0]},${pickupCoord[1]}&destination=${dropoffCoord[0]},${dropoffCoord[1]}&travelmode=driving`;
+            
             window.lastSummaryText = summary;
         }
 
