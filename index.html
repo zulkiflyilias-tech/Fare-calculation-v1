@@ -306,15 +306,23 @@
                 const seconds = route.summary.duration;
                 const mins = seconds / 60;
                 
-                // MALAYSIA BUDGET TAXI CALCULATION
+                // EXACT MALAYSIA BUDGET TAXI CALCULATION
                 const flagOff = 3.00;
-                const distFare = (km > 1) ? (km * 1.25) : 0; // RM0.25 per 200m
-                const timeFare = (seconds / 36) * 0.25;      // RM0.25 per 36s
-                
+                const firstKm = 1.0;
+
+                // 1. Distance Fare: RM 0.25 per 200m = RM 1.25 per km
+                let distFare = 0;
+                if (km > firstKm) {
+                    distFare = (km - firstKm) * 1.25;
+                }
+
+                // 2. Time Fare: RM 0.25 per 36 seconds
+                const timeFare = (seconds / 36) * 0.25;
+
                 let subtotal = flagOff + distFare + timeFare;
                 let mode = "Metered Rate";
 
-                // Midnight Surcharge (50% of fare)
+                // 3. Midnight Surcharge (50% of total fare)
                 const sched = new Date($("departure-time").value);
                 const h = sched.getHours();
                 if (h >= 0 && h < 6) {
@@ -322,7 +330,7 @@
                     mode = "Midnight Rate";
                 }
 
-                // Remove cents - Round up to nearest whole number
+                // 4. Final Fare (Rounded up to nearest Ringgit)
                 const finalFare = Math.ceil(subtotal);
 
                 $("fare").innerText = `RM ${finalFare}`;
