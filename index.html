@@ -247,7 +247,10 @@
         async function searchPlaces(query, resultId, type) {
             $(`clear-${type}`).style.display = query.length > 0 ? 'flex' : 'none';
             clearTimeout(searchTimer);
-            if (query.length < 3) { $(resultId).style.display = 'none'; return; }
+            if (query.length < 3) { 
+                $(resultId).style.display = 'none'; 
+                return; 
+            }
             searchTimer = setTimeout(async () => {
                 const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&bbox=${CONFIG.BBOX}&limit=6`);
                 const data = await res.json();
@@ -273,6 +276,7 @@
         function selectLoc(type, coord, label) {
             $(type).value = label;
             $(`${type}-results`).style.display = 'none';
+            $(`clear-${type}`).style.display = 'flex';
             if (type === 'pickup') {
                 if (pickupMarker) map.removeLayer(pickupMarker);
                 pickupCoord = coord;
@@ -285,7 +289,26 @@
             if (pickupCoord && dropoffCoord) calculate();
         }
 
+        function clearInput(type) {
+            $(type).value = '';
+            $(`clear-${type}`).style.display = 'none';
+            $(`${type}-results`).style.display = 'none';
+            $("results").style.display = 'none';
+            
+            if (type === 'pickup') {
+                if (pickupMarker) map.removeLayer(pickupMarker);
+                pickupCoord = null;
+            } else {
+                if (dropoffMarker) map.removeLayer(dropoffMarker);
+                dropoffCoord = null;
+            }
+            
+            if (routeLayer) map.removeLayer(routeLayer);
+        }
+
         async function calculate() {
+            if (!pickupCoord || !dropoffCoord) return;
+            
             $("results").style.display = 'block';
             $("fare-content").style.display = 'none';
             $("loading-state").style.display = 'block';
@@ -306,23 +329,14 @@
                 const seconds = route.summary.duration;
                 const mins = seconds / 60;
                 
-                // --- FARE CALCULATION ---
                 const flagOff = 3.00;
                 const firstKm = 1.0;
-
-                // 1. Distance Fare: RM 1.25 per km
-                let distFare = 0;
-                if (km > firstKm) {
-                    distFare = (km - firstKm) * 1.25;
-                }
-
-                // 2. Time Fare: RM 0.25 per 36 seconds
+                let distFare = km > firstKm ? (km - firstKm) * 1.25 : 0;
                 const timeFare = (seconds / 36) * 0.25;
 
                 let subtotal = flagOff + distFare + timeFare;
                 let mode = "Standard Rate";
 
-                // 3. Midnight Surcharge (50% of total fare)
                 const sched = new Date($("departure-time").value);
                 const h = sched.getHours();
                 if (h >= 0 && h < 6) {
@@ -330,12 +344,7 @@
                     mode = "Midnight Rate";
                 }
 
-                // 4. Management Fee (Add 20%)
-                const totalWithManagement = subtotal * 1.20;
-
-                // 5. Applied Rounding Logic
-                // If .49 or less, round down. If .50 or more, round up.
-                const finalFare = Math.round(totalWithManagement);
+                const finalFare = Math.round(subtotal * 1.20);
 
                 $("fare").innerText = `RM ${finalFare}`;
                 $("distance").innerText = `${km.toFixed(1)} km`;
@@ -370,7 +379,10 @@
 
         $("pickup").oninput = e => searchPlaces(e.target.value, "pickup-results", "pickup");
         $("dropoff").oninput = e => searchPlaces(e.target.value, "dropoff-results", "dropoff");
-        $("departure-time").onchange = () => { if(pickupCoord && dropoffCoord) calculate(); };
+        $("departure-time").onchange = () => calculate();
+
+        $("clear-pickup").onclick = () => clearInput('pickup');
+        $("clear-dropoff").onclick = () => clearInput('dropoff');
 
         $("gps-trigger").onclick = () => {
             navigator.geolocation.getCurrentPosition(async p => {
@@ -388,8 +400,18 @@
         $("swap-btn").onclick = () => {
             const v1 = $("pickup").value, v2 = $("dropoff").value;
             const c1 = pickupCoord, c2 = dropoffCoord;
+            const m1 = pickupMarker, m2 = dropoffMarker;
+            
             $("pickup").value = v2; $("dropoff").value = v1;
             pickupCoord = c2; dropoffCoord = c1;
+            pickupMarker = m2; dropoffMarker = m1;
+            
+            if(pickupMarker) pickupMarker.setStyle({color: '#3b82f6'});
+            if(dropoffMarker) dropoffMarker.setStyle({color: '#ef4444'});
+            
+            $(`clear-pickup`).style.display = $("pickup").value ? 'flex' : 'none';
+            $(`clear-dropoff`).style.display = $("dropoff").value ? 'flex' : 'none';
+            
             if (pickupCoord && dropoffCoord) calculate();
         };
     </script>
