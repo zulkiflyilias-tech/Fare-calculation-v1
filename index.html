@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - Professional v3.7</title>
+    <title>Rideshare MY - Professional v3.8</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
@@ -231,7 +231,8 @@
             WHATSAPP: "60108988182",
             ORS_KEY: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0=",
             CENTER: [3.139, 101.686],
-            BBOX: "99.5,1.2,103.6,6.8"
+            BBOX: "99.5,1.2,103.6,6.8",
+            TRAFFIC_FACTOR: 1.3 // Adds 30% to ORS base time to reflect Google Maps real-world traffic
         };
 
         const $ = id => document.getElementById(id);
@@ -326,13 +327,19 @@
                 map.fitBounds(routeLayer.getBounds(), { padding: [80, 80] });
 
                 const km = route.summary.distance / 1000;
-                const seconds = route.summary.duration;
-                const mins = seconds / 60;
+                
+                // --- GOOGLE MAPS STYLE ESTIMATION ---
+                // We multiply the base duration by TRAFFIC_FACTOR to simulate heavy urban traffic
+                const baseSeconds = route.summary.duration;
+                const trafficAdjustedSeconds = baseSeconds * CONFIG.TRAFFIC_FACTOR;
+                const trafficAdjustedMins = Math.ceil(trafficAdjustedSeconds / 60);
                 
                 const flagOff = 3.00;
                 const firstKm = 1.0;
                 let distFare = km > firstKm ? (km - firstKm) * 1.25 : 0;
-                const timeFare = (seconds / 36) * 0.25;
+                
+                // Fare logic uses adjusted time because traffic increases fare in real taxis
+                const timeFare = (trafficAdjustedSeconds / 36) * 0.25;
 
                 let subtotal = flagOff + distFare + timeFare;
                 let mode = "Standard Rate";
@@ -348,10 +355,10 @@
 
                 $("fare").innerText = `RM ${finalFare}`;
                 $("distance").innerText = `${km.toFixed(1)} km`;
-                $("eta").innerText = `${Math.round(mins)} min`;
+                $("eta").innerText = `${trafficAdjustedMins} min`;
                 $("mode-badge").innerText = mode;
                 
-                const msg = encodeURIComponent(`*Taxi Booking Request*\nFrom: ${$("pickup").value}\nTo: ${$("dropoff").value}\nEst. Fare: RM ${finalFare}\nMode: ${mode}`);
+                const msg = encodeURIComponent(`*Taxi Booking Request*\nFrom: ${$("pickup").value}\nTo: ${$("dropoff").value}\nEst. Distance: ${km.toFixed(1)} km\nEst. Time: ${trafficAdjustedMins} min\nEst. Fare: RM ${finalFare}`);
                 $("wa-btn").href = `https://wa.me/${CONFIG.WHATSAPP}?text=${msg}`;
                 
                 $("nav-btn").onclick = () => {
@@ -377,10 +384,12 @@
             return coordinates;
         }
 
+        // --- EVENT LISTENERS ---
         $("pickup").oninput = e => searchPlaces(e.target.value, "pickup-results", "pickup");
         $("dropoff").oninput = e => searchPlaces(e.target.value, "dropoff-results", "dropoff");
-        $("departure-time").onchange = () => calculate();
+        $("departure-time").onchange = () => { if(pickupCoord && dropoffCoord) calculate(); };
 
+        // RESET BUTTONS
         $("clear-pickup").onclick = () => clearInput('pickup');
         $("clear-dropoff").onclick = () => clearInput('dropoff');
 
