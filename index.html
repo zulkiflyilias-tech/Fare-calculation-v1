@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - Expert v4.2</title>
+    <title>Rideshare MY - Expert v4.3</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
@@ -398,8 +398,11 @@
             
             $("wa-btn").href = `https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(summary)}`;
             
-            // Fixed Google Maps Direction URL
-            $("nav-btn").href = `https://www.google.com/maps/dir/?api=1&origin=${pickupCoord[0]},${pickupCoord[1]}&destination=${dropoffCoord[0]},${dropoffCoord[1]}&travelmode=driving`;
+            // --- FIXED GOOGLE MAPS NAVIGATION URL ---
+            // Uses official Google Maps URL Scheme to trigger the app directly on iOS/Android
+            const origin = `${pickupCoord[0]},${pickupCoord[1]}`;
+            const dest = `${dropoffCoord[0]},${dropoffCoord[1]}`;
+            $("nav-btn").href = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(dest)}&travelmode=driving`;
             
             window.lastSummaryText = summary;
         }
@@ -418,7 +421,6 @@
             return coordinates;
         }
 
-        // --- EVENT LISTENERS ---
         $("pickup").oninput = e => searchPlaces(e.target.value, "pickup-results", "pickup");
         $("dropoff").oninput = e => searchPlaces(e.target.value, "dropoff-results", "dropoff");
         $("departure-time").onchange = () => { if(pickupCoord && dropoffCoord) calculate(); };
