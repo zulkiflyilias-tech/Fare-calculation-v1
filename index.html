@@ -301,16 +301,15 @@ const CONFIG = {
         KEYWORDS: ["genting", "cameron", "fraser", "bukit tinggi", "kundasang", "highland"],
         FEE: 20.00
     },
-    // UPDATED RATES FOR TIERED PRICING
     RATES: {
         BASE_BOOKING: 5.00,
-        TIER1_KM: 1.25, // First 20km
-        TIER2_KM: 1.10, // 20km to 80km
-        TIER3_KM: 1.00, // 80km+ (Long distance discount)
+        TIER1_KM: 1.25,
+        TIER2_KM: 1.10,
+        TIER3_KM: 1.00,
         TOLL_PER_KM: 0.14,
         AIRPORT_SURCHARGE: 7.50,
         GENTING_SURCHARGE: 12.00,
-        MIDNIGHT_SURCHARGE: 1.50 // 50% increase
+        MIDNIGHT_SURCHARGE: 1.50
     }
 };
 
@@ -406,28 +405,19 @@ async function calculate() {
         const hour = dateObj.getHours();
         const locText = ($("pickup").value + $("dropoff").value).toLowerCase();
 
-        // 1. TIERED KM CALCULATION (Fixes the "Price Cliff")
-        let distanceFare = 0;
-        if (km <= 20) {
-            distanceFare = km * CONFIG.RATES.TIER1_KM;
-        } else if (km <= 80) {
-            distanceFare = (20 * CONFIG.RATES.TIER1_KM) + ((km - 20) * CONFIG.RATES.TIER2_KM);
-        } else {
-            distanceFare = (20 * CONFIG.RATES.TIER1_KM) + (60 * CONFIG.RATES.TIER2_KM) + ((km - 80) * CONFIG.RATES.TIER3_KM);
-        }
+        let distanceFare = km <= 20 ? km * CONFIG.RATES.TIER1_KM : 
+                           km <= 80 ? (20 * CONFIG.RATES.TIER1_KM) + ((km - 20) * CONFIG.RATES.TIER2_KM) :
+                           (20 * CONFIG.RATES.TIER1_KM) + (60 * CONFIG.RATES.TIER2_KM) + ((km - 80) * CONFIG.RATES.TIER3_KM);
 
-        // 2. SURCHARGES & DEMAND
         let terrainFee = CONFIG.TERRAIN.KEYWORDS.some(k => locText.includes(k)) ? CONFIG.TERRAIN.FEE : 0;
         let isHigh = CONFIG.DEMAND.HIGH.some(k => locText.includes(k));
         let isMid = CONFIG.DEMAND.MID.some(k => locText.includes(k));
         let isPeak = (hour >= 6 && hour < 9) || (hour >= 17 && hour < 21);
         let isMidnight = (hour >= 0 && hour < 6);
 
-        // Cap demand for long distances to keep it competitive
         let demandMultiplier = isHigh ? 1.8 : (isMid || isPeak ? 1.4 : 1.0);
         if (km > 100) demandMultiplier = Math.min(demandMultiplier, 1.25);
 
-        // 3. TOLLS
         let tollKm = 0;
         if (route.extras?.tollways) {
             const ts = route.extras.tollways.summary.find(s => s.value === 1);
@@ -437,10 +427,7 @@ async function calculate() {
         if (locText.includes("klia")) estTolls += CONFIG.RATES.AIRPORT_SURCHARGE;
         if (locText.includes("genting")) estTolls += CONFIG.RATES.GENTING_SURCHARGE;
 
-        // 4. FINAL ASSEMBLY
         let subtotal = (CONFIG.RATES.BASE_BOOKING + distanceFare) * demandMultiplier;
-        
-        // Traffic Surcharge (RM 0.20 per min of delay)
         const baselineMins = (km / 35) * 60; 
         let trafficSurcharge = (actualEta > baselineMins) ? (actualEta - baselineMins) * 0.20 : 0;
 
@@ -471,7 +458,6 @@ async function calculate() {
         
         $("fare-content").style.opacity = "1";
         $("loading-state").style.display = 'none';
-
     } catch (e) { 
         console.error(e);
         $("loading-state").innerText = "Route unavailable."; 
@@ -507,8 +493,7 @@ $("dropoff").oninput = e => searchPlaces(e.target.value, "dropoff-results", "dro
 $("clear-pickup").onclick = () => resetField('pickup');
 $("clear-dropoff").onclick = () => resetField('dropoff');
 $("swap-btn").onclick = () => {
-    const v1 = $("pickup").value, v2 = $("dropoff").value;
-    const c1 = pickupCoord, c2 = dropoffCoord;
+    const v1 = $("pickup").value, v2 = $("dropoff").value, c1 = pickupCoord, c2 = dropoffCoord;
     $("pickup").value = v2; $("dropoff").value = v1;
     pickupCoord = c2; dropoffCoord = c1;
     if (pickupCoord && dropoffCoord) calculate();
@@ -519,11 +504,28 @@ $("copy-btn").onclick = () => {
         setTimeout(() => $("copy-btn").innerText = "Copy Text", 2000);
     });
 };
+
 $("gps-trigger").onclick = () => {
+    const group = $("pickup-group");
+    group.classList.add('loading');
     navigator.geolocation.getCurrentPosition(async p => {
         const lat = p.coords.latitude, lon = p.coords.longitude;
-        selectLoc('pickup', [lat, lon], "My Location");
-    });
+        try {
+            const res = await fetch(`https://photon.komoot.io/reverse?lon=${lon}&lat=${lat}`);
+            const data = await res.json();
+            if (data.features && data.features.length > 0) {
+                const f = data.features[0].properties;
+                const addr = [f.name, f.street, f.district, f.city, f.state].filter(Boolean).join(', ');
+                selectLoc('pickup', [lat, lon], addr);
+            } else {
+                selectLoc('pickup', [lat, lon], "Dropped Pin Location");
+            }
+        } catch (e) {
+            selectLoc('pickup', [lat, lon], "My Location");
+        } finally {
+            group.classList.remove('loading');
+        }
+    }, () => group.classList.remove('loading'));
 };
 </script>
 </body>
