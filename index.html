@@ -83,7 +83,7 @@
             outline: none;
             background: #f9fafb;
             transition: all 0.2s ease;
-            -webkit-appearance: none; /* Mobile fix */
+            -webkit-appearance: none;
         }
 
         input:focus {
@@ -111,7 +111,6 @@
             border-radius: 8px;
             font-size: 18px;
             color: #9ca3af;
-            touch-action: manipulation;
         }
 
         .autocomplete-list {
@@ -137,7 +136,6 @@
         }
 
         .autocomplete-item:hover { background: #f9fafb; }
-
         .loc-name { font-weight: 700; font-size: 13px; display: block; color: #111; }
         .loc-addr { font-size: 11px; color: var(--gray-text); }
 
@@ -156,7 +154,6 @@
             justify-content: center;
             color: var(--primary);
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            touch-action: manipulation;
         }
 
         .results-card {
@@ -210,7 +207,6 @@
             color: white;
             border: none;
             cursor: pointer;
-            touch-action: manipulation;
         }
 
         .btn-wa { background: var(--whatsapp); }
@@ -239,7 +235,7 @@
 <div class="search-panel">
     <div class="input-group" id="pickup-group">
         <label>Pickup Location</label>
-        <input type="text" id="pickup" placeholder="Search for pickup..." autocomplete="off" enterkeyhint="search">
+        <input type="text" id="pickup" placeholder="Search for pickup..." autocomplete="off">
         <div class="btn-container">
             <button class="icon-btn" id="clear-pickup" style="display:none">✕</button>
             <button class="icon-btn" id="gps-trigger">📍</button>
@@ -253,7 +249,7 @@
 
     <div class="input-group" id="dropoff-group">
         <label>Destination</label>
-        <input type="text" id="dropoff" placeholder="Search for destination..." autocomplete="off" enterkeyhint="search">
+        <input type="text" id="dropoff" placeholder="Search for destination..." autocomplete="off">
         <div class="btn-container">
             <button class="icon-btn" id="clear-dropoff" style="display:none">✕</button>
         </div>
@@ -291,6 +287,10 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
+/**
+ * CONFIGURATION
+ * Note: Replace ORS_KEY with your actual hex key if the base64 version fails.
+ */
 const CONFIG = {
     WHATSAPP: "60108988182",
     ORS_KEY: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0=",
@@ -319,7 +319,7 @@ const iconB = L.divIcon({ className: 'custom-div-icon', html: `<div class="marke
 const $ = id => document.getElementById(id);
 let pickupCoord, dropoffCoord, routeLayer, pickupMarker, dropoffMarker, searchTimer, lastSummaryText = "";
 
-// RECOMMENDED CHANGE: Added preferCanvas for mobile GPU performance
+// Initialize Map
 const map = L.map("map", { 
     zoomControl: false, 
     attributionControl: false,
@@ -328,6 +328,7 @@ const map = L.map("map", {
 
 L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").addTo(map);
 
+// Set default time to now
 const now = new Date();
 now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
 $("departure-time").value = now.toISOString().slice(0,16);
@@ -342,29 +343,35 @@ async function searchPlaces(query, resultId, type) {
     const list = $(resultId);
     const group = $(`${type}-group`);
     $(`clear-${type}`).style.display = query.length > 0 ? 'flex' : 'none';
+    
     clearTimeout(searchTimer);
     if (query.length < 3) { list.style.display = 'none'; group.classList.remove('loading'); return; }
-    group.classList.add('loading');
     
-    // RECOMMENDED CHANGE: Increased debounce to 550ms for smoother mobile typing
+    group.classList.add('loading');
     searchTimer = setTimeout(async () => {
         try {
             const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&countrycode=MY&limit=6`);
             const data = await res.json();
             renderResults(data.features, resultId, type);
-        } catch (e) { console.error(e); } finally { group.classList.remove('loading'); }
+        } catch (e) { 
+            console.error("Search Error:", e); 
+        } finally { 
+            group.classList.remove('loading'); 
+        }
     }, 550);
 }
 
 function renderResults(features, resultId, type) {
     const list = $(resultId);
-    if (!features.length) { list.style.display = 'none'; return; }
+    if (!features || !features.length) { list.style.display = 'none'; return; }
     list.innerHTML = features.map(f => {
         const p = f.properties;
         const name = p.name || 'Unknown Location';
         const addr = [p.street, p.district, p.city, p.state].filter(Boolean).join(', ');
-        const fullStr = `${name}, ${addr}`.replace(/'/g, "\\'");
-        return `<div class="autocomplete-item" onclick="selectLoc('${type}', [${f.geometry.coordinates[1]}, ${f.geometry.coordinates[0]}], '${fullStr}')">
+        const lat = f.geometry.coordinates[1];
+        const lng = f.geometry.coordinates[0];
+        const fullStr = `${name}, ${addr}`.replace(/'/g, "");
+        return `<div class="autocomplete-item" onclick="selectLoc('${type}', [${lat}, ${lng}], '${fullStr}')">
             <span class="loc-name">${name}</span><span class="loc-addr">${addr || 'Malaysia'}</span></div>`;
     }).join('');
     list.style.display = 'block';
@@ -374,17 +381,20 @@ function selectLoc(type, coord, label) {
     $(type).value = label;
     $(`${type}-results`).style.display = 'none';
     $(`clear-${type}`).style.display = 'flex';
+    
     if (type === 'pickup') {
-        if (pickupMarker) { pickupMarker.setLatLng(coord); } 
-        else { pickupMarker = L.marker(coord, { icon: iconA }).addTo(map); }
+        if (pickupMarker) pickupMarker.setLatLng(coord);
+        else pickupMarker = L.marker(coord, { icon: iconA }).addTo(map);
         pickupCoord = coord;
         if (!$("dropoff").value) $("dropoff").focus();
     } else {
-        if (dropoffMarker) { dropoffMarker.setLatLng(coord); } 
-        else { dropoffMarker = L.marker(coord, { icon: iconB }).addTo(map); }
+        if (dropoffMarker) dropoffMarker.setLatLng(coord);
+        else dropoffMarker = L.marker(coord, { icon: iconB }).addTo(map);
         dropoffCoord = coord;
     }
+    
     if (pickupCoord && dropoffCoord) calculate();
+    else map.setView(coord, 15);
 }
 
 function resetField(type) {
@@ -399,26 +409,40 @@ function resetField(type) {
 
 async function calculate() {
     if (!pickupCoord || !dropoffCoord) return;
+    
     $("results").style.display = 'block';
-    $("fare").style.opacity = "0.4";
+    $("fare-content").style.opacity = "0.4";
     $("loading-state").style.display = 'block';
+    $("loading-state").innerText = "Calculating Route...";
 
     try {
         const res = await fetch("https://api.openrouteservice.org/v2/directions/driving-car", {
             method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": CONFIG.ORS_KEY },
+            headers: { 
+                "Content-Type": "application/json", 
+                "Authorization": CONFIG.ORS_KEY 
+            },
             body: JSON.stringify({ 
-                coordinates: [[pickupCoord[1], pickupCoord[0]], [dropoffCoord[1], dropoffCoord[0]]],
+                // CRITICAL FIX: ORS expects [Longitude, Latitude]
+                coordinates: [
+                    [pickupCoord[1], pickupCoord[0]], 
+                    [dropoffCoord[1], dropoffCoord[0]]
+                ],
                 extra_info: ["tollways"]
             })
         });
+
+        if (!res.ok) throw new Error("Routing Service Error");
         const data = await res.json();
         const route = data.routes[0];
         
+        // Draw Route
         if (routeLayer) map.removeLayer(routeLayer);
-        routeLayer = L.polyline(decodePoly(route.geometry), { color: '#059669', weight: 6 }).addTo(map);
+        const decodedCoords = decodePoly(route.geometry);
+        routeLayer = L.polyline(decodedCoords, { color: '#059669', weight: 6 }).addTo(map);
         map.fitBounds(routeLayer.getBounds(), { padding: [80,80] });
 
+        // Fare Logic
         const km = route.summary.distance / 1000;
         const actualEtaTotal = Math.ceil(route.summary.duration / 60);
         const dateObj = new Date($("departure-time").value);
@@ -449,6 +473,7 @@ async function calculate() {
         let finalFare = Math.round((km * ratePerKm * demandMultiplier) + trafficSurcharge + terrainFee + estimatedTolls);
         if (finalFare < 5) finalFare = 5;
 
+        // UI Update
         const badge = $("mode-badge");
         badge.className = "mode-badge";
         let label = "Standard Rate";
@@ -473,16 +498,17 @@ async function calculate() {
         
         $("wa-btn").href = `https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(lastSummaryText)}`;
         $("nav-btn").onclick = () => window.location.href = `google.navigation:q=${dropoffCoord[0]},${dropoffCoord[1]}`;
-        $("fare").style.opacity = "1";
+        
+        $("fare-content").style.opacity = "1";
         $("loading-state").style.display = 'none';
 
     } catch (e) { 
-        console.error(e); 
-        $("loading-state").innerText = "Calculation error. Check API limits."; 
+        console.error("Calculation Error:", e); 
+        $("loading-state").innerText = "Route unavailable or API error."; 
     }
 }
 
-// RECOMMENDED CHANGE: Cached length for mobile CPU loop optimization
+// Polyline Decoder for ORS
 function decodePoly(str) {
     let index = 0, lat = 0, lng = 0, coordinates = [];
     const len = str.length;
@@ -498,6 +524,7 @@ function decodePoly(str) {
     return coordinates;
 }
 
+// Event Listeners
 $("pickup").oninput = e => searchPlaces(e.target.value, "pickup-results", "pickup");
 $("dropoff").oninput = e => searchPlaces(e.target.value, "dropoff-results", "dropoff");
 $("departure-time").onchange = () => { if (pickupCoord && dropoffCoord) calculate(); };
@@ -523,6 +550,7 @@ $("swap-btn").onclick = () => {
     if (!c1 && !c2) return;
     $("pickup").value = v2; $("dropoff").value = v1;
     pickupCoord = c2; dropoffCoord = c1;
+    
     if (pickupCoord) {
         if (!pickupMarker) pickupMarker = L.marker(pickupCoord, {icon: iconA}).addTo(map);
         else pickupMarker.setLatLng(pickupCoord);
@@ -542,7 +570,6 @@ $("copy-btn").onclick = () => {
     });
 };
 
-map.on('click', () => { $("pickup-results").style.display = 'none'; $("dropoff-results").style.display = 'none'; });
-</script>
-</body>
-</html>
+map.on('click', () => { 
+    $("pickup-results").style.display = 'none'; 
+    $("dropoff-
