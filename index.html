@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - v5.3 Precision</title>
+    <title>Rideshare MY - v5.3 PRO</title>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -110,6 +110,7 @@
             border-radius: 8px;
             font-size: 18px;
             color: #9ca3af;
+            touch-action: manipulation;
         }
 
         .autocomplete-list {
@@ -154,6 +155,7 @@
             justify-content: center;
             color: var(--primary);
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            touch-action: manipulation;
         }
 
         .results-card {
@@ -207,6 +209,7 @@
             color: white;
             border: none;
             cursor: pointer;
+            touch-action: manipulation;
         }
 
         .btn-wa { background: var(--whatsapp); }
@@ -255,12 +258,17 @@
         </div>
         <div id="dropoff-results" class="autocomplete-list"></div>
     </div>
+
+    <div class="input-group" style="margin-bottom:0;">
+        <label>Travel Schedule</label>
+        <input type="datetime-local" id="departure-time">
+    </div>
 </div>
 
 <div id="map"></div>
 
 <div id="results" class="results-card">
-    <div id="loading-state">Calculating Precise Fare...</div>
+    <div id="loading-state">Updating Fare...</div>
     <div id="fare-content">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h2 id="fare">RM 0</h2>
@@ -268,7 +276,7 @@
         </div>
         <div class="fare-breakdown">
             📏 <b id="distance">0 km</b> | ⏱️ <b id="eta">0 min</b><br>
-            🚧 Toll (Est): <b id="toll">RM 0</b>
+            🚧 Toll Road: <b id="toll-dist">0 km</b> | Est: <b id="toll">RM 0</b>
             <span id="terrain-row" style="display:none"><br>⛰️ Terrain Fee: <b>RM 20.00</b></span>
         </div>
         <div class="btn-group">
@@ -287,9 +295,20 @@ const CONFIG = {
     ORS_KEY: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0=",
     CENTER: [4.2105, 101.9758],
     ZOOM: 7,
+    DEMAND: {
+        HIGH: ["klia", "airport", "sentral", "trx", "klcc", "genting", "legoland", "southkey", "118", "pavilion", "mid valley", "sunway"],
+        MID: ["hotel", "resort", "mall", "parade", "heritage", "waterfront", "jetty", "beach", "stadium", "central", "city centre"]
+    },
     TERRAIN: {
         KEYWORDS: ["genting", "cameron", "fraser", "bukit tinggi", "kundasang", "highland"],
         FEE: 20.00
+    },
+    RATES: {
+        BASE: 1.10,
+        LONG: 1.75,
+        TOLL_PER_KM: 0.14, // Refined PLUS standard
+        AIRPORT_SURCHARGE: 7.50,
+        GENTING_SURCHARGE: 12.00
     }
 };
 
@@ -301,6 +320,10 @@ let pickupCoord, dropoffCoord, routeLayer, pickupMarker, dropoffMarker, searchTi
 
 const map = L.map("map", { zoomControl: false, attributionControl: false }).setView(CONFIG.CENTER, CONFIG.ZOOM);
 L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").addTo(map);
+
+const now = new Date();
+now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+$("departure-time").value = now.toISOString().slice(0,16);
 
 function formatDuration(totalMinutes) {
     const hrs = Math.floor(totalMinutes / 60);
@@ -343,14 +366,14 @@ function selectLoc(type, coord, label) {
     $(`${type}-results`).style.display = 'none';
     $(`clear-${type}`).style.display = 'flex';
     if (type === 'pickup') {
-        if (pickupMarker) map.removeLayer(pickupMarker);
+        if (pickupMarker) { pickupMarker.setLatLng(coord); } 
+        else { pickupMarker = L.marker(coord, { icon: iconA }).addTo(map); }
         pickupCoord = coord;
-        pickupMarker = L.marker(coord, { icon: iconA }).addTo(map);
         if (!$("dropoff").value) $("dropoff").focus();
     } else {
-        if (dropoffMarker) map.removeLayer(dropoffMarker);
+        if (dropoffMarker) { dropoffMarker.setLatLng(coord); } 
+        else { dropoffMarker = L.marker(coord, { icon: iconB }).addTo(map); }
         dropoffCoord = coord;
-        dropoffMarker = L.marker(coord, { icon: iconB }).addTo(map);
     }
     if (pickupCoord && dropoffCoord) calculate();
 }
@@ -359,8 +382,8 @@ function resetField(type) {
     $(type).value = '';
     $(`clear-${type}`).style.display = 'none';
     $(`${type}-results`).style.display = 'none';
-    if (type === 'pickup') { if (pickupMarker) map.removeLayer(pickupMarker); pickupCoord = null; }
-    else { if (dropoffMarker) map.removeLayer(dropoffMarker); dropoffCoord = null; }
+    if (type === 'pickup') { if (pickupMarker) map.removeLayer(pickupMarker); pickupCoord = null; pickupMarker = null; }
+    else { if (dropoffMarker) map.removeLayer(dropoffMarker); dropoffCoord = null; dropoffMarker = null; }
     if (routeLayer) map.removeLayer(routeLayer);
     $("results").style.display = 'none';
 }
@@ -377,7 +400,7 @@ async function calculate() {
             headers: { "Content-Type": "application/json", "Authorization": CONFIG.ORS_KEY },
             body: JSON.stringify({ 
                 coordinates: [[pickupCoord[1], pickupCoord[0]], [dropoffCoord[1], dropoffCoord[0]]],
-                extra_info: ["waycategory"] 
+                extra_info: ["tollways"]
             })
         });
         const data = await res.json();
@@ -389,50 +412,69 @@ async function calculate() {
 
         const km = route.summary.distance / 1000;
         const actualEtaTotal = Math.ceil(route.summary.duration / 60);
+        const dateObj = new Date($("departure-time").value);
+        const hour = dateObj.getHours();
         const locText = ($("pickup").value + $("dropoff").value).toLowerCase();
         
-        // 1. Precise Toll Detection via waycategory
-        let tollDistanceKm = 0;
-        if (route.extras && route.extras.waycategory) {
-            const tollSegments = route.extras.waycategory.summary.filter(s => s.value === 3 || s.value === 2);
-            tollDistanceKm = tollSegments.reduce((acc, curr) => acc + curr.distance, 0) / 1000;
+        // 1. Terrain & High Demand Check
+        let terrainFee = CONFIG.TERRAIN.KEYWORDS.some(key => locText.includes(key)) ? CONFIG.TERRAIN.FEE : 0;
+        const isHigh = CONFIG.DEMAND.HIGH.some(key => locText.includes(key));
+        const isMid = CONFIG.DEMAND.MID.some(key => locText.includes(key));
+        const isPeak = (hour >= 6 && hour < 9) || (hour >= 17 && hour < 21);
+
+        let demandMultiplier = isHigh ? 2.2 : (isMid || isPeak ? 1.6 : 1.0);
+
+        // 2. ORS Extra Info: Toll Calculation
+        let tollKm = 0;
+        if (route.extras && route.extras.tollways) {
+            const tollSummary = route.extras.tollways.summary.find(s => s.value === 1);
+            if (tollSummary) tollKm = tollSummary.distance / 1000;
         }
-        let calculatedToll = tollDistanceKm > 0 ? (tollDistanceKm * 0.11) + 2.00 : 0;
-        if (locText.includes("klia")) calculatedToll += 7.50;
-        if (locText.includes("genting")) calculatedToll += 12.00;
 
-        // 2. Pricing Structure
-        const ratePerKm = (km >= 80) ? 1.80 : 1.25; 
-        const isTerrain = CONFIG.TERRAIN.KEYWORDS.some(key => locText.includes(key));
-        const terrainFee = isTerrain ? 20.00 : 0;
+        let estimatedTolls = tollKm * CONFIG.RATES.TOLL_PER_KM;
+        if (locText.includes("klia")) estimatedTolls += CONFIG.RATES.AIRPORT_SURCHARGE;
+        if (locText.includes("genting")) estimatedTolls += CONFIG.RATES.GENTING_SURCHARGE;
 
-        let totalRaw = (km * ratePerKm) + terrainFee + calculatedToll;
+        // 3. Rate Calculation
+        let ratePerKm = (km >= 90) ? CONFIG.RATES.LONG : CONFIG.RATES.BASE;
+        const baselineMinutes = (km / 25) * 60;
+        let trafficSurcharge = (actualEtaTotal > baselineMinutes) ? (actualEtaTotal - baselineMinutes) * 0.20 : 0;
         
-        // 3. Rounding Logic (>= 0.50 rounds up, else floor)
-        const decimalPart = totalRaw % 1;
-        let finalFare = decimalPart >= 0.50 ? Math.ceil(totalRaw) : Math.floor(totalRaw);
+        let finalFare = Math.round((km * ratePerKm * demandMultiplier) + trafficSurcharge + terrainFee + estimatedTolls);
+        if (finalFare < 5) finalFare = 5;
 
-        // 4. UI Updates
+        // UI Updates
         const badge = $("mode-badge");
-        badge.classList.remove('long-haul', 'terrain');
-        let label = km >= 80 ? "Inter-State" : "Standard Rate";
-        if (isTerrain) { label = "Highland"; badge.classList.add('terrain'); }
+        badge.className = "mode-badge"; // Reset
+        let label = "Standard Rate";
+
+        if (terrainFee > 0) { label = "Highland / Terrain"; badge.classList.add('terrain'); }
+        else if (km >= 90) { label = "Inter-State"; badge.classList.add('long-haul'); }
+        else if (isHigh) label = "High Demand Zone";
+        else if (isMid) label = "Active Hub Rate";
+        else if (isPeak) label = "Peak Hour Rate";
 
         $("fare").innerText = `RM ${finalFare}`;
         $("distance").innerText = `${km.toFixed(1)} km`;
         $("eta").innerText = formatDuration(actualEtaTotal);
-        $("toll").innerText = `RM ${calculatedToll.toFixed(2)}`;
-        $("terrain-row").style.display = isTerrain ? 'block' : 'none';
+        $("toll-dist").innerText = `${tollKm.toFixed(1)} km`;
+        $("toll").innerText = `RM ${estimatedTolls.toFixed(2)}`;
+        $("terrain-row").style.display = terrainFee > 0 ? 'block' : 'none';
         badge.innerText = label;
 
-        lastSummaryText = `🚖 *RIDE ESTIMATE*\n📍 *From:* ${$("pickup").value}\n🏁 *To:* ${$("dropoff").value}\n\n• Distance: ${km.toFixed(1)} km\n• Toll: RM ${calculatedToll.toFixed(2)}\n💰 *TOTAL FARE: RM ${finalFare}*`;
+        const formattedTime = dateObj.toLocaleString('en-MY', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+        lastSummaryText = `🚖 *RIDE BOOKING (v5.3 PRO)*\n--------------------------\n📍 *Pickup:* ${$("pickup").value}\n🏁 *Drop-off:* ${$("dropoff").value}\n⏰ *Time:* ${formattedTime}\n\n📊 *Details:*\n• Distance: ${km.toFixed(1)} km\n• Duration: ${formatDuration(actualEtaTotal)}\n• Rate Type: ${label}\n• Toll Road: ${tollKm.toFixed(1)} km\n• Toll Est: RM ${estimatedTolls.toFixed(2)}\n${terrainFee > 0 ? '• Terrain Fee: RM 20.00\n' : ''}\n💰 *TOTAL FARE: RM ${finalFare}*\n--------------------------`;
         
         $("wa-btn").href = `https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(lastSummaryText)}`;
         $("nav-btn").onclick = () => window.location.href = `google.navigation:q=${dropoffCoord[0]},${dropoffCoord[1]}`;
         $("fare").style.opacity = "1";
         $("loading-state").style.display = 'none';
 
-    } catch (e) { console.error(e); $("loading-state").innerText = "Calculation error."; }
+    } catch (e) { 
+        console.error(e); 
+        $("loading-state").innerText = "Calculation error. Check API limits."; 
+    }
 }
 
 function decodePoly(str) {
@@ -451,6 +493,7 @@ function decodePoly(str) {
 
 $("pickup").oninput = e => searchPlaces(e.target.value, "pickup-results", "pickup");
 $("dropoff").oninput = e => searchPlaces(e.target.value, "dropoff-results", "dropoff");
+$("departure-time").onchange = () => { if (pickupCoord && dropoffCoord) calculate(); };
 $("clear-pickup").onclick = () => resetField('pickup');
 $("clear-dropoff").onclick = () => resetField('dropoff');
 
@@ -473,10 +516,14 @@ $("swap-btn").onclick = () => {
     if (!c1 && !c2) return;
     $("pickup").value = v2; $("dropoff").value = v1;
     pickupCoord = c2; dropoffCoord = c1;
-    if (pickupMarker) map.removeLayer(pickupMarker);
-    if (dropoffMarker) map.removeLayer(dropoffMarker);
-    if (pickupCoord) pickupMarker = L.marker(pickupCoord, {icon: iconA}).addTo(map);
-    if (dropoffCoord) dropoffMarker = L.marker(dropoffCoord, {icon: iconB}).addTo(map);
+    if (pickupCoord) {
+        if (!pickupMarker) pickupMarker = L.marker(pickupCoord, {icon: iconA}).addTo(map);
+        else pickupMarker.setLatLng(pickupCoord);
+    }
+    if (dropoffCoord) {
+        if (!dropoffMarker) dropoffMarker = L.marker(dropoffCoord, {icon: iconB}).addTo(map);
+        else dropoffMarker.setLatLng(dropoffCoord);
+    }
     if (pickupCoord && dropoffCoord) calculate();
 };
 
