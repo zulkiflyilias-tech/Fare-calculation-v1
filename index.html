@@ -148,7 +148,13 @@
 <script>
 const CONFIG = {
     ORS_KEY: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0=",
-    RATES: { BASE: 3.00, KM: 1.05, PEAK: 10.00, MIDNIGHT: 25.00, INTERSTATE: 50.00, TERRAIN: 20.00 }
+    RATES: { 
+        BASE: 3.00, 
+        KM_STANDARD: 1.25, // Updated rate
+        KM_CAP: 2.05,      // Price ceiling per KM
+        MIDNIGHT: 25.00, 
+        TERRAIN: 20.00 
+    }
 };
 
 const $ = id => document.getElementById(id);
@@ -191,38 +197,55 @@ function selectLoc(type, coord, label) {
 
 async function calculate() {
     if (!pickupCoord || !dropoffCoord) return;
-    const res = await fetch("https://api.openrouteservice.org/v2/directions/driving-car", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": CONFIG.ORS_KEY },
-        body: JSON.stringify({ coordinates: [[pickupCoord[1], pickupCoord[0]], [dropoffCoord[1], dropoffCoord[0]]] })
-    });
-    const data = await res.json();
-    const route = data.routes[0];
-    const km = route.summary.distance / 1000;
     
-    // REFRESH RATES BASED ON SELECTED TIME
-    const dateObj = new Date($("departure-time").value);
-    const hour = dateObj.getHours();
-    const mins = dateObj.getMinutes();
-    const timeVal = hour + (mins/60);
-    const locText = ($("pickup").value + $("dropoff").value).toLowerCase();
+    try {
+        const res = await fetch("https://api.openrouteservice.org/v2/directions/driving-car", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": CONFIG.ORS_KEY },
+            body: JSON.stringify({ coordinates: [[pickupCoord[1], pickupCoord[0]], [dropoffCoord[1], dropoffCoord[0]]] })
+        });
+        const data = await res.json();
+        const route = data.routes[0];
+        const km = route.summary.distance / 1000;
+        
+        // REFRESH RATES BASED ON SELECTED TIME
+        const dateObj = new Date($("departure-time").value);
+        const hour = dateObj.getHours();
+        const mins = dateObj.getMinutes();
+        const timeVal = hour + (mins/60);
+        const locText = ($("pickup").value + $("dropoff").value).toLowerCase();
 
-    let midnight = (timeVal >= 0 && timeVal < 6) ? CONFIG.RATES.MIDNIGHT : 0;
-    let peak = ((timeVal >= 6 && timeVal < 9) || (timeVal >= 12.5 && timeVal < 14.5) || (timeVal >= 17 && timeVal < 20)) ? CONFIG.RATES.PEAK : 0;
-    let interstate = km > 100 ? CONFIG.RATES.INTERSTATE : 0;
-    let terrain = ["genting", "cameron", "fraser", "highland"].some(k => locText.includes(k)) ? CONFIG.RATES.TERRAIN : 0;
-    
-    let total = CONFIG.RATES.BASE + (km * CONFIG.RATES.KM) + midnight + peak + interstate + terrain;
-    
-    $("fare").innerText = `RM ${Math.round(total)}`;
-    $("badge").innerText = interstate ? "Interstate" : (midnight ? "Midnight" : (peak ? "Peak Hour" : "Standard"));
-    $("summary").innerHTML = `📏 ${km.toFixed(1)} km | ⏱️ ${Math.ceil(route.summary.duration/60)} min<br>
-        Incentives: RM ${(midnight + peak + interstate).toFixed(2)} | Terrain: RM ${terrain.toFixed(2)}`;
-    $("results").style.display = 'block';
+        // 1. MULTIPLIER LOGIC
+        let peakMult = ((timeVal >= 6 && timeVal < 9) || (timeVal >= 12.5 && timeVal < 14.5) || (timeVal >= 17 && timeVal < 20)) ? 1.2 : 1.0;
+        let interstateMult = km > 100 ? 1.5 : 1.0;
+        
+        // 2. CALCULATE DISTANCE RATE WITH CAP
+        let dynamicRate = CONFIG.RATES.KM_STANDARD * peakMult * interstateMult;
+        if (dynamicRate > CONFIG.RATES.KM_CAP) dynamicRate = CONFIG.RATES.KM_CAP;
 
-    if (routeLayer) map.removeLayer(routeLayer);
-    routeLayer = L.polyline(decodePoly(route.geometry), {color: '#059669', weight: 5}).addTo(map);
-    map.fitBounds(routeLayer.getBounds(), {padding: [50,50]});
+        // 3. FLAT SURCHARGES
+        let midnight = (timeVal >= 0 && timeVal < 6) ? CONFIG.RATES.MIDNIGHT : 0;
+        let terrain = ["genting", "cameron", "fraser", "highland"].some(k => locText.includes(k)) ? CONFIG.RATES.TERRAIN : 0;
+        
+        let total = CONFIG.RATES.BASE + (km * dynamicRate) + midnight + terrain;
+        
+        // 4. UI UPDATES
+        $("fare").innerText = `RM ${Math.round(total)}`;
+        $("badge").innerText = km > 100 ? "Interstate" : (midnight ? "Midnight" : (peakMult > 1 ? "Peak Hour" : "Standard"));
+        
+        let capNotice = dynamicRate >= CONFIG.RATES.KM_CAP ? " <b style='color:red'>(CAPPED)</b>" : "";
+        $("summary").innerHTML = `📏 ${km.toFixed(1)} km | ⏱️ ${Math.ceil(route.summary.duration/60)} min<br>
+            Rate: RM ${dynamicRate.toFixed(2)}/km${capNotice} | Add-ons: RM ${(midnight + terrain).toFixed(2)}`;
+        
+        $("results").style.display = 'block';
+
+        if (routeLayer) map.removeLayer(routeLayer);
+        routeLayer = L.polyline(decodePoly(route.geometry), {color: '#059669', weight: 5}).addTo(map);
+        map.fitBounds(routeLayer.getBounds(), {padding: [50,50]});
+        
+    } catch (err) {
+        console.error("Calculation Error:", err);
+    }
 }
 
 function decodePoly(str) {
@@ -241,7 +264,7 @@ function decodePoly(str) {
 
 $("pickup").oninput = e => debounceSearch(e.target, "p-results", "pickup");
 $("dropoff").oninput = e => debounceSearch(e.target, "d-results", "dropoff");
-$("departure-time").onchange = () => calculate(); // FIX: RATE REFRESH ON TIME CHANGE
+$("departure-time").onchange = () => calculate();
 
 $("gps-btn").onclick = () => {
     navigator.geolocation.getCurrentPosition(async pos => {
