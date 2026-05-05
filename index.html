@@ -190,6 +190,44 @@
             color: #4b5563;
         }
 
+        /* Route Selector Styling */
+        .route-selector {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .route-option {
+            flex: 0 0 auto;
+            padding: 8px 14px;
+            border: 1.5px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            background: #f9fafb;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .route-option.active {
+            border-color: var(--primary);
+            background: #ecfdf5;
+            color: var(--primary);
+            box-shadow: 0 2px 8px rgba(5, 150, 105, 0.1);
+        }
+
+        .route-option span {
+            display: block;
+            font-size: 9px;
+            color: var(--gray-text);
+            font-weight: 400;
+            margin-top: 2px;
+        }
+
         .btn-group {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
@@ -265,8 +303,10 @@
 <div id="map"></div>
 
 <div id="results" class="results-card">
-    <div id="loading-state">Updating Fare...</div>
+    <div id="loading-state">Calculating Routes...</div>
     <div id="fare-content">
+        <div id="route-selector" class="route-selector"></div>
+        
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h2 id="fare">RM 0</h2>
             <span id="mode-badge" class="mode-badge">Standard Rate</span>
@@ -292,7 +332,6 @@ const CONFIG = {
     ORS_KEY: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0=",
     CENTER: [4.2105, 101.9758],
     ZOOM: 7,
-    // VM2026 Logic
     DEMAND: {
         HIGH: ["klia", "airport", "sentral", "trx", "klcc", "genting", "legoland", "southkey", "118", "pavilion", "mid valley", "sunway"],
         MID: ["hotel", "resort", "mall", "parade", "heritage", "waterfront", "jetty", "beach", "stadium", "central", "city centre"]
@@ -308,6 +347,7 @@ const iconB = L.divIcon({ className: 'custom-div-icon', html: `<div class="marke
 
 const $ = id => document.getElementById(id);
 let pickupCoord, dropoffCoord, routeLayer, pickupMarker, dropoffMarker, searchTimer, lastSummaryText = "";
+let allRoutes = [];
 
 const map = L.map("map", { zoomControl: false, attributionControl: false }).setView(CONFIG.CENTER, CONFIG.ZOOM);
 L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").addTo(map);
@@ -322,7 +362,9 @@ function formatDuration(totalMinutes) {
     return hrs > 0 ? `${hrs}h ${mins}m` : `${totalMinutes} min`;
 }
 
-function estimateToll(km, pTxt, dTxt) {
+function estimateToll(km, pTxt, dTxt, isNoTollRoute) {
+    if (isNoTollRoute) return { total: 0, label: "No Toll Route" };
+    
     const routeText = `${pTxt} ${dTxt}`.toLowerCase();
     let toll = 0;
     let label = "Standard Toll";
@@ -399,78 +441,103 @@ async function calculate() {
     $("results").style.display = 'block';
     $("fare").style.opacity = "0.4";
     $("loading-state").style.display = 'block';
+    $("route-selector").innerHTML = "";
 
     try {
+        // Fetch up to 3 routes (Fastest/Shortest/No Toll)
         const res = await fetch("https://api.openrouteservice.org/v2/directions/driving-car", {
             method: "POST",
             headers: { "Content-Type": "application/json", "Authorization": CONFIG.ORS_KEY },
-            body: JSON.stringify({ coordinates: [[pickupCoord[1], pickupCoord[0]], [dropoffCoord[1], dropoffCoord[0]]] })
+            body: JSON.stringify({ 
+                coordinates: [[pickupCoord[1], pickupCoord[0]], [dropoffCoord[1], dropoffCoord[0]]],
+                alternative_routes: { target_count: 2 },
+                options: { avoid_features: ["tollways"] } 
+            })
         });
         const data = await res.json();
-        const route = data.routes[0];
-        if (routeLayer) map.removeLayer(routeLayer);
-        routeLayer = L.polyline(decodePoly(route.geometry), { color: '#059669', weight: 6 }).addTo(map);
-        map.fitBounds(routeLayer.getBounds(), { padding: [80,80] });
+        allRoutes = data.routes;
 
-        const km = route.summary.distance / 1000;
-        const actualEtaTotal = Math.ceil(route.summary.duration / 60);
-        const dateObj = new Date($("departure-time").value);
-        const hour = dateObj.getHours();
-        
-        const locText = ($("pickup").value + $("dropoff").value).toLowerCase();
-        
-        // 1. Terrain Check
-        let terrainFee = 0;
-        const isTerrain = CONFIG.TERRAIN.KEYWORDS.some(key => locText.includes(key));
-        if (isTerrain) terrainFee = CONFIG.TERRAIN.FEE;
-
-        // 2. Multiplier Tiers
-        const isHigh = CONFIG.DEMAND.HIGH.some(key => locText.includes(key));
-        const isMid = CONFIG.DEMAND.MID.some(key => locText.includes(key));
-        const isPeak = (hour >= 6 && hour < 9) || (hour >= 17 && hour < 21);
-
-        let demandMultiplier = 1.0;
-        if (isHigh) demandMultiplier = 2.2;
-        else if (isMid || isPeak) demandMultiplier = 1.6;
-
-        // 3. Rate Calculation
-        let ratePerKm = (km >= 90) ? 1.75 : 1.10;
-        const baselineMinutes = (km / 25) * 60;
-        let trafficSurcharge = (actualEtaTotal > baselineMinutes) ? (actualEtaTotal - baselineMinutes) * 0.20 : 0;
-        
-        const tollData = estimateToll(km, $("pickup").value, $("dropoff").value);
-        
-        let finalFare = Math.round((km * ratePerKm * demandMultiplier) + trafficSurcharge + terrainFee + tollData.total);
-        if (finalFare < 5) finalFare = 5;
-
-        // UI Updates
-        const badge = $("mode-badge");
-        badge.classList.remove('long-haul', 'terrain');
-        let label = "Standard Rate";
-
-        if (isTerrain) { label = "Highland / Terrain"; badge.classList.add('terrain'); }
-        else if (km >= 90) { label = "Inter-State"; badge.classList.add('long-haul'); }
-        else if (isHigh) label = "High Demand Zone";
-        else if (isMid) label = "Active Hub Rate";
-        else if (isPeak) label = "Peak Hour Rate";
-
-        $("fare").innerText = `RM ${finalFare}`;
-        $("distance").innerText = `${km.toFixed(1)} km`;
-        $("eta").innerText = formatDuration(actualEtaTotal);
-        $("toll").innerText = `RM ${tollData.total.toFixed(2)}`;
-        $("terrain-row").style.display = isTerrain ? 'block' : 'none';
-        badge.innerText = label;
-
-        const formattedTime = dateObj.toLocaleString('en-MY', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-
-        lastSummaryText = `🚖 *RIDE BOOKING (v5.2 PRO)*\n--------------------------\n📍 *Pickup:* ${$("pickup").value}\n🏁 *Drop-off:* ${$("dropoff").value}\n⏰ *Time:* ${formattedTime}\n\n📊 *Details:*\n• Distance: ${km.toFixed(1)} km\n• Duration: ${formatDuration(actualEtaTotal)}\n• Rate Type: ${label}\n• Toll Est: RM ${tollData.total.toFixed(2)}\n${isTerrain ? '• Terrain Fee: RM 20.00\n' : ''}\n💰 *TOTAL FARE: RM ${finalFare}*\n--------------------------`;
-        
-        $("wa-btn").href = `https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(lastSummaryText)}`;
-        $("nav-btn").onclick = () => window.location.href = `google.navigation:q=${dropoffCoord[0]},${dropoffCoord[1]}`;
-        $("fare").style.opacity = "1";
-        $("loading-state").style.display = 'none';
+        renderRouteSelector();
+        selectRoute(0); // Default to the first (usually fastest)
 
     } catch (e) { console.error(e); $("loading-state").innerText = "Calculation error."; }
+}
+
+function renderRouteSelector() {
+    const selector = $("route-selector");
+    selector.innerHTML = allRoutes.map((r, i) => {
+        const km = (r.summary.distance / 1000).toFixed(1);
+        const mins = Math.ceil(r.summary.duration / 60);
+        
+        // Logical labeling
+        let label = "Route " + (i + 1);
+        if (i === 0) label = "🚀 Fastest";
+        else if (i === 1) label = "🛣️ Shortest";
+        else label = "🍃 No Toll";
+
+        return `<div class="route-option ${i === 0 ? 'active' : ''}" onclick="selectRoute(${i})">
+            ${label}<span>${km} km • ${mins}m</span></div>`;
+    }).join('');
+}
+
+function selectRoute(index) {
+    const route = allRoutes[index];
+    const opts = document.querySelectorAll('.route-option');
+    opts.forEach((o, i) => o.classList.toggle('active', i === index));
+
+    if (routeLayer) map.removeLayer(routeLayer);
+    routeLayer = L.polyline(decodePoly(route.geometry), { color: '#059669', weight: 6 }).addTo(map);
+    map.fitBounds(routeLayer.getBounds(), { padding: [80,80] });
+
+    updateFareUI(route, index);
+}
+
+function updateFareUI(route, routeIndex) {
+    const km = route.summary.distance / 1000;
+    const actualEtaTotal = Math.ceil(route.summary.duration / 60);
+    const dateObj = new Date($("departure-time").value);
+    const hour = dateObj.getHours();
+    const locText = ($("pickup").value + $("dropoff").value).toLowerCase();
+    
+    let terrainFee = CONFIG.TERRAIN.KEYWORDS.some(key => locText.includes(key)) ? CONFIG.TERRAIN.FEE : 0;
+    const isHigh = CONFIG.DEMAND.HIGH.some(key => locText.includes(key));
+    const isMid = CONFIG.DEMAND.MID.some(key => locText.includes(key));
+    const isPeak = (hour >= 6 && hour < 9) || (hour >= 17 && hour < 21);
+
+    let demandMultiplier = isHigh ? 2.2 : (isMid || isPeak ? 1.6 : 1.0);
+    let ratePerKm = (km >= 90) ? 1.75 : 1.10;
+    const baselineMinutes = (km / 25) * 60;
+    let trafficSurcharge = (actualEtaTotal > baselineMinutes) ? (actualEtaTotal - baselineMinutes) * 0.20 : 0;
+    
+    // Check if the current route selection is intended as the "No Toll" one (usually index 2 in this logic)
+    const tollData = estimateToll(km, $("pickup").value, $("dropoff").value, routeIndex === 2);
+    
+    let finalFare = Math.round((km * ratePerKm * demandMultiplier) + trafficSurcharge + terrainFee + tollData.total);
+    if (finalFare < 5) finalFare = 5;
+
+    const badge = $("mode-badge");
+    badge.classList.remove('long-haul', 'terrain');
+    let label = "Standard Rate";
+    if (terrainFee > 0) { label = "Highland / Terrain"; badge.classList.add('terrain'); }
+    else if (km >= 90) { label = "Inter-State"; badge.classList.add('long-haul'); }
+    else if (isHigh) label = "High Demand Zone";
+    else if (isPeak) label = "Peak Hour Rate";
+
+    $("fare").innerText = `RM ${finalFare}`;
+    $("distance").innerText = `${km.toFixed(1)} km`;
+    $("eta").innerText = formatDuration(actualEtaTotal);
+    $("toll").innerText = `RM ${tollData.total.toFixed(2)}`;
+    $("terrain-row").style.display = terrainFee > 0 ? 'block' : 'none';
+    badge.innerText = label;
+
+    const formattedTime = dateObj.toLocaleString('en-MY', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+    lastSummaryText = `🚖 *RIDE BOOKING (v5.2 PRO)*\n--------------------------\n📍 *Pickup:* ${$("pickup").value}\n🏁 *Drop-off:* ${$("dropoff").value}\n⏰ *Time:* ${formattedTime}\n\n📊 *Details:*\n• Distance: ${km.toFixed(1)} km\n• Duration: ${formatDuration(actualEtaTotal)}\n• Rate Type: ${label}\n• Toll Est: RM ${tollData.total.toFixed(2)}\n💰 *TOTAL FARE: RM ${finalFare}*\n--------------------------`;
+    
+    $("wa-btn").href = `https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(lastSummaryText)}`;
+    $("nav-btn").onclick = () => window.location.href = `google.navigation:q=${dropoffCoord[0]},${dropoffCoord[1]}`;
+    $("fare").style.opacity = "1";
+    $("loading-state").style.display = 'none';
 }
 
 function decodePoly(str) {
