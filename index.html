@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - v5.3 PRO (Capped)</title>
+    <title>Rideshare MY - v5.4 PRO (Toll-Free Opt)</title>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -20,7 +20,6 @@
             --pickup-blue: #3b82f6;
             --dropoff-red: #ef4444;
             --long-haul: #8b5cf6;
-            --terrain: #f59e0b;
         }
 
         body {
@@ -40,7 +39,6 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.08);
             z-index: 1005;
             border-bottom: 1px solid #e5e7eb;
-            position: relative;
         }
 
         .input-group {
@@ -67,14 +65,48 @@
             font-size: 14px;
             outline: none;
             background: #f9fafb;
-            transition: all 0.2s ease;
         }
 
-        input:focus {
-            border-color: var(--primary);
-            background: white;
-            box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.1);
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #f3f4f6;
+            padding: 8px 12px;
+            border-radius: 10px;
+            margin-top: 8px;
         }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 20px;
+        }
+
+        .switch input { opacity: 0; width: 0; height: 0; }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 20px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 14px; width: 14px;
+            left: 3px; bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider { background-color: var(--primary); }
+        input:checked + .slider:before { transform: translateX(20px); }
 
         .btn-container {
             position: absolute;
@@ -84,63 +116,27 @@
             gap: 4px;
         }
 
-        .icon-btn {
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            padding: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 8px;
-            font-size: 18px;
-            color: #9ca3af;
-        }
+        .icon-btn { background: transparent; border: none; cursor: pointer; padding: 6px; color: #9ca3af; font-size: 18px; }
 
         .autocomplete-list {
             position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
+            top: 100%; left: 0; right: 0;
             background: white;
             z-index: 9999;
-            max-height: 250px;
+            max-height: 200px;
             overflow-y: auto;
             display: none;
-            border-radius: 0 0 12px 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
             border: 1px solid #e5e7eb;
-            margin-top: 2px;
+            border-radius: 0 0 12px 12px;
         }
 
-        .autocomplete-item {
-            padding: 12px 16px;
-            cursor: pointer;
-            border-bottom: 1px solid #f3f4f6;
-        }
+        .autocomplete-item { padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #f3f4f6; }
 
         #map { flex-grow: 1; width: 100%; z-index: 1; }
 
-        .swap-container { position: absolute; right: 24px; top: 76px; z-index: 1006; }
-        .swap-btn {
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 50%;
-            width: 36px;
-            height: 36px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--primary);
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        }
-
         .results-card {
             position: fixed;
-            bottom: 24px;
-            left: 16px;
-            right: 16px;
+            bottom: 24px; left: 16px; right: 16px;
             background: white;
             padding: 20px;
             border-radius: 20px;
@@ -151,188 +147,101 @@
 
         #fare { font-size: 34px; font-weight: 800; color: var(--primary); margin: 0; }
 
-        .mode-badge {
-            background:#ecfdf5;
-            color:var(--primary);
-            padding:6px 12px;
-            border-radius:30px;
-            font-size:11px;
-            font-weight:700;
-        }
-
-        .mode-badge.long-haul { background: #f5f3ff; color: var(--long-haul); }
-
-        .btn-group {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 8px;
-            margin-top: 20px;
-        }
-
-        .btn {
-            padding: 12px 4px;
-            border-radius: 10px;
-            text-align: center;
-            text-decoration: none;
-            font-weight: 700;
-            font-size: 12px;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-
+        .btn-group { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 20px; }
+        .btn { padding: 12px 4px; border-radius: 10px; text-align: center; text-decoration: none; font-weight: 700; font-size: 12px; color: white; border: none; cursor: pointer; }
         .btn-wa { background: var(--whatsapp); }
         .btn-nav { background: #3b82f6; }
         .btn-copy { background: var(--copy); }
 
-        .marker-label {
-            background: white;
-            border: 2px solid black;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 800;
-            font-size: 12px;
-        }
+        .mode-badge { background:#ecfdf5; color:var(--primary); padding:6px 12px; border-radius:30px; font-size:11px; font-weight:700; }
     </style>
 </head>
 <body>
 
 <div class="search-panel">
-    <div class="input-group" id="pickup-group">
+    <div class="input-group">
         <label>Pickup Location</label>
-        <input type="text" id="pickup" placeholder="Search for pickup..." autocomplete="off">
-        <div class="btn-container">
-            <button class="icon-btn" id="clear-pickup" style="display:none">✕</button>
-            <button class="icon-btn" id="gps-trigger">📍</button>
-        </div>
+        <input type="text" id="pickup" placeholder="Search pickup..." autocomplete="off">
+        <div class="btn-container"><button class="icon-btn" id="gps-trigger">📍</button></div>
         <div id="pickup-results" class="autocomplete-list"></div>
     </div>
 
-    <div class="swap-container">
-        <button class="swap-btn" id="swap-btn">⇅</button>
-    </div>
-
-    <div class="input-group" id="dropoff-group">
+    <div class="input-group">
         <label>Destination</label>
-        <input type="text" id="dropoff" placeholder="Search for destination..." autocomplete="off">
-        <div class="btn-container">
-            <button class="icon-btn" id="clear-dropoff" style="display:none">✕</button>
-        </div>
+        <input type="text" id="dropoff" placeholder="Search destination..." autocomplete="off">
         <div id="dropoff-results" class="autocomplete-list"></div>
     </div>
 
-    <div class="input-group" style="margin-bottom:0;">
-        <label>Departure Time</label>
-        <input type="datetime-local" id="departure-time">
+    <div class="toggle-container">
+        <span style="font-size: 13px; font-weight: 600; color: var(--text);">🚫 Avoid Tolls</span>
+        <label class="switch">
+            <input type="checkbox" id="toll-free-toggle">
+            <span class="slider"></span>
+        </label>
     </div>
 </div>
 
 <div id="map"></div>
 
 <div id="results" class="results-card">
-    <div id="fare-content">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h2 id="fare">RM 0</h2>
-            <span id="mode-badge" class="mode-badge">Standard Rate</span>
-        </div>
-        <div style="margin-top: 12px; font-size: 13px; color: #4b5563;">
-            📏 <b id="distance">0 km</b> | ⏱️ <b id="eta">0 min</b><br>
-            🚧 Toll: <b id="toll">RM 0</b>
-            <span id="terrain-row" style="display:none"><br>⛰️ Terrain Fee: <b>RM 20.00</b></span>
-        </div>
-        <div class="btn-group">
-            <a id="wa-btn" class="btn btn-wa" target="_blank">WhatsApp</a>
-            <button id="copy-btn" class="btn btn-copy">Copy Text</button>
-            <div id="nav-btn" class="btn btn-nav">Directions</div>
-        </div>
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h2 id="fare">RM 0</h2>
+        <span id="mode-badge" class="mode-badge">Standard Rate</span>
+    </div>
+    <div style="margin-top: 12px; font-size: 13px; color: #4b5563;">
+        📏 <b id="distance">0 km</b> | ⏱️ <b id="eta">0 min</b><br>
+        🚧 Toll: <b id="toll-display">RM 0</b>
+    </div>
+    <div class="btn-group">
+        <a id="wa-btn" class="btn btn-wa" target="_blank">WhatsApp</a>
+        <button id="copy-btn" class="btn btn-copy">Copy</button>
+        <button id="nav-btn" class="btn btn-nav">Directions</button>
     </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
 <script>
 const CONFIG = {
     WHATSAPP: "60108988182",
     ORS_KEY: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0=",
-    CENTER: [4.2105, 101.9758],
-    ZOOM: 7,
-    // Rate Capping Logic
     MIN_RATE: 1.00,
     MAX_RATE: 2.20,
-    DEMAND: {
-        HIGH: ["klia", "airport", "sentral", "trx", "klcc", "genting", "legoland", "southkey", "pavilion", "mid valley", "sunway"],
-        MID: ["hotel", "resort", "mall", "parade", "heritage", "waterfront", "jetty", "beach"]
-    },
-    TERRAIN: {
-        KEYWORDS: ["genting", "cameron", "fraser", "bukit tinggi", "kundasang"],
-        FEE: 20.00
-    }
+    DEMAND: { HIGH: ["klia", "airport", "genting"], MID: ["mall", "hotel"] }
 };
 
-const iconA = L.divIcon({ className: 'custom-icon', html: `<div class="marker-label" style="border-color:var(--pickup-blue); color:var(--pickup-blue);">A</div>`, iconSize: [24,24] });
-const iconB = L.divIcon({ className: 'custom-icon', html: `<div class="marker-label" style="border-color:var(--dropoff-red); color:var(--dropoff-red);">B</div>`, iconSize: [24,24] });
-
 const $ = id => document.getElementById(id);
-let pickupCoord, dropoffCoord, routeLayer, pickupMarker, dropoffMarker, lastSummaryText = "";
+let pickupCoord, dropoffCoord, routeLayer, lastSummaryText = "";
 
-const map = L.map("map", { zoomControl: false, attributionControl: false }).setView(CONFIG.CENTER, CONFIG.ZOOM);
+const map = L.map("map", { zoomControl: false }).setView([4.2105, 101.9758], 7);
 L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").addTo(map);
 
-const now = new Date();
-now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-$("departure-time").value = now.toISOString().slice(0,16);
-
 function estimateToll(km, pTxt, dTxt) {
+    if ($("toll-free-toggle").checked) return 0;
     const routeText = `${pTxt} ${dTxt}`.toLowerCase();
     let toll = (km < 15) ? 0 : (km * 0.11) + 3.50;
     if (routeText.includes("klia")) toll += 7.50;
-    if (routeText.includes("genting")) toll += 12.00;
     return Math.round(toll * 100) / 100;
 }
 
 async function searchPlaces(query, resultId, type) {
-    if (query.length < 3) { $(resultId).style.display = 'none'; return; }
-    try {
-        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&countrycode=MY&limit=5`);
-        const data = await res.json();
-        renderResults(data.features, resultId, type);
-    } catch (e) { console.error(e); }
-}
-
-function renderResults(features, resultId, type) {
-    const list = $(resultId);
-    list.innerHTML = features.map(f => {
-        const p = f.properties;
-        const name = p.name || 'Location';
-        const addr = [p.city, p.state].filter(Boolean).join(', ');
-        return `<div class="autocomplete-item" onclick="selectLoc('${type}', [${f.geometry.coordinates[1]}, ${f.geometry.coordinates[0]}], '${name}, ${addr}')">
-            <span style="font-weight:700; font-size:13px; display:block;">${name}</span>
-            <span style="font-size:11px; color:#6b7280;">${addr}</span></div>`;
-    }).join('');
-    list.style.display = 'block';
+    if (query.length < 3) return;
+    const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&countrycode=MY&limit=5`);
+    const data = await res.json();
+    $(resultId).innerHTML = data.features.map(f => `
+        <div class="autocomplete-item" onclick="selectLoc('${type}', [${f.geometry.coordinates[1]}, ${f.geometry.coordinates[0]}], '${f.properties.name}')">
+            ${f.properties.name}
+        </div>`).join('');
+    $(resultId).style.display = 'block';
 }
 
 function selectLoc(type, coord, label) {
     $(type).value = label;
     $(`${type}-results`).style.display = 'none';
-    if (type === 'pickup') {
-        if (pickupMarker) map.removeLayer(pickupMarker);
-        pickupCoord = coord; pickupMarker = L.marker(coord, { icon: iconA }).addTo(map);
-    } else {
-        if (dropoffMarker) map.removeLayer(dropoffMarker);
-        dropoffCoord = coord; dropoffMarker = L.marker(coord, { icon: iconB }).addTo(map);
-    }
+    if (type === 'pickup') pickupCoord = coord; else dropoffCoord = coord;
     if (pickupCoord && dropoffCoord) calculate();
 }
 
 async function calculate() {
-    if (!pickupCoord || !dropoffCoord) return;
-    $("results").style.display = 'block';
-
     try {
         const res = await fetch("https://api.openrouteservice.org/v2/directions/driving-car", {
             method: "POST",
@@ -341,77 +250,31 @@ async function calculate() {
         });
         const data = await res.json();
         const route = data.routes[0];
-        if (routeLayer) map.removeLayer(routeLayer);
-        routeLayer = L.polyline(decodePoly(route.geometry), { color: '#059669', weight: 5 }).addTo(map);
-        map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
-
         const km = route.summary.distance / 1000;
-        const mins = Math.ceil(route.summary.duration / 60);
-        const locText = ($("pickup").value + $("dropoff").value).toLowerCase();
         
-        // --- CAPPED RATE LOGIC ---
         let baseRate = (km >= 90) ? 1.75 : 1.10;
+        const locText = ($("pickup").value + $("dropoff").value).toLowerCase();
+        let multiplier = CONFIG.DEMAND.HIGH.some(k => locText.includes(k)) ? 2.2 : 1.0;
         
-        const isHigh = CONFIG.DEMAND.HIGH.some(key => locText.includes(key));
-        const isMid = CONFIG.DEMAND.MID.some(key => locText.includes(key));
-        let multiplier = 1.0;
-        if (isHigh) multiplier = 2.2;
-        else if (isMid) multiplier = 1.5;
-
-        // Apply Capping: RM 1.00 <= (Base * Multiplier) <= RM 2.20
-        let effectiveRate = baseRate * multiplier;
-        if (effectiveRate < CONFIG.MIN_RATE) effectiveRate = CONFIG.MIN_RATE;
-        if (effectiveRate > CONFIG.MAX_RATE) effectiveRate = CONFIG.MAX_RATE;
-
-        let terrainFee = CONFIG.TERRAIN.KEYWORDS.some(key => locText.includes(key)) ? CONFIG.TERRAIN.FEE : 0;
+        let effectiveRate = Math.min(Math.max(baseRate * multiplier, CONFIG.MIN_RATE), CONFIG.MAX_RATE);
         let toll = estimateToll(km, $("pickup").value, $("dropoff").value);
-        
-        let finalFare = Math.round((km * effectiveRate) + terrainFee + toll);
-        if (finalFare < 5) finalFare = 5;
+        let finalFare = Math.round((km * effectiveRate) + toll);
 
-        // UI Updates
         $("fare").innerText = `RM ${finalFare}`;
         $("distance").innerText = `${km.toFixed(1)} km`;
-        $("eta").innerText = `${mins} min`;
-        $("toll").innerText = `RM ${toll.toFixed(2)}`;
-        $("terrain-row").style.display = terrainFee > 0 ? 'block' : 'none';
-        
-        const badge = $("mode-badge");
-        badge.innerText = (km >= 90) ? "Long-Haul (Capped)" : "Urban Rate";
-        badge.className = (km >= 90) ? "mode-badge long-haul" : "mode-badge";
+        $("toll-display").innerText = `RM ${toll.toFixed(2)}`;
+        $("results").style.display = 'block';
 
-        lastSummaryText = `🚖 *RIDE BOOKING*\n📍 *From:* ${$("pickup").value}\n🏁 *To:* ${$("dropoff").value}\n📏 *Dist:* ${km.toFixed(1)}km\n💰 *FARE: RM ${finalFare}*`;
+        const tollNote = $("toll-free-toggle").checked ? " (Toll-Free Route)" : "";
+        lastSummaryText = `🚖 *RIDE BOOKING*\n📍 *From:* ${$("pickup").value}\n🏁 *To:* ${$("dropoff").value}\n📏 *Dist:* ${km.toFixed(1)}km\n🚧 *Toll:* RM ${toll.toFixed(2)}${tollNote}\n💰 *FARE: RM ${finalFare}*`;
         $("wa-btn").href = `https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(lastSummaryText)}`;
-
     } catch (e) { console.error(e); }
-}
-
-function decodePoly(str) {
-    let index = 0, lat = 0, lng = 0, coordinates = [];
-    while (index < str.length) {
-        let b, shift = 0, result = 0;
-        do { b = str.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
-        lat += (result & 1) ? ~(result >> 1) : (result >> 1);
-        shift = 0; result = 0;
-        do { b = str.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
-        lng += (result & 1) ? ~(result >> 1) : (result >> 1);
-        coordinates.push([lat / 1e5, lng / 1e5]);
-    }
-    return coordinates;
 }
 
 $("pickup").oninput = e => searchPlaces(e.target.value, "pickup-results", "pickup");
 $("dropoff").oninput = e => searchPlaces(e.target.value, "dropoff-results", "dropoff");
-$("swap-btn").onclick = () => {
-    const v1 = $("pickup").value, v2 = $("dropoff").value;
-    const c1 = pickupCoord, c2 = dropoffCoord;
-    $("pickup").value = v2; $("dropoff").value = v1;
-    pickupCoord = c2; dropoffCoord = c1;
-    calculate();
-};
-$("copy-btn").onclick = () => {
-    navigator.clipboard.writeText(lastSummaryText).then(() => alert("Text Copied!"));
-};
+$("toll-free-toggle").onchange = () => { if (pickupCoord && dropoffCoord) calculate(); };
+$("copy-btn").onclick = () => { navigator.clipboard.writeText(lastSummaryText); alert("Copied!"); };
 </script>
 </body>
 </html>
