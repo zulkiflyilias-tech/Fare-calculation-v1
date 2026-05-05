@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - v5.3 PRO</title>
+    <title>Rideshare MY - v5.3 Precision</title>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -255,17 +255,12 @@
         </div>
         <div id="dropoff-results" class="autocomplete-list"></div>
     </div>
-
-    <div class="input-group" style="margin-bottom:0;">
-        <label>Travel Schedule</label>
-        <input type="datetime-local" id="departure-time">
-    </div>
 </div>
 
 <div id="map"></div>
 
 <div id="results" class="results-card">
-    <div id="loading-state">Updating Fare...</div>
+    <div id="loading-state">Calculating Precise Fare...</div>
     <div id="fare-content">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h2 id="fare">RM 0</h2>
@@ -273,7 +268,7 @@
         </div>
         <div class="fare-breakdown">
             📏 <b id="distance">0 km</b> | ⏱️ <b id="eta">0 min</b><br>
-            🚦 Traffic Surcharge: <b id="traffic-fee">RM 0</b>
+            🚧 Toll (Est): <b id="toll">RM 0</b>
             <span id="terrain-row" style="display:none"><br>⛰️ Terrain Fee: <b>RM 20.00</b></span>
         </div>
         <div class="btn-group">
@@ -292,14 +287,6 @@ const CONFIG = {
     ORS_KEY: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0=",
     CENTER: [4.2105, 101.9758],
     ZOOM: 7,
-    BASE_RATE: 1.10,
-    URBAN_SURCHARGE: 0.30,
-    RURAL_SURCHARGE: 0.20,
-    DEMAND: {
-        HIGH: ["klia", "airport", "sentral", "trx", "klcc", "genting", "legoland", "southkey", "118", "pavilion", "mid valley", "sunway"],
-        MID: ["hotel", "resort", "mall", "parade", "heritage", "waterfront", "jetty", "beach", "stadium", "central", "city centre"],
-        CITIES: ["kuala lumpur", "selangor", "petaling jaya", "subang", "shah alam", "penang", "georgetown", "johor bahru", "melaka", "ipoh", "kuching", "kota kinabalu"]
-    },
     TERRAIN: {
         KEYWORDS: ["genting", "cameron", "fraser", "bukit tinggi", "kundasang", "highland"],
         FEE: 20.00
@@ -314,10 +301,6 @@ let pickupCoord, dropoffCoord, routeLayer, pickupMarker, dropoffMarker, searchTi
 
 const map = L.map("map", { zoomControl: false, attributionControl: false }).setView(CONFIG.CENTER, CONFIG.ZOOM);
 L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").addTo(map);
-
-const now = new Date();
-now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-$("departure-time").value = now.toISOString().slice(0,16);
 
 function formatDuration(totalMinutes) {
     const hrs = Math.floor(totalMinutes / 60);
@@ -392,72 +375,57 @@ async function calculate() {
         const res = await fetch("https://api.openrouteservice.org/v2/directions/driving-car", {
             method: "POST",
             headers: { "Content-Type": "application/json", "Authorization": CONFIG.ORS_KEY },
-            body: JSON.stringify({ coordinates: [[pickupCoord[1], pickupCoord[0]], [dropoffCoord[1], dropoffCoord[0]]] })
+            body: JSON.stringify({ 
+                coordinates: [[pickupCoord[1], pickupCoord[0]], [dropoffCoord[1], dropoffCoord[0]]],
+                extra_info: ["waycategory"] 
+            })
         });
         const data = await res.json();
         const route = data.routes[0];
+        
         if (routeLayer) map.removeLayer(routeLayer);
         routeLayer = L.polyline(decodePoly(route.geometry), { color: '#059669', weight: 6 }).addTo(map);
         map.fitBounds(routeLayer.getBounds(), { padding: [80,80] });
 
         const km = route.summary.distance / 1000;
         const actualEtaTotal = Math.ceil(route.summary.duration / 60);
-        const dateObj = new Date($("departure-time").value);
-        const hour = dateObj.getHours();
+        const locText = ($("pickup").value + $("dropoff").value).toLowerCase();
         
-        const pickupText = $("pickup").value.toLowerCase();
-        const dropoffText = $("dropoff").value.toLowerCase();
-        const locText = pickupText + dropoffText;
-        
-        // 1. Terrain Check
-        let terrainFee = 0;
-        const isTerrain = CONFIG.TERRAIN.KEYWORDS.some(key => locText.includes(key));
-        if (isTerrain) terrainFee = CONFIG.TERRAIN.FEE;
-
-        // 2. Multiplier Tiers (Capped logic)
-        const isHigh = CONFIG.DEMAND.HIGH.some(key => locText.includes(key));
-        const isMid = CONFIG.DEMAND.MID.some(key => locText.includes(key));
-        const isPeak = (hour >= 6 && hour < 9) || (hour >= 17 && hour < 21);
-
-        let demandMultiplier = 1.0;
-        let ratePerKm = CONFIG.BASE_RATE; // Fixed RM 1.10
-
-        if (isHigh) {
-            ratePerKm = 2.00; // Capped for High Demand
-            demandMultiplier = 1.0; 
-        } else if (isMid || isPeak) {
-            ratePerKm = 1.70; // Capped for Mid/Peak
-            demandMultiplier = 1.0;
+        // 1. Precise Toll Detection via waycategory
+        let tollDistanceKm = 0;
+        if (route.extras && route.extras.waycategory) {
+            const tollSegments = route.extras.waycategory.summary.filter(s => s.value === 3 || s.value === 2);
+            tollDistanceKm = tollSegments.reduce((acc, curr) => acc + curr.distance, 0) / 1000;
         }
+        let calculatedToll = tollDistanceKm > 0 ? (tollDistanceKm * 0.11) + 2.00 : 0;
+        if (locText.includes("klia")) calculatedToll += 7.50;
+        if (locText.includes("genting")) calculatedToll += 12.00;
 
-        // 3. Traffic Surcharge (Per KM based on area)
-        const isUrban = CONFIG.DEMAND.CITIES.some(city => locText.includes(city));
-        const trafficRate = isUrban ? CONFIG.URBAN_SURCHARGE : CONFIG.RURAL_SURCHARGE;
-        const trafficSurchargeTotal = km * trafficRate;
+        // 2. Pricing Structure
+        const ratePerKm = (km >= 80) ? 1.80 : 1.25; 
+        const isTerrain = CONFIG.TERRAIN.KEYWORDS.some(key => locText.includes(key));
+        const terrainFee = isTerrain ? 20.00 : 0;
+
+        let totalRaw = (km * ratePerKm) + terrainFee + calculatedToll;
         
-        // 4. Total Calculation: max(5, ((KM x Rate x Multiplier) + Traffic Surcharge + Terrain Fee))
-        let finalFare = Math.round((km * ratePerKm * demandMultiplier) + trafficSurchargeTotal + terrainFee);
-        if (finalFare < 5) finalFare = 5;
+        // 3. Rounding Logic (>= 0.50 rounds up, else floor)
+        const decimalPart = totalRaw % 1;
+        let finalFare = decimalPart >= 0.50 ? Math.ceil(totalRaw) : Math.floor(totalRaw);
 
-        // UI Updates
+        // 4. UI Updates
         const badge = $("mode-badge");
         badge.classList.remove('long-haul', 'terrain');
-        let label = "Standard Rate";
-
-        if (isTerrain) { label = "Highland / Terrain"; badge.classList.add('terrain'); }
-        else if (isHigh) label = "High Demand (Capped)";
-        else if (isMid || isPeak) label = "Peak/Hub (Capped)";
+        let label = km >= 80 ? "Inter-State" : "Standard Rate";
+        if (isTerrain) { label = "Highland"; badge.classList.add('terrain'); }
 
         $("fare").innerText = `RM ${finalFare}`;
         $("distance").innerText = `${km.toFixed(1)} km`;
         $("eta").innerText = formatDuration(actualEtaTotal);
-        $("traffic-fee").innerText = `RM ${trafficSurchargeTotal.toFixed(2)}`;
+        $("toll").innerText = `RM ${calculatedToll.toFixed(2)}`;
         $("terrain-row").style.display = isTerrain ? 'block' : 'none';
         badge.innerText = label;
 
-        const formattedTime = dateObj.toLocaleString('en-MY', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-
-        lastSummaryText = `🚖 *RIDE BOOKING (v5.3 PRO)*\n--------------------------\n📍 *Pickup:* ${$("pickup").value}\n🏁 *Drop-off:* ${$("dropoff").value}\n⏰ *Time:* ${formattedTime}\n\n📊 *Details:*\n• Distance: ${km.toFixed(1)} km\n• Rate Applied: RM ${ratePerKm.toFixed(2)}/km\n• Traffic Type: ${isUrban ? 'Urban' : 'Rural'}\n• Traffic Surcharge: RM ${trafficSurchargeTotal.toFixed(2)}\n${isTerrain ? '• Terrain Fee: RM 20.00\n' : ''}\n💰 *TOTAL FARE: RM ${finalFare}*\n--------------------------`;
+        lastSummaryText = `🚖 *RIDE ESTIMATE*\n📍 *From:* ${$("pickup").value}\n🏁 *To:* ${$("dropoff").value}\n\n• Distance: ${km.toFixed(1)} km\n• Toll: RM ${calculatedToll.toFixed(2)}\n💰 *TOTAL FARE: RM ${finalFare}*`;
         
         $("wa-btn").href = `https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(lastSummaryText)}`;
         $("nav-btn").onclick = () => window.location.href = `google.navigation:q=${dropoffCoord[0]},${dropoffCoord[1]}`;
@@ -483,7 +451,6 @@ function decodePoly(str) {
 
 $("pickup").oninput = e => searchPlaces(e.target.value, "pickup-results", "pickup");
 $("dropoff").oninput = e => searchPlaces(e.target.value, "dropoff-results", "dropoff");
-$("departure-time").onchange = () => { if (pickupCoord && dropoffCoord) calculate(); };
 $("clear-pickup").onclick = () => resetField('pickup');
 $("clear-dropoff").onclick = () => resetField('dropoff');
 
