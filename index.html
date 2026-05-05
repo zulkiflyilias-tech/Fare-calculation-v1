@@ -20,6 +20,7 @@
             --pickup-blue: #3b82f6;
             --dropoff-red: #ef4444;
             --long-haul: #8b5cf6;
+            --terrain: #f59e0b;
         }
 
         body {
@@ -70,10 +71,7 @@
             animation: spin 0.8s linear infinite;
         }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         input {
             width: 100%;
@@ -136,35 +134,14 @@
             border-bottom: 1px solid #f3f4f6;
         }
 
-        .autocomplete-item:hover {
-            background: #f9fafb;
-        }
+        .autocomplete-item:hover { background: #f9fafb; }
 
-        .loc-name {
-            font-weight: 700;
-            font-size: 13px;
-            display: block;
-            color: #111;
-        }
+        .loc-name { font-weight: 700; font-size: 13px; display: block; color: #111; }
+        .loc-addr { font-size: 11px; color: var(--gray-text); }
 
-        .loc-addr {
-            font-size: 11px;
-            color: var(--gray-text);
-        }
+        #map { flex-grow: 1; width: 100%; z-index: 1; }
 
-        #map {
-            flex-grow: 1;
-            width: 100%;
-            z-index: 1;
-        }
-
-        .swap-container {
-            position: absolute;
-            right: 24px;
-            top: 76px;
-            z-index: 1006;
-        }
-
+        .swap-container { position: absolute; right: 24px; top: 76px; z-index: 1006; }
         .swap-btn {
             background: white;
             border: 1px solid #e5e7eb;
@@ -192,12 +169,7 @@
             display: none;
         }
 
-        #fare {
-            font-size: 34px;
-            font-weight: 800;
-            color: var(--primary);
-            margin: 0;
-        }
+        #fare { font-size: 34px; font-weight: 800; color: var(--primary); margin: 0; }
 
         .mode-badge {
             background:#ecfdf5;
@@ -208,10 +180,8 @@
             font-weight:700;
         }
 
-        .mode-badge.long-haul {
-            background: #f5f3ff;
-            color: var(--long-haul);
-        }
+        .mode-badge.long-haul { background: #f5f3ff; color: var(--long-haul); }
+        .mode-badge.terrain { background: #fffbeb; color: var(--terrain); }
 
         .fare-breakdown {
             margin-top: 12px;
@@ -243,13 +213,7 @@
         .btn-nav { background: #3b82f6; }
         .btn-copy { background: var(--copy); }
 
-        #loading-state {
-            text-align: center;
-            padding: 10px;
-            color: var(--primary);
-            font-weight: 600;
-            display: none;
-        }
+        #loading-state { text-align: center; padding: 10px; color: var(--primary); font-weight: 600; display: none; }
 
         .marker-label {
             background: white;
@@ -301,16 +265,16 @@
 <div id="map"></div>
 
 <div id="results" class="results-card">
-    <div id="loading-state">Updating...</div>
+    <div id="loading-state">Updating Fare...</div>
     <div id="fare-content">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h2 id="fare">RM 0</h2>
             <span id="mode-badge" class="mode-badge">Standard Rate</span>
         </div>
         <div class="fare-breakdown">
-            📏 <b id="distance">0 km</b><br>
-            ⏱️ <b id="eta">0 min</b><br>
-            🚧 Toll Estimate: <b id="toll">RM 0</b>
+            📏 <b id="distance">0 km</b> | ⏱️ <b id="eta">0 min</b><br>
+            🚧 Toll: <b id="toll">RM 0</b>
+            <span id="terrain-row" style="display:none"><br>⛰️ Terrain Fee: <b>RM 20.00</b></span>
         </div>
         <div class="btn-group">
             <a id="wa-btn" class="btn btn-wa" target="_blank">WhatsApp</a>
@@ -328,7 +292,15 @@ const CONFIG = {
     ORS_KEY: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0=",
     CENTER: [4.2105, 101.9758],
     ZOOM: 7,
-    HIGH_DEMAND_KEYWORDS: ["mall", "pavilion", "mid valley", "klcc", "sunway", "ioio", "paradigm", "plaza", "airport", "klia", "klia2", "subang airport", "hotel", "resort", "tower", "commercial", "industrial", "city centre", "central", "sentral", "station", "mrt", "lrt", "tourist", "batu caves", "genting", "bintang", "mydin"]
+    // VM2026 Logic
+    DEMAND: {
+        HIGH: ["klia", "airport", "sentral", "trx", "klcc", "genting", "legoland", "southkey", "118", "pavilion", "mid valley", "sunway"],
+        MID: ["hotel", "resort", "mall", "parade", "heritage", "waterfront", "jetty", "beach", "stadium", "central", "city centre"]
+    },
+    TERRAIN: {
+        KEYWORDS: ["genting", "cameron", "fraser", "bukit tinggi", "kundasang", "highland"],
+        FEE: 20.00
+    }
 };
 
 const iconA = L.divIcon({ className: 'custom-div-icon', html: `<div class="marker-label" style="border-color:var(--pickup-blue); color:var(--pickup-blue);">A</div>`, iconSize: [24,24], iconAnchor: [12,12] });
@@ -347,31 +319,20 @@ $("departure-time").value = now.toISOString().slice(0,16);
 function formatDuration(totalMinutes) {
     const hrs = Math.floor(totalMinutes / 60);
     const mins = totalMinutes % 60;
-    return hrs > 0 ? `${hrs}h ${mins}m (${totalMinutes} min)` : `${totalMinutes} min`;
+    return hrs > 0 ? `${hrs}h ${mins}m` : `${totalMinutes} min`;
 }
 
-function estimateToll(km, pickupText, dropoffText) {
-    const routeText = `${pickupText} ${dropoffText}`.toLowerCase();
+function estimateToll(km, pTxt, dTxt) {
+    const routeText = `${pTxt} ${dTxt}`.toLowerCase();
     let toll = 0;
     let label = "Standard Toll";
 
-    if (km < 15) {
-        toll = 0;
-    } else if (km >= 15 && km < 60) {
-        toll = 3.50;
-        label = "Urban Base";
-    } else {
-        toll = (km * 0.11) + 3.50;
-        label = "PLUS + Urban";
-    }
+    if (km < 15) toll = 0;
+    else if (km >= 15 && km < 60) { toll = 3.50; label = "Urban Base"; }
+    else { toll = (km * 0.11) + 3.50; label = "PLUS + Urban"; }
 
-    if (routeText.includes("klia")) {
-        toll += 7.50;
-        label = "ELITE/KLIA";
-    } else if (routeText.includes("genting")) {
-        toll += 12.00;
-        label = "Karak/Genting";
-    }
+    if (routeText.includes("klia")) { toll += 7.50; label = "ELITE/KLIA"; }
+    else if (routeText.includes("genting")) { toll += 12.00; label = "Karak/Genting"; }
 
     return { total: Math.round(toll * 100) / 100, label };
 }
@@ -455,47 +416,55 @@ async function calculate() {
         const actualEtaTotal = Math.ceil(route.summary.duration / 60);
         const dateObj = new Date($("departure-time").value);
         const hour = dateObj.getHours();
-        const locText = ($("pickup").value + $("dropoff").value).toLowerCase();
-        const isHighDemand = CONFIG.HIGH_DEMAND_KEYWORDS.some(key => locText.includes(key));
-        const isPeak = (hour >= 6 && hour < 9) || (hour >= 12 && hour < 14) || (hour >= 17 && hour < 21);
-
-        // Logic refined for Long Distance vs Urban
-        let ratePerKm = (km >= 90) ? (isHighDemand ? 2.20 : 1.75) : (isPeak ? (isHighDemand ? 1.97 : 1.54) : (isHighDemand ? 1.30 : 1.00));
         
+        const locText = ($("pickup").value + $("dropoff").value).toLowerCase();
+        
+        // 1. Terrain Check
+        let terrainFee = 0;
+        const isTerrain = CONFIG.TERRAIN.KEYWORDS.some(key => locText.includes(key));
+        if (isTerrain) terrainFee = CONFIG.TERRAIN.FEE;
+
+        // 2. Multiplier Tiers
+        const isHigh = CONFIG.DEMAND.HIGH.some(key => locText.includes(key));
+        const isMid = CONFIG.DEMAND.MID.some(key => locText.includes(key));
+        const isPeak = (hour >= 6 && hour < 9) || (hour >= 17 && hour < 21);
+
+        let demandMultiplier = 1.0;
+        if (isHigh) demandMultiplier = 2.2;
+        else if (isMid || isPeak) demandMultiplier = 1.6;
+
+        // 3. Rate Calculation
+        let ratePerKm = (km >= 90) ? 1.75 : 1.10;
         const baselineMinutes = (km / 25) * 60;
         let trafficSurcharge = (actualEtaTotal > baselineMinutes) ? (actualEtaTotal - baselineMinutes) * 0.20 : 0;
         
         const tollData = estimateToll(km, $("pickup").value, $("dropoff").value);
         
-        let baseCalc = (km * ratePerKm) + trafficSurcharge;
-        let finalFare = Math.max(baseCalc, 5) + tollData.total;
-        const roundedFare = Math.round(finalFare);
+        let finalFare = Math.round((km * ratePerKm * demandMultiplier) + trafficSurcharge + terrainFee + tollData.total);
+        if (finalFare < 5) finalFare = 5;
 
-        // Label update logic
+        // UI Updates
         const badge = $("mode-badge");
-        badge.classList.remove('long-haul');
-        let trafficLabel = "Standard Rate";
+        badge.classList.remove('long-haul', 'terrain');
+        let label = "Standard Rate";
 
-        if (km >= 90) {
-            trafficLabel = "Inter-State / Long Distance";
-            badge.classList.add('long-haul');
-        } else if (trafficSurcharge > 0) {
-            trafficLabel = `+ RM ${trafficSurcharge.toFixed(2)} Traffic`;
-        } else if (isHighDemand) {
-            trafficLabel = "High Demand Zone";
-        }
+        if (isTerrain) { label = "Highland / Terrain"; badge.classList.add('terrain'); }
+        else if (km >= 90) { label = "Inter-State"; badge.classList.add('long-haul'); }
+        else if (isHigh) label = "High Demand Zone";
+        else if (isMid) label = "Active Hub Rate";
+        else if (isPeak) label = "Peak Hour Rate";
 
-        const durationString = formatDuration(actualEtaTotal);
-
-        $("fare").innerText = `RM ${roundedFare}`;
+        $("fare").innerText = `RM ${finalFare}`;
         $("distance").innerText = `${km.toFixed(1)} km`;
-        $("eta").innerText = durationString;
+        $("eta").innerText = formatDuration(actualEtaTotal);
         $("toll").innerText = `RM ${tollData.total.toFixed(2)}`;
-        badge.innerText = trafficLabel;
+        $("terrain-row").style.display = isTerrain ? 'block' : 'none';
+        badge.innerText = label;
 
         const formattedTime = dateObj.toLocaleString('en-MY', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
-        lastSummaryText = `🚖 *NEW RIDE BOOKING*\n--------------------------\n📍 *Pickup:* ${$("pickup").value}\n🏁 *Drop-off:* ${$("dropoff").value}\n⏰ *Time:* ${formattedTime}\n\n📊 *Details:*\n• Distance: ${km.toFixed(1)} km\n• Duration: ${durationString}\n• Toll Estimate: RM ${tollData.total.toFixed(2)} (${tollData.label})\n${trafficSurcharge > 0 ? '• Traffic Adj: RM ' + trafficSurcharge.toFixed(2) + '\n' : ''}\n💰 *TOTAL FARE: RM ${roundedFare}*\n--------------------------`;
+        lastSummaryText = `🚖 *RIDE BOOKING (v5.2 PRO)*\n--------------------------\n📍 *Pickup:* ${$("pickup").value}\n🏁 *Drop-off:* ${$("dropoff").value}\n⏰ *Time:* ${formattedTime}\n\n📊 *Details:*\n• Distance: ${km.toFixed(1)} km\n• Duration: ${formatDuration(actualEtaTotal)}\n• Rate Type: ${label}\n• Toll Est: RM ${tollData.total.toFixed(2)}\n${isTerrain ? '• Terrain Fee: RM 20.00\n' : ''}\n💰 *TOTAL FARE: RM ${finalFare}*\n--------------------------`;
+        
         $("wa-btn").href = `https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(lastSummaryText)}`;
         $("nav-btn").onclick = () => window.location.href = `google.navigation:q=${dropoffCoord[0]},${dropoffCoord[1]}`;
         $("fare").style.opacity = "1";
