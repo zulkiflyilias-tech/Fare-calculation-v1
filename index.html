@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - v5.4.7 PRO</title>
+    <title>Rideshare MY - v5.4.8 PRO</title>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -14,8 +14,6 @@
             --card-bg: #ffffff;
             --text: #1f2937;
             --gray-text: #6b7280;
-            --pickup-blue: #3b82f6;
-            --dropoff-red: #ef4444;
         }
 
         body {
@@ -47,7 +45,7 @@
 
         input {
             width: 100%;
-            padding: 12px 40px 12px 14px;
+            padding: 12px 80px 12px 14px;
             border: 1.5px solid #e5e7eb;
             border-radius: 12px;
             box-sizing: border-box;
@@ -55,16 +53,21 @@
             background: #f9fafb;
         }
 
-        .clear-btn {
+        .btn-container {
             position: absolute;
-            right: 10px;
-            top: 28px;
-            background: none;
+            right: 8px;
+            top: 24px;
+            display: flex;
+            gap: 4px;
+        }
+
+        .icon-btn {
+            background: transparent;
             border: none;
+            cursor: pointer;
+            padding: 6px;
             color: #9ca3af;
             font-size: 18px;
-            cursor: pointer;
-            display: none;
         }
 
         .autocomplete-list {
@@ -88,8 +91,6 @@
             cursor: pointer;
         }
 
-        .autocomplete-item:hover { background: #f9fafb; }
-
         #map { flex-grow: 1; width: 100%; z-index: 1; }
 
         .results-card {
@@ -111,18 +112,23 @@
 <div class="search-panel">
     <div class="input-group">
         <label>Pickup Location</label>
-        <input type="text" id="pickup" placeholder="Type to search..." autocomplete="off">
-        <button id="clear-p" class="clear-btn">✕</button>
+        <input type="text" id="pickup" placeholder="Search pickup..." autocomplete="off">
+        <div class="btn-container">
+            <button id="clear-p" class="icon-btn" style="display:none">✕</button>
+            <button id="gps-btn" class="icon-btn">📍</button>
+        </div>
         <div id="p-results" class="autocomplete-list"></div>
     </div>
     <div class="input-group">
         <label>Destination</label>
-        <input type="text" id="dropoff" placeholder="Type to search..." autocomplete="off">
-        <button id="clear-d" class="clear-btn">✕</button>
+        <input type="text" id="dropoff" placeholder="Search destination..." autocomplete="off">
+        <div class="btn-container">
+            <button id="clear-d" class="icon-btn" style="display:none">✕</button>
+        </div>
         <div id="d-results" class="autocomplete-list"></div>
     </div>
     <div class="input-group" style="margin-bottom:0;">
-        <label>Travel Schedule (May 6, 2026)</label>
+        <label>Travel Schedule</label>
         <input type="datetime-local" id="departure-time">
     </div>
 </div>
@@ -132,9 +138,9 @@
 <div id="results" class="results-card">
     <div style="display:flex; justify-content:space-between; align-items:center;">
         <h2 id="fare" style="margin:0; color:var(--primary); font-size:34px;">RM 0</h2>
-        <span id="badge" style="font-size:11px; font-weight:700; padding:6px 12px; background:#ecfdf5; border-radius:20px;">Standard Rate</span>
+        <span id="badge" style="font-size:11px; font-weight:700; padding:6px 12px; background:#f1f5f9; border-radius:20px;">Calculating...</span>
     </div>
-    <p id="summary" style="font-size:13px; color:#4b5563;"></p>
+    <p id="summary" style="font-size:12px; color:#4b5563; margin-top:10px; line-height:1.5;"></p>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -146,30 +152,26 @@ const CONFIG = {
 };
 
 const $ = id => document.getElementById(id);
-let pickupCoord, dropoffCoord, searchTimer;
+let pickupCoord, dropoffCoord, searchTimer, routeLayer;
 
-// SET DATE TO MAY 6, 2026
-const date = new Date("2026-05-06T12:00:00");
-$("departure-time").value = date.toISOString().slice(0,16);
+// DEFAULT DATE: MAY 6, 2026
+const defaultDate = new Date("2026-05-06T12:00:00");
+$("departure-time").value = defaultDate.toISOString().slice(0,16);
 
-const map = L.map("map", { zoomControl: false }).setView([4.2105, 101.9758], 7);
+const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([4.2105, 101.9758], 7);
 L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").addTo(map);
 
-// NO-LAG DEBOUNCE LOGIC
 function debounceSearch(input, resultsId, type) {
     const query = input.value;
     $(type === 'pickup' ? 'clear-p' : 'clear-d').style.display = query ? 'block' : 'none';
-    
     clearTimeout(searchTimer);
     if (query.length < 3) { $(resultsId).style.display = 'none'; return; }
 
     searchTimer = setTimeout(async () => {
-        try {
-            const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&countrycode=MY&limit=5`);
-            const data = await res.json();
-            renderResults(data.features, resultsId, type);
-        } catch (e) { console.error("Search error"); }
-    }, 400); // 400ms delay to prevent lag
+        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&countrycode=MY&limit=5`);
+        const data = await res.json();
+        renderResults(data.features, resultsId, type);
+    }, 400);
 }
 
 function renderResults(features, resultsId, type) {
@@ -195,22 +197,62 @@ async function calculate() {
         body: JSON.stringify({ coordinates: [[pickupCoord[1], pickupCoord[0]], [dropoffCoord[1], dropoffCoord[0]]] })
     });
     const data = await res.json();
-    const km = data.routes[0].summary.distance / 1000;
+    const route = data.routes[0];
+    const km = route.summary.distance / 1000;
     
-    const time = new Date($("departure-time").value).getHours();
-    let midnight = (time >= 0 && time < 6) ? CONFIG.RATES.MIDNIGHT : 0;
-    let peak = ((time >= 6 && time < 9) || (time >= 12 && time < 15) || (time >= 17 && time < 20)) ? CONFIG.RATES.PEAK : 0;
+    // REFRESH RATES BASED ON SELECTED TIME
+    const dateObj = new Date($("departure-time").value);
+    const hour = dateObj.getHours();
+    const mins = dateObj.getMinutes();
+    const timeVal = hour + (mins/60);
+    const locText = ($("pickup").value + $("dropoff").value).toLowerCase();
+
+    let midnight = (timeVal >= 0 && timeVal < 6) ? CONFIG.RATES.MIDNIGHT : 0;
+    let peak = ((timeVal >= 6 && timeVal < 9) || (timeVal >= 12.5 && timeVal < 14.5) || (timeVal >= 17 && timeVal < 20)) ? CONFIG.RATES.PEAK : 0;
     let interstate = km > 100 ? CONFIG.RATES.INTERSTATE : 0;
+    let terrain = ["genting", "cameron", "fraser", "highland"].some(k => locText.includes(k)) ? CONFIG.RATES.TERRAIN : 0;
     
-    let total = CONFIG.RATES.BASE + (km * CONFIG.RATES.KM) + midnight + peak + interstate;
+    let total = CONFIG.RATES.BASE + (km * CONFIG.RATES.KM) + midnight + peak + interstate + terrain;
     
     $("fare").innerText = `RM ${Math.round(total)}`;
-    $("summary").innerText = `${km.toFixed(1)} km | Fees: RM ${(midnight + peak + interstate).toFixed(2)}`;
+    $("badge").innerText = interstate ? "Interstate" : (midnight ? "Midnight" : (peak ? "Peak Hour" : "Standard"));
+    $("summary").innerHTML = `📏 ${km.toFixed(1)} km | ⏱️ ${Math.ceil(route.summary.duration/60)} min<br>
+        Incentives: RM ${(midnight + peak + interstate).toFixed(2)} | Terrain: RM ${terrain.toFixed(2)}`;
     $("results").style.display = 'block';
+
+    if (routeLayer) map.removeLayer(routeLayer);
+    routeLayer = L.polyline(decodePoly(route.geometry), {color: '#059669', weight: 5}).addTo(map);
+    map.fitBounds(routeLayer.getBounds(), {padding: [50,50]});
 }
 
-$("pickup").addEventListener("input", e => debounceSearch(e.target, "p-results", "pickup"));
-$("dropoff").addEventListener("input", e => debounceSearch(e.target, "d-results", "dropoff"));
+function decodePoly(str) {
+    let index = 0, lat = 0, lng = 0, coordinates = [];
+    while (index < str.length) {
+        let b, shift = 0, result = 0;
+        do { b = str.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+        lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+        shift = 0; result = 0;
+        do { b = str.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+        lng += (result & 1) ? ~(result >> 1) : (result >> 1);
+        coordinates.push([lat / 1e5, lng / 1e5]);
+    }
+    return coordinates;
+}
+
+$("pickup").oninput = e => debounceSearch(e.target, "p-results", "pickup");
+$("dropoff").oninput = e => debounceSearch(e.target, "d-results", "dropoff");
+$("departure-time").onchange = () => calculate(); // FIX: RATE REFRESH ON TIME CHANGE
+
+$("gps-btn").onclick = () => {
+    navigator.geolocation.getCurrentPosition(async pos => {
+        const lat = pos.coords.latitude, lon = pos.coords.longitude;
+        const res = await fetch(`https://photon.komoot.io/reverse?lon=${lon}&lat=${lat}`);
+        const data = await res.json();
+        const name = data.features[0]?.properties.name || "My Location";
+        selectLoc('pickup', [lat, lon], name);
+    });
+};
+
 $("clear-p").onclick = () => { $("pickup").value = ''; $("p-results").style.display = 'none'; $("clear-p").style.display = 'none'; };
 $("clear-d").onclick = () => { $("dropoff").value = ''; $("d-results").style.display = 'none'; $("clear-d").style.display = 'none'; };
 </script>
