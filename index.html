@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - v5.4.4 PRO</title>
+    <title>Rideshare MY - v5.4.5 PRO</title>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -22,6 +22,7 @@
             --long-haul: #8b5cf6;
             --terrain: #f59e0b;
             --peak: #f43f5e;
+            --midnight: #1e293b;
         }
 
         body {
@@ -58,21 +59,6 @@
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
-
-        .input-group.loading::after {
-            content: "";
-            position: absolute;
-            right: 95px;
-            top: 32px;
-            width: 14px;
-            height: 14px;
-            border: 2px solid #e5e7eb;
-            border-top: 2px solid var(--primary);
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         input {
             width: 100%;
@@ -182,6 +168,7 @@
         }
 
         .mode-badge.peak { background: #fff1f2; color: var(--peak); }
+        .mode-badge.midnight { background: #f1f5f9; color: var(--midnight); }
 
         .fare-breakdown {
             margin-top: 12px;
@@ -273,7 +260,7 @@
         </div>
         <div class="fare-breakdown">
             📏 <b id="distance">0 km</b> | ⏱️ <b id="eta">0 min</b><br>
-            ✨ Traffic: <b id="traffic-txt">RM 0</b> | 🚀 Peak Incentive: <b id="peak-txt">RM 0</b>
+            🚀 Peak Incentive: <b id="peak-txt">RM 0.00</b> | 🌙 Midnight Inc: <b id="midnight-txt">RM 0.00</b>
             <span id="terrain-row" style="display:none"><br>⛰️ Terrain Fee: <b>RM 15.00</b></span>
         </div>
         <div class="btn-group">
@@ -305,7 +292,8 @@ const CONFIG = {
         TIER1_KM: 1.10,
         TIER2_KM: 0.95,
         TIER3_KM: 0.85,
-        PEAK_INCENTIVE: 10.00, // New Incentive
+        PEAK_INCENTIVE: 10.00,
+        MIDNIGHT_INCENTIVE: 15.00, // New Incentive
         AIRPORT_SURCHARGE: 5.00,
         GENTING_SURCHARGE: 10.00
     }
@@ -337,14 +325,13 @@ async function searchPlaces(query, resultId, type) {
     const group = $(`${type}-group`);
     $(`clear-${type}`).style.display = query.length > 0 ? 'flex' : 'none';
     clearTimeout(searchTimer);
-    if (query.length < 3) { list.style.display = 'none'; group.classList.remove('loading'); return; }
-    group.classList.add('loading');
+    if (query.length < 3) { list.style.display = 'none'; return; }
     searchTimer = setTimeout(async () => {
         try {
             const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&countrycode=MY&limit=6`);
             const data = await res.json();
             renderResults(data.features, resultId, type);
-        } catch (e) { console.error(e); } finally { group.classList.remove('loading'); }
+        } catch (e) { console.error(e); }
     }, 550);
 }
 
@@ -390,7 +377,7 @@ async function calculate() {
         const res = await fetch("https://api.openrouteservice.org/v2/directions/driving-car", {
             method: "POST",
             headers: { "Content-Type": "application/json", "Authorization": CONFIG.ORS_KEY },
-            body: JSON.stringify({ coordinates: [[pickupCoord[1], pickupCoord[0]], [dropoffCoord[1], dropoffCoord[0]]], extra_info: ["tollways"] })
+            body: JSON.stringify({ coordinates: [[pickupCoord[1], pickupCoord[0]], [dropoffCoord[1], dropoffCoord[0]]] })
         });
 
         const data = await res.json();
@@ -413,51 +400,50 @@ async function calculate() {
         let isHigh = CONFIG.DEMAND.HIGH.some(k => locText.includes(k));
         let isMid = CONFIG.DEMAND.MID.some(k => locText.includes(k));
         
-        // PEAK HOUR DETECTION
+        // INCENTIVE CALCULATION
         let isPeak = (hour >= 7 && hour < 10) || (hour >= 17 && hour < 20);
+        let isMidnight = (hour >= 0 && hour < 6);
+        
         let peakIncentive = isPeak ? CONFIG.RATES.PEAK_INCENTIVE : 0;
+        let midnightIncentive = isMidnight ? CONFIG.RATES.MIDNIGHT_INCENTIVE : 0;
 
-        let demandMultiplier = isHigh ? 1.4 : (isMid || isPeak ? 1.2 : 1.0);
+        let demandMultiplier = isHigh ? 1.4 : (isMid ? 1.2 : 1.0);
         if (km > 100) demandMultiplier = Math.min(demandMultiplier, 1.15);
 
-        // Fixed location-based gate fees (Tolls removed from script)
         let gateFees = 0;
         if (locText.includes("klia")) gateFees += CONFIG.RATES.AIRPORT_SURCHARGE;
         if (locText.includes("genting")) gateFees += CONFIG.RATES.GENTING_SURCHARGE;
 
-        const baselineMins = (km / 40) * 60; 
-        let trafficSurcharge = (actualEta > baselineMins) ? (actualEta - baselineMins) * 0.15 : 0;
-
+        // FINAL CALCULATION (Traffic Removed)
         let subtotal = (CONFIG.RATES.BASE_BOOKING + distanceFare) * demandMultiplier;
-        let total = subtotal + trafficSurcharge + terrainFee + gateFees + peakIncentive;
+        let total = subtotal + terrainFee + gateFees + peakIncentive + midnightIncentive;
 
         const finalFare = Math.round(total);
         const badge = $("mode-badge");
         badge.className = "mode-badge";
         let label = "Standard Rate";
 
-        if (isPeak) { label = "Peak Hour Incentive"; badge.classList.add('peak'); }
+        if (isMidnight) { label = "Midnight Incentive"; badge.classList.add('midnight'); }
+        else if (isPeak) { label = "Peak Hour Incentive"; badge.classList.add('peak'); }
         else if (terrainFee > 0) { label = "Highland / Terrain"; badge.classList.add('terrain'); }
-        else if (km >= 80) { label = "Inter-State / Long Haul"; badge.classList.add('long-haul'); }
         else if (isHigh) label = "Demand Zone";
 
         $("fare").innerText = `RM ${finalFare}`;
         $("distance").innerText = `${km.toFixed(1)} km`;
         $("eta").innerText = formatDuration(actualEta);
-        $("traffic-txt").innerText = `RM ${trafficSurcharge.toFixed(2)}`;
         $("peak-txt").innerText = `RM ${peakIncentive.toFixed(2)}`;
+        $("midnight-txt").innerText = `RM ${midnightIncentive.toFixed(2)}`;
         $("terrain-row").style.display = terrainFee > 0 ? 'block' : 'none';
         badge.innerText = label;
 
-        lastSummaryText = `🚖 *RIDE QUOTE*\n--------------------------\n📍 *From:* ${$("pickup").value}\n🏁 *To:* ${$("dropoff").value}\n⏰ *Time:* ${dateObj.toLocaleString()}\n\n📊 *Details:*\n• Distance: ${km.toFixed(1)} km\n• Rate: ${label}\n• Peak Incentive: RM ${peakIncentive.toFixed(2)}\n💰 *TOTAL FARE: RM ${finalFare}*\n--------------------------`;
+        lastSummaryText = `🚖 *RIDE QUOTE*\n--------------------------\n📍 *From:* ${$("pickup").value}\n🏁 *To:* ${$("dropoff").value}\n⏰ *Time:* ${dateObj.toLocaleString()}\n\n📊 *Details:*\n• Distance: ${km.toFixed(1)} km\n• Rate: ${label}\n💰 *TOTAL FARE: RM ${finalFare}*\n--------------------------`;
         $("wa-btn").href = `https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(lastSummaryText)}`;
         $("nav-btn").onclick = () => window.location.href = `google.navigation:q=${dropoffCoord[0]},${dropoffCoord[1]}`;
         
         $("fare-content").style.opacity = "1";
         $("loading-state").style.display = 'none';
     } catch (e) { 
-        console.error(e);
-        $("loading-state").innerText = "Route unavailable."; 
+        $("loading-state").innerText = "Error calculating route."; 
     }
 }
 
@@ -503,26 +489,18 @@ $("copy-btn").onclick = () => {
 };
 
 $("gps-trigger").onclick = () => {
-    const group = $("pickup-group");
-    group.classList.add('loading');
     navigator.geolocation.getCurrentPosition(async p => {
         const lat = p.coords.latitude, lon = p.coords.longitude;
         try {
             const res = await fetch(`https://photon.komoot.io/reverse?lon=${lon}&lat=${lat}`);
             const data = await res.json();
-            if (data.features && data.features.length > 0) {
+            if (data.features?.length > 0) {
                 const f = data.features[0].properties;
-                const addr = [f.name, f.street, f.district, f.city, f.state].filter(Boolean).join(', ');
+                const addr = [f.name, f.street, f.city].filter(Boolean).join(', ');
                 selectLoc('pickup', [lat, lon], addr);
-            } else {
-                selectLoc('pickup', [lat, lon], "Dropped Pin Location");
             }
-        } catch (e) {
-            selectLoc('pickup', [lat, lon], "My Location");
-        } finally {
-            group.classList.remove('loading');
-        }
-    }, () => group.classList.remove('loading'));
+        } catch (e) { selectLoc('pickup', [lat, lon], "My Location"); }
+    });
 };
 </script>
 </body>
