@@ -58,6 +58,7 @@
             letter-spacing: 0.05em;
         }
 
+        /* Loading Spinner */
         .input-group.loading::after {
             content: "";
             position: absolute;
@@ -505,16 +506,19 @@ $("copy-btn").onclick = () => {
     });
 };
 
+// UPDATED GPS LOGIC WITH FULL ADDRESS REVERSE GEOCODING
 $("gps-trigger").onclick = () => {
     const group = $("pickup-group");
     group.classList.add('loading');
     navigator.geolocation.getCurrentPosition(async p => {
         const lat = p.coords.latitude, lon = p.coords.longitude;
         try {
+            // Using Photon Reverse Geocoding
             const res = await fetch(`https://photon.komoot.io/reverse?lon=${lon}&lat=${lat}`);
             const data = await res.json();
             if (data.features && data.features.length > 0) {
                 const f = data.features[0].properties;
+                // Build a readable address string
                 const addr = [f.name, f.street, f.district, f.city, f.state].filter(Boolean).join(', ');
                 selectLoc('pickup', [lat, lon], addr);
             } else {
