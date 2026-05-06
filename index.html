@@ -28,21 +28,20 @@
 
         #map { flex-grow: 1; width: 100%; z-index: 1; }
 
-        .results-card { position: fixed; bottom: 20px; left: 16px; right: 16px; background: white; padding: 20px; border-radius: 24px; box-shadow: 0 -10px 40px rgba(0,0,0,0.2); z-index: 1002; display: none; border: 1px solid #f1f5f9; }
+        .results-card { position: fixed; bottom: 20px; left: 16px; right: 16px; background: white; padding: 20px; border-radius: 24px; box-shadow: 0 -10px 40px rgba(0,0,0,0.2); z-index: 1002; display: none; border: 1px solid #f1f5f9; max-height: 80vh; overflow-y: auto; }
         
-        /* Interactive Fare Styles */
         .fare-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-        .fare-header:active { opacity: 0.7; }
-        
-        #fare-container { flex: 1; }
         #fare { margin:0; color:var(--primary); font-size:32px; }
         .tap-hint { font-size: 9px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; }
 
-        .fare-breakdown { 
-            margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e5e7eb; 
-            font-size: 11px; color: var(--gray-text); display: none; /* Hidden by default */
-            grid-template-columns: 1fr auto; gap: 4px; 
-        }
+        /* Invoice Breakdown Styles */
+        .fare-breakdown { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e5e7eb; display: none; flex-direction: column; }
+        .invoice-table { width: 100%; border-collapse: collapse; font-size: 12px; color: var(--text); }
+        .invoice-table tr { border-bottom: 1px solid #f1f5f9; }
+        .invoice-table td { padding: 8px 0; }
+        .invoice-table .label { color: var(--gray-text); }
+        .invoice-table .amount { text-align: right; font-family: monospace; font-weight: 600; }
+        .invoice-total { margin-top: 10px; padding-top: 10px; border-top: 2px solid var(--primary); display: flex; justify-content: space-between; font-weight: 800; font-size: 16px; }
         
         .action-bar { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 15px; }
         .action-btn { border: none; border-radius: 12px; padding: 10px; font-size: 10px; font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; transition: 0.2s; text-transform: uppercase; }
@@ -125,15 +124,14 @@ const now = new Date();
 now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
 $("departure-time").value = now.toISOString().slice(0,16);
 
-// Toggle visibility of breakdown
 function toggleBreakdown() {
     const b = $("breakdown");
     const hint = document.querySelector('.tap-hint');
-    if (b.style.display === "grid") {
+    if (b.style.display === "flex") {
         b.style.display = "none";
         hint.innerHTML = "Tap for details ▾";
     } else {
-        b.style.display = "grid";
+        b.style.display = "flex";
         hint.innerHTML = "Tap to hide ▴";
     }
 }
@@ -197,9 +195,21 @@ async function calculate() {
         else if (hour >= 17 && hour < 20) { activeMult = CONFIG.RATES.EVENING_PEAK; currentSurgeLabel = "Evening Peak (35%)"; }
 
         let distFare = 0;
-        if (km <= 50) distFare = km * CONFIG.RATES.KM_TIER_1;
-        else if (km <= 150) distFare = (50 * CONFIG.RATES.KM_TIER_1) + ((km - 50) * CONFIG.RATES.KM_TIER_2);
-        else distFare = (50 * CONFIG.RATES.KM_TIER_1) + (100 * CONFIG.RATES.KM_TIER_2) + ((km - 150) * CONFIG.RATES.KM_TIER_3);
+        let tierHtml = "";
+        
+        if (km <= 50) {
+            distFare = km * CONFIG.RATES.KM_TIER_1;
+            tierHtml = `<tr><td class="label">Distance (Tier 1: ${km.toFixed(1)}km)</td><td class="amount">RM ${distFare.toFixed(2)}</td></tr>`;
+        } else if (km <= 150) {
+            distFare = (50 * CONFIG.RATES.KM_TIER_1) + ((km - 50) * CONFIG.RATES.KM_TIER_2);
+            tierHtml = `<tr><td class="label">Distance (Tier 1: 50km)</td><td class="amount">RM ${(50 * CONFIG.RATES.KM_TIER_1).toFixed(2)}</td></tr>
+                        <tr><td class="label">Distance (Tier 2: ${(km-50).toFixed(1)}km)</td><td class="amount">RM ${((km-50)*CONFIG.RATES.KM_TIER_2).toFixed(2)}</td></tr>`;
+        } else {
+            distFare = (50 * CONFIG.RATES.KM_TIER_1) + (100 * CONFIG.RATES.KM_TIER_2) + ((km - 150) * CONFIG.RATES.KM_TIER_3);
+            tierHtml = `<tr><td class="label">Distance (Tier 1: 50km)</td><td class="amount">RM ${(50 * CONFIG.RATES.KM_TIER_1).toFixed(2)}</td></tr>
+                        <tr><td class="label">Distance (Tier 2: 100km)</td><td class="amount">RM ${(100 * CONFIG.RATES.KM_TIER_2).toFixed(2)}</td></tr>
+                        <tr><td class="label">Distance (Tier 3: ${(km-150).toFixed(1)}km)</td><td class="amount">RM ${((km-150)*CONFIG.RATES.KM_TIER_3).toFixed(2)}</td></tr>`;
+        }
 
         const timeFare = durationMin * CONFIG.RATES.TIME_RATE;
         let subtotal = CONFIG.RATES.BASE + distFare + timeFare;
@@ -213,8 +223,18 @@ async function calculate() {
         $("summary").innerHTML = `<b>${km.toFixed(1)} km</b> • <b>${durationMin} min</b>`;
         
         $("breakdown").innerHTML = `
-            <span>Trip Subtotal</span> <span>RM ${subtotal.toFixed(2)}</span>
-            ${activeMult > 1 ? `<span style="color:var(--accent)">${currentSurgeLabel}</span> <span style="color:var(--accent)">Applied</span>` : '<span>Standard Hour</span> <span>No Surge</span>'}
+            <table class="invoice-table">
+                <tr><td class="label">Base Fare</td><td class="amount">RM ${CONFIG.RATES.BASE.toFixed(2)}</td></tr>
+                ${tierHtml}
+                <tr><td class="label">Time (${durationMin} min)</td><td class="amount">RM ${timeFare.toFixed(2)}</td></tr>
+                ${isInterstate ? `<tr><td class="label">Interstate Incentive</td><td class="amount">RM ${CONFIG.RATES.INTERSTATE_INCENTIVE.toFixed(2)}</td></tr>` : ''}
+                <tr style="border:none"><td class="label">Subtotal</td><td class="amount">RM ${subtotal.toFixed(2)}</td></tr>
+                ${activeMult > 1 ? `<tr style="color:var(--accent)"><td class="label">${currentSurgeLabel}</td><td class="amount">x${activeMult.toFixed(2)}</td></tr>` : ''}
+            </table>
+            <div class="invoice-total">
+                <span>Total Payable</span>
+                <span>RM ${currentFare.toFixed(2)}</span>
+            </div>
         `;
         
         $("results").style.display = 'block';
