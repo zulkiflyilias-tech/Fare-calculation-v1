@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - v5.7.2 PRO</title>
+    <title>Rideshare MY - v5.8.0 PRO</title>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -31,29 +31,10 @@
             padding: 16px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.08);
             z-index: 1005;
-            position: relative;
         }
 
-        .inputs-container {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
+        .inputs-container { display: flex; align-items: center; gap: 12px; }
         .inputs-flex { flex: 1; }
-
-        .swap-btn {
-            background: #f3f4f6;
-            border: 1px solid #e5e7eb;
-            border-radius: 50%;
-            width: 32px;
-            height: 32px;
-            cursor: pointer;
-            color: var(--primary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
 
         .input-group { position: relative; margin-bottom: 12px; }
         .input-group label {
@@ -67,7 +48,7 @@
 
         input {
             width: 100%;
-            padding: 12px 85px 12px 35px;
+            padding: 12px 85px 12px 16px;
             border: 1.5px solid #e5e7eb;
             border-radius: 12px;
             box-sizing: border-box;
@@ -75,57 +56,57 @@
             background: #f9fafb;
         }
 
-        .input-icon { position: absolute; left: 12px; top: 28px; font-size: 14px; }
+        .swap-btn {
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            color: var(--primary);
+            display: flex; align-items: center; justify-content: center;
+        }
 
         .btn-container { position: absolute; right: 8px; top: 24px; display: flex; gap: 4px; }
         .icon-btn { background: transparent; border: none; cursor: pointer; padding: 6px; color: #9ca3af; font-size: 18px; }
 
         .autocomplete-list {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: white;
-            z-index: 9999;
-            max-height: 250px;
-            overflow-y: auto;
-            border-radius: 0 0 12px 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            border: 1px solid #e5e7eb;
-            display: none;
+            position: absolute; top: 100%; left: 0; right: 0;
+            background: white; z-index: 9999; max-height: 250px;
+            overflow-y: auto; border-radius: 0 0 12px 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #e5e7eb; display: none;
         }
 
-        .autocomplete-item {
-            padding: 12px 16px;
-            border-bottom: 1px solid #f3f4f6;
-            cursor: pointer;
-        }
+        .autocomplete-item { padding: 12px 16px; border-bottom: 1px solid #f3f4f6; cursor: pointer; }
 
         #map { flex-grow: 1; width: 100%; z-index: 1; }
 
         .results-card {
-            position: fixed;
-            bottom: 24px;
-            left: 16px;
-            right: 16px;
-            background: white;
-            padding: 20px;
-            border-radius: 20px;
-            box-shadow: 0 -10px 30px rgba(0,0,0,0.15);
-            z-index: 1002;
-            display: none;
+            position: fixed; bottom: 24px; left: 16px; right: 16px;
+            background: white; padding: 20px; border-radius: 24px;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.2); z-index: 1002; display: none;
         }
 
         .fare-breakdown {
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px dashed #e5e7eb;
-            font-size: 11px;
-            color: var(--gray-text);
-            display: grid;
-            grid-template-columns: 1fr auto;
-            gap: 4px;
+            margin-top: 12px; padding-top: 12px; border-top: 1px dashed #e5e7eb;
+            font-size: 11px; color: var(--gray-text); display: grid;
+            grid-template-columns: 1fr auto; gap: 4px;
         }
+
+        .action-bar {
+            display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 15px;
+        }
+
+        .action-btn {
+            border: none; border-radius: 12px; padding: 10px;
+            font-size: 11px; font-weight: 600; cursor: pointer;
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+            transition: 0.2s;
+        }
+
+        .btn-whatsapp { background: #25D366; color: white; }
+        .btn-copy { background: #f1f5f9; color: #475569; }
+        .btn-maps { background: #4285F4; color: white; }
     </style>
 </head>
 <body>
@@ -135,28 +116,24 @@
         <div class="inputs-flex">
             <div class="input-group">
                 <label>Pickup</label>
-                <span class="input-icon" style="color:#3b82f6;">🔵</span>
-                <input type="text" id="pickup" placeholder="Search pickup..." autocomplete="off">
+                <input type="text" id="pickup" placeholder="Set pickup..." autocomplete="off">
                 <div class="btn-container">
                     <button id="clear-p" class="icon-btn" style="display:none">✕</button>
                     <button id="gps-btn" class="icon-btn">📍</button>
                 </div>
                 <div id="p-results" class="autocomplete-list"></div>
             </div>
-            
             <div class="input-group" style="margin-bottom:0;">
                 <label>Destination</label>
-                <span class="input-icon" style="color:#ef4444;">📍</span>
-                <input type="text" id="dropoff" placeholder="Search destination..." autocomplete="off">
+                <input type="text" id="dropoff" placeholder="Where to?" autocomplete="off">
                 <div class="btn-container">
                     <button id="clear-d" class="icon-btn" style="display:none">✕</button>
                 </div>
                 <div id="d-results" class="autocomplete-list"></div>
             </div>
         </div>
-        <div class="swap-btn-container"><button id="swap-btn" class="swap-btn">⇅</button></div>
+        <button id="swap-btn" class="swap-btn">⇅</button>
     </div>
-    
     <div class="input-group" style="margin-top: 12px; margin-bottom:0;">
         <label>Departure Time</label>
         <input type="datetime-local" id="departure-time">
@@ -168,11 +145,23 @@
 <div id="results" class="results-card">
     <div style="display:flex; justify-content:space-between; align-items:center;">
         <h2 id="fare" style="margin:0; color:var(--primary); font-size:34px;">RM 0</h2>
-        <span id="badge" style="font-size:11px; font-weight:700; padding:6px 12px; background:#f1f5f9; border-radius:20px;">Standard</span>
+        <span id="badge" style="font-size:10px; font-weight:800; padding:4px 10px; background:#f1f5f9; border-radius:20px; text-transform:uppercase;">Standard</span>
     </div>
-    <p id="summary" style="font-size:12px; color:#4b5563; margin-top:8px; line-height:1.4;"></p>
+    <p id="summary" style="font-size:12px; color:#4b5563; margin-top:8px;"></p>
     
     <div id="breakdown" class="fare-breakdown"></div>
+
+    <div class="action-bar">
+        <button class="action-btn btn-whatsapp" id="btn-whatsapp">
+            <span>💬</span> WhatsApp
+        </button>
+        <button class="action-btn btn-copy" id="btn-copy">
+            <span>📋</span> Copy
+        </button>
+        <button class="action-btn btn-maps" id="btn-maps">
+            <span>🗺️</span> Maps
+        </button>
+    </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -181,25 +170,18 @@
 const CONFIG = {
     ORS_KEY: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0=",
     RATES: { 
-        BASE: 5.00,
-        KM_TIER_1: 1.25,     
-        KM_TIER_2: 1.00,     
-        KM_TIER_3: 0.85,     
-        MIDNIGHT_MULT: 1.1, 
-        PEAK_MULT: 1.2,     
-        TIME_RATE: 0.20,
-        INTERSTATE_INCENTIVE: 50.00,
-        INTERSTATE_THRESHOLD: 100
+        BASE: 5.00, KM_TIER_1: 1.25, KM_TIER_2: 1.00, KM_TIER_3: 0.85,
+        MIDNIGHT_MULT: 1.1, PEAK_MULT: 1.2, TIME_RATE: 0.20,
+        INTERSTATE_INCENTIVE: 50.00, INTERSTATE_THRESHOLD: 100
     }
 };
 
 const $ = id => document.getElementById(id);
-let pickupCoord, dropoffCoord, searchTimer, routeLayer;
+let pickupCoord, dropoffCoord, searchTimer, routeLayer, currentFare = 0;
 
 const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([3.1478, 101.6953], 12);
 L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").addTo(map);
 
-// Initialize time
 const now = new Date();
 now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
 $("departure-time").value = now.toISOString().slice(0,16);
@@ -252,8 +234,8 @@ async function calculate() {
         const durationMin = Math.ceil(route.summary.duration / 60);
         
         const dateObj = new Date($("departure-time").value);
-        const hour = dateObj.getHours() + (dateObj.getMinutes() / 60);
-        const isPeak = (hour >= 6 && hour < 9) || (hour >= 12.5 && hour < 14.5) || (hour >= 17 && hour < 20);
+        const hour = dateObj.getHours();
+        const isPeak = (hour >= 6 && hour < 9) || (hour >= 17 && hour < 20);
         const isMidnight = (hour >= 0 && hour < 6);
 
         let distFare = 0;
@@ -270,18 +252,16 @@ async function calculate() {
         let total = subtotal;
         if (isPeak) total *= CONFIG.RATES.PEAK_MULT;
         if (isMidnight) total *= CONFIG.RATES.MIDNIGHT_MULT;
-        
-        $("fare").innerText = `RM ${Math.round(total)}`;
-        $("badge").innerText = isInterstate ? "Interstate +" : "Standard";
-        $("summary").innerHTML = `📏 <b>${km.toFixed(1)} km</b> | ⏱️ <b>${durationMin} min</b>`;
+        currentFare = Math.round(total);
+
+        $("fare").innerText = `RM ${currentFare}`;
+        $("badge").innerText = isInterstate ? "Interstate" : "Standard";
+        $("summary").innerHTML = `<b>${km.toFixed(1)} km</b> • <b>${durationMin} min</b>`;
         
         $("breakdown").innerHTML = `
-            <span>Base Fare</span> <span>RM ${CONFIG.RATES.BASE.toFixed(2)}</span>
-            <span>Distance (${km.toFixed(1)}km)</span> <span>RM ${distFare.toFixed(2)}</span>
-            <span>Time (${durationMin}m)</span> <span>RM ${timeFare.toFixed(2)}</span>
-            ${isInterstate ? `<span style="color:var(--primary)">Interstate Incentive</span> <span style="color:var(--primary)">+ RM 50.00</span>` : ''}
-            ${isPeak ? `<span>Peak Surcharge (20%)</span> <span>Applied</span>` : ''}
-            ${isMidnight ? `<span>Midnight Surcharge (10%)</span> <span>Applied</span>` : ''}
+            <span>Base + Distance + Time</span> <span>RM ${(subtotal - (isInterstate ? 50 : 0)).toFixed(2)}</span>
+            ${isInterstate ? `<span>Interstate Incentive</span> <span>+ RM 50.00</span>` : ''}
+            ${isPeak || isMidnight ? `<span>Dynamic Surcharge</span> <span>Included</span>` : ''}
         `;
         
         $("results").style.display = 'block';
@@ -305,10 +285,28 @@ function decodePoly(str) {
     return coordinates;
 }
 
-// Event Listeners
+// Action Buttons Logic
+$("btn-whatsapp").onclick = () => {
+    const msg = encodeURIComponent(`Hi, I'd like to book a ride!\n\n📍 Pickup: ${$("pickup").value}\n🏁 Destination: ${$("dropoff").value}\n💰 Est. Fare: RM ${currentFare}\n\nIs this available?`);
+    window.open(`https://wa.me/?text=${msg}`, '_blank');
+};
+
+$("btn-copy").onclick = () => {
+    const text = `Trip Details:\nPickup: ${$("pickup").value}\nDestination: ${$("dropoff").value}\nFare: RM ${currentFare}`;
+    navigator.clipboard.writeText(text);
+    alert("Trip details copied!");
+};
+
+$("btn-maps").onclick = () => {
+    if (pickupCoord && dropoffCoord) {
+        const url = `https://www.google.com/maps/dir/?api=1&origin=${pickupCoord[0]},${pickupCoord[1]}&destination=${dropoffCoord[0]},${dropoffCoord[1]}&travelmode=driving`;
+        window.open(url, '_blank');
+    }
+};
+
 $("pickup").oninput = e => debounceSearch(e.target, "p-results", "pickup");
 $("dropoff").oninput = e => debounceSearch(e.target, "d-results", "dropoff");
-$("departure-time").oninput = () => calculate(); // FIX: Refresh fare when time changes
+$("departure-time").oninput = () => calculate();
 $("swap-btn").onclick = () => {
     let p = $("pickup").value, d = $("dropoff").value;
     $("pickup").value = d; $("dropoff").value = p;
