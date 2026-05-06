@@ -3,107 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - v5.8.0 PRO</title>
-
+    <title>Rideshare MY - v5.8.1</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-
     <style>
-        :root {
-            --primary: #059669;
-            --bg: #f3f4f6;
-            --card-bg: #ffffff;
-            --text: #1f2937;
-            --gray-text: #6b7280;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            background: var(--bg);
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        .search-panel {
-            background: var(--card-bg);
-            padding: 16px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-            z-index: 1005;
-        }
-
+        :root { --primary: #059669; --bg: #f3f4f6; --card-bg: #ffffff; --text: #1f2937; --gray-text: #6b7280; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background: var(--bg); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        .search-panel { background: var(--card-bg); padding: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); z-index: 1005; }
         .inputs-container { display: flex; align-items: center; gap: 12px; }
         .inputs-flex { flex: 1; }
-
         .input-group { position: relative; margin-bottom: 12px; }
-        .input-group label {
-            display: block;
-            font-size: 10px;
-            font-weight: 800;
-            margin-bottom: 4px;
-            color: var(--gray-text);
-            text-transform: uppercase;
-        }
-
-        input {
-            width: 100%;
-            padding: 12px 85px 12px 16px;
-            border: 1.5px solid #e5e7eb;
-            border-radius: 12px;
-            box-sizing: border-box;
-            font-size: 14px;
-            background: #f9fafb;
-        }
-
-        .swap-btn {
-            background: #f3f4f6;
-            border: 1px solid #e5e7eb;
-            border-radius: 50%;
-            width: 32px;
-            height: 32px;
-            cursor: pointer;
-            color: var(--primary);
-            display: flex; align-items: center; justify-content: center;
-        }
-
+        .input-group label { display: block; font-size: 10px; font-weight: 800; margin-bottom: 4px; color: var(--gray-text); text-transform: uppercase; }
+        input { width: 100%; padding: 12px 85px 12px 16px; border: 1.5px solid #e5e7eb; border-radius: 12px; box-sizing: border-box; font-size: 13px; background: #f9fafb; }
+        .swap-btn { background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; color: var(--primary); display: flex; align-items: center; justify-content: center; }
         .btn-container { position: absolute; right: 8px; top: 24px; display: flex; gap: 4px; }
         .icon-btn { background: transparent; border: none; cursor: pointer; padding: 6px; color: #9ca3af; font-size: 18px; }
-
-        .autocomplete-list {
-            position: absolute; top: 100%; left: 0; right: 0;
-            background: white; z-index: 9999; max-height: 250px;
-            overflow-y: auto; border-radius: 0 0 12px 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #e5e7eb; display: none;
-        }
-
+        .autocomplete-list { position: absolute; top: 100%; left: 0; right: 0; background: white; z-index: 9999; max-height: 200px; overflow-y: auto; border-radius: 0 0 12px 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #e5e7eb; display: none; }
         .autocomplete-item { padding: 12px 16px; border-bottom: 1px solid #f3f4f6; cursor: pointer; }
-
         #map { flex-grow: 1; width: 100%; z-index: 1; }
-
-        .results-card {
-            position: fixed; bottom: 24px; left: 16px; right: 16px;
-            background: white; padding: 20px; border-radius: 24px;
-            box-shadow: 0 -10px 40px rgba(0,0,0,0.2); z-index: 1002; display: none;
-        }
-
-        .fare-breakdown {
-            margin-top: 12px; padding-top: 12px; border-top: 1px dashed #e5e7eb;
-            font-size: 11px; color: var(--gray-text); display: grid;
-            grid-template-columns: 1fr auto; gap: 4px;
-        }
-
-        .action-bar {
-            display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 15px;
-        }
-
-        .action-btn {
-            border: none; border-radius: 12px; padding: 10px;
-            font-size: 11px; font-weight: 600; cursor: pointer;
-            display: flex; flex-direction: column; align-items: center; gap: 4px;
-            transition: 0.2s;
-        }
-
+        .results-card { position: fixed; bottom: 20px; left: 16px; right: 16px; background: white; padding: 20px; border-radius: 24px; box-shadow: 0 -10px 40px rgba(0,0,0,0.2); z-index: 1002; display: none; }
+        .fare-breakdown { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e5e7eb; font-size: 11px; color: var(--gray-text); display: grid; grid-template-columns: 1fr auto; gap: 4px; }
+        .action-bar { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .action-btn { border: none; border-radius: 12px; padding: 10px; font-size: 10px; font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; transition: 0.2s; text-transform: uppercase; }
         .btn-whatsapp { background: #25D366; color: white; }
         .btn-copy { background: #f1f5f9; color: #475569; }
         .btn-maps { background: #4285F4; color: white; }
@@ -135,7 +55,7 @@
         <button id="swap-btn" class="swap-btn">⇅</button>
     </div>
     <div class="input-group" style="margin-top: 12px; margin-bottom:0;">
-        <label>Departure Time</label>
+        <label>Departure Date & Time</label>
         <input type="datetime-local" id="departure-time">
     </div>
 </div>
@@ -144,28 +64,19 @@
 
 <div id="results" class="results-card">
     <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h2 id="fare" style="margin:0; color:var(--primary); font-size:34px;">RM 0</h2>
-        <span id="badge" style="font-size:10px; font-weight:800; padding:4px 10px; background:#f1f5f9; border-radius:20px; text-transform:uppercase;">Standard</span>
+        <h2 id="fare" style="margin:0; color:var(--primary); font-size:32px;">RM 0</h2>
+        <span id="badge" style="font-size:10px; font-weight:800; padding:4px 10px; background:#f1f5f9; border-radius:20px;">STANDARD</span>
     </div>
     <p id="summary" style="font-size:12px; color:#4b5563; margin-top:8px;"></p>
-    
     <div id="breakdown" class="fare-breakdown"></div>
-
     <div class="action-bar">
-        <button class="action-btn btn-whatsapp" id="btn-whatsapp">
-            <span>💬</span> WhatsApp
-        </button>
-        <button class="action-btn btn-copy" id="btn-copy">
-            <span>📋</span> Copy
-        </button>
-        <button class="action-btn btn-maps" id="btn-maps">
-            <span>🗺️</span> Maps
-        </button>
+        <button class="action-btn btn-whatsapp" id="btn-whatsapp"><span>💬</span> WhatsApp</button>
+        <button class="action-btn btn-copy" id="btn-copy"><span>📋</span> Copy</button>
+        <button class="action-btn btn-maps" id="btn-maps"><span>🗺️</span> Maps App</button>
     </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
 <script>
 const CONFIG = {
     ORS_KEY: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0=",
@@ -206,9 +117,10 @@ function renderResults(features, resultsId, type) {
     list.innerHTML = features.map(f => {
         const p = f.properties;
         const [lon, lat] = f.geometry.coordinates;
-        return `<div class="autocomplete-item" onclick="selectLoc('${type}', [${lat}, ${lon}], '${(p.name || "Place").replace(/'/g, "\\'")}')">
-                <div style="font-weight:600; font-size:14px;">${p.name || "Unknown"}</div>
-                <div style="font-size:11px; color:#6b7280;">${p.city || p.state || 'Malaysia'}</div>
+        const fullAddr = `${p.name || "Place"}, ${p.city || p.state || 'Malaysia'}`;
+        return `<div class="autocomplete-item" onclick="selectLoc('${type}', [${lat}, ${lon}], '${fullAddr.replace(/'/g, "\\'")}')">
+                <div style="font-weight:600; font-size:13px;">${p.name || "Unknown"}</div>
+                <div style="font-size:11px; color:#6b7280;">${p.city || p.state || ''}</div>
                 </div>`;
     }).join('');
     list.style.display = 'block';
@@ -245,7 +157,6 @@ async function calculate() {
 
         const timeFare = durationMin * CONFIG.RATES.TIME_RATE;
         let subtotal = CONFIG.RATES.BASE + distFare + timeFare;
-
         const isInterstate = km > CONFIG.RATES.INTERSTATE_THRESHOLD;
         if (isInterstate) subtotal += CONFIG.RATES.INTERSTATE_INCENTIVE;
 
@@ -255,15 +166,13 @@ async function calculate() {
         currentFare = Math.round(total);
 
         $("fare").innerText = `RM ${currentFare}`;
-        $("badge").innerText = isInterstate ? "Interstate" : "Standard";
+        $("badge").innerText = isInterstate ? "INTERSTATE" : "STANDARD";
         $("summary").innerHTML = `<b>${km.toFixed(1)} km</b> • <b>${durationMin} min</b>`;
-        
         $("breakdown").innerHTML = `
             <span>Base + Distance + Time</span> <span>RM ${(subtotal - (isInterstate ? 50 : 0)).toFixed(2)}</span>
-            ${isInterstate ? `<span>Interstate Incentive</span> <span>+ RM 50.00</span>` : ''}
+            ${isInterstate ? `<span style="color:var(--primary)">Interstate Incentive</span> <span style="color:var(--primary)">+ RM 50.00</span>` : ''}
             ${isPeak || isMidnight ? `<span>Dynamic Surcharge</span> <span>Included</span>` : ''}
         `;
-        
         $("results").style.display = 'block';
         if (routeLayer) map.removeLayer(routeLayer);
         routeLayer = L.polyline(decodePoly(route.geometry), {color: '#059669', weight: 5}).addTo(map);
@@ -285,23 +194,34 @@ function decodePoly(str) {
     return coordinates;
 }
 
-// Action Buttons Logic
 $("btn-whatsapp").onclick = () => {
-    const msg = encodeURIComponent(`Hi, I'd like to book a ride!\n\n📍 Pickup: ${$("pickup").value}\n🏁 Destination: ${$("dropoff").value}\n💰 Est. Fare: RM ${currentFare}\n\nIs this available?`);
+    const dt = new Date($("departure-time").value);
+    const dateStr = dt.toLocaleDateString('en-MY', { weekday:'short', day:'2-digit', month:'short' });
+    const timeStr = dt.toLocaleTimeString('en-MY', { hour:'2-digit', minute:'2-digit' });
+    const mapsLink = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent($("pickup").value)}&destination=${encodeURIComponent($("dropoff").value)}&travelmode=driving`;
+    
+    const msg = encodeURIComponent(
+        `🚕 *Booking Inquiry*\n\n` +
+        `📍 *From:* ${$("pickup").value}\n` +
+        `🏁 *To:* ${$("dropoff").value}\n` +
+        `📅 *Date:* ${dateStr}\n` +
+        `⏰ *Time:* ${timeStr}\n` +
+        `💰 *Fare:* RM ${currentFare}\n\n` +
+        `🗺️ *Open in Maps:*\n${mapsLink}`
+    );
     window.open(`https://wa.me/?text=${msg}`, '_blank');
 };
 
 $("btn-copy").onclick = () => {
-    const text = `Trip Details:\nPickup: ${$("pickup").value}\nDestination: ${$("dropoff").value}\nFare: RM ${currentFare}`;
+    const dt = new Date($("departure-time").value);
+    const text = `Trip Details:\nPickup: ${$("pickup").value}\nDropoff: ${$("dropoff").value}\nTime: ${dt.toLocaleString()}\nFare: RM ${currentFare}`;
     navigator.clipboard.writeText(text);
-    alert("Trip details copied!");
+    alert("Copied to clipboard!");
 };
 
 $("btn-maps").onclick = () => {
-    if (pickupCoord && dropoffCoord) {
-        const url = `https://www.google.com/maps/dir/?api=1&origin=${pickupCoord[0]},${pickupCoord[1]}&destination=${dropoffCoord[0]},${dropoffCoord[1]}&travelmode=driving`;
-        window.open(url, '_blank');
-    }
+    const url = `https://www.google.com/maps/dir/?api=1&origin=${pickupCoord[0]},${pickupCoord[1]}&destination=${dropoffCoord[0]},${dropoffCoord[1]}&travelmode=driving`;
+    window.open(url, '_blank');
 };
 
 $("pickup").oninput = e => debounceSearch(e.target, "p-results", "pickup");
@@ -317,7 +237,14 @@ $("clear-p").onclick = () => { $("pickup").value = ''; $("p-results").style.disp
 $("clear-d").onclick = () => { $("dropoff").value = ''; $("d-results").style.display='none'; dropoffCoord = null; };
 $("gps-btn").onclick = () => {
     navigator.geolocation.getCurrentPosition(async pos => {
-        selectLoc('pickup', [pos.coords.latitude, pos.coords.longitude], "Current Location");
+        const lat = pos.coords.latitude, lon = pos.coords.longitude;
+        try {
+            const res = await fetch(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lon}`);
+            const data = await res.json();
+            const p = data.features[0].properties;
+            const fullAddr = `${p.name || "My Location"}, ${p.city || p.state || ''}`;
+            selectLoc('pickup', [lat, lon], fullAddr);
+        } catch(e) { selectLoc('pickup', [lat, lon], "My Location"); }
     });
 };
 </script>
