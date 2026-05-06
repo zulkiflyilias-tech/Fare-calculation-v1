@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - v5.8.2 PRO</title>
+    <title>Rideshare MY - v5.8.3 PRO</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <style>
         :root { --primary: #059669; --bg: #f3f4f6; --card-bg: #ffffff; --text: #1f2937; --gray-text: #6b7280; --accent: #f59e0b; }
@@ -25,20 +25,30 @@
         
         .autocomplete-list { position: absolute; top: 100%; left: 0; right: 0; background: white; z-index: 9999; max-height: 200px; overflow-y: auto; border-radius: 0 0 12px 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #e5e7eb; display: none; }
         .autocomplete-item { padding: 12px 16px; border-bottom: 1px solid #f3f4f6; cursor: pointer; }
-        .autocomplete-item:hover { background: #f9fafb; }
 
         #map { flex-grow: 1; width: 100%; z-index: 1; }
 
         .results-card { position: fixed; bottom: 20px; left: 16px; right: 16px; background: white; padding: 20px; border-radius: 24px; box-shadow: 0 -10px 40px rgba(0,0,0,0.2); z-index: 1002; display: none; border: 1px solid #f1f5f9; }
-        .fare-header { display: flex; justify-content: space-between; align-items: center; }
-        .fare-breakdown { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e5e7eb; font-size: 11px; color: var(--gray-text); display: grid; grid-template-columns: 1fr auto; gap: 4px; }
+        
+        /* Interactive Fare Styles */
+        .fare-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .fare-header:active { opacity: 0.7; }
+        
+        #fare-container { flex: 1; }
+        #fare { margin:0; color:var(--primary); font-size:32px; }
+        .tap-hint { font-size: 9px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .fare-breakdown { 
+            margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e5e7eb; 
+            font-size: 11px; color: var(--gray-text); display: none; /* Hidden by default */
+            grid-template-columns: 1fr auto; gap: 4px; 
+        }
         
         .action-bar { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 15px; }
         .action-btn { border: none; border-radius: 12px; padding: 10px; font-size: 10px; font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; transition: 0.2s; text-transform: uppercase; }
         .btn-whatsapp { background: #25D366; color: white; }
         .btn-copy { background: #f1f5f9; color: #475569; }
         .btn-maps { background: #4285F4; color: white; }
-        .action-btn:active { transform: scale(0.95); opacity: 0.9; }
     </style>
 </head>
 <body>
@@ -75,11 +85,16 @@
 <div id="map"></div>
 
 <div id="results" class="results-card">
-    <div class="fare-header">
-        <h2 id="fare" style="margin:0; color:var(--primary); font-size:32px;">RM 0</h2>
+    <div class="fare-header" onclick="toggleBreakdown()">
+        <div id="fare-container">
+            <h2 id="fare">RM 0</h2>
+            <div class="tap-hint">Tap for details ▾</div>
+        </div>
         <span id="badge" style="font-size:10px; font-weight:800; padding:4px 10px; background:#f1f5f9; border-radius:20px;">STANDARD</span>
     </div>
+    
     <p id="summary" style="font-size:12px; color:#4b5563; margin-top:8px;"></p>
+    
     <div id="breakdown" class="fare-breakdown"></div>
     
     <div class="action-bar">
@@ -96,7 +111,6 @@ const CONFIG = {
     RATES: { 
         BASE: 5.00, KM_TIER_1: 1.25, KM_TIER_2: 1.00, KM_TIER_3: 0.85,
         TIME_RATE: 0.20, INTERSTATE_INCENTIVE: 50.00, INTERSTATE_THRESHOLD: 100,
-        // PROPOSED STRATEGY MULTIPLIERS
         MIDNIGHT: 1.10, MORNING_PEAK: 1.30, LUNCH_SURGE: 1.10, EVENING_PEAK: 1.35
     }
 };
@@ -110,6 +124,19 @@ L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").ad
 const now = new Date();
 now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
 $("departure-time").value = now.toISOString().slice(0,16);
+
+// Toggle visibility of breakdown
+function toggleBreakdown() {
+    const b = $("breakdown");
+    const hint = document.querySelector('.tap-hint');
+    if (b.style.display === "grid") {
+        b.style.display = "none";
+        hint.innerHTML = "Tap for details ▾";
+    } else {
+        b.style.display = "grid";
+        hint.innerHTML = "Tap to hide ▴";
+    }
+}
 
 function debounceSearch(input, resultsId, type) {
     const query = input.value;
@@ -159,7 +186,6 @@ async function calculate() {
         const km = route.summary.distance / 1000;
         const durationMin = Math.ceil(route.summary.duration / 60);
         
-        // Dynamic Surcharge Logic
         const dt = new Date($("departure-time").value);
         const hour = dt.getHours() + (dt.getMinutes() / 60);
         let activeMult = 1.0;
@@ -170,7 +196,6 @@ async function calculate() {
         else if (hour >= 12.5 && hour < 14.5) { activeMult = CONFIG.RATES.LUNCH_SURGE; currentSurgeLabel = "Lunch Surge (10%)"; }
         else if (hour >= 17 && hour < 20) { activeMult = CONFIG.RATES.EVENING_PEAK; currentSurgeLabel = "Evening Peak (35%)"; }
 
-        // Distance Calculation (Regressive)
         let distFare = 0;
         if (km <= 50) distFare = km * CONFIG.RATES.KM_TIER_1;
         else if (km <= 150) distFare = (50 * CONFIG.RATES.KM_TIER_1) + ((km - 50) * CONFIG.RATES.KM_TIER_2);
@@ -183,13 +208,10 @@ async function calculate() {
 
         currentFare = Math.round(subtotal * activeMult);
 
-        // UI
         $("fare").innerText = `RM ${currentFare}`;
         $("badge").innerText = isInterstate ? "INTERSTATE" : "STANDARD";
-        $("badge").style.background = activeMult > 1 ? "#fff7ed" : "#f1f5f9";
-        $("badge").style.color = activeMult > 1 ? "#c2410c" : "#475569";
-        
         $("summary").innerHTML = `<b>${km.toFixed(1)} km</b> • <b>${durationMin} min</b>`;
+        
         $("breakdown").innerHTML = `
             <span>Trip Subtotal</span> <span>RM ${subtotal.toFixed(2)}</span>
             ${activeMult > 1 ? `<span style="color:var(--accent)">${currentSurgeLabel}</span> <span style="color:var(--accent)">Applied</span>` : '<span>Standard Hour</span> <span>No Surge</span>'}
@@ -223,7 +245,7 @@ $("btn-whatsapp").onclick = () => {
     const mapsLink = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent($("pickup").value)}&destination=${encodeURIComponent($("dropoff").value)}&travelmode=driving`;
     
     const msg = encodeURIComponent(
-        `🚕 *Booking Inquiry v5.8.2*\n\n` +
+        `🚕 *Booking Inquiry*\n\n` +
         `📍 *From:* ${$("pickup").value}\n` +
         `🏁 *To:* ${$("dropoff").value}\n` +
         `📅 *Date:* ${dateStr}\n` +
@@ -236,7 +258,7 @@ $("btn-whatsapp").onclick = () => {
 };
 
 $("btn-copy").onclick = () => {
-    const text = `Ride v5.8.2\nFrom: ${$("pickup").value}\nTo: ${$("dropoff").value}\nFare: RM ${currentFare}\nType: ${currentSurgeLabel}`;
+    const text = `Ride v5.8.3\nFrom: ${$("pickup").value}\nTo: ${$("dropoff").value}\nFare: RM ${currentFare}\nRate: ${currentSurgeLabel}`;
     navigator.clipboard.writeText(text);
     alert("Trip details copied!");
 };
