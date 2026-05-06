@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - v5.6.1 PRO</title>
+    <title>Rideshare MY - v5.6.2 PRO</title>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -218,27 +218,25 @@ const CONFIG = {
     RATES: { 
         BASE: 5.00,
         KM_STANDARD: 1.25, 
-        KM_CAP: 2.05,      
-        MIDNIGHT_MULT: 1.2,
+        KM_CAP: 2.25,      // Updated: Interstate Cap
+        MIDNIGHT_MULT: 1.5, // 50% increase to total
+        PEAK_MULT: 1.25,    // 25% increase to total
         PEAK_MIN_RATE: 0.45,
         INTERSTATE_MULT: 1.8,
-        TERRAIN: 20.00 
+        INTERSTATE_THRESHOLD: 100
     }
 };
 
 const $ = id => document.getElementById(id);
 let pickupCoord, dropoffCoord, searchTimer, routeLayer;
 
-// Init Map
 const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([3.1478, 101.6953], 12);
 L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").addTo(map);
 
-// Set default time
 const now = new Date();
 now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
 $("departure-time").value = now.toISOString().slice(0,16);
 
-// --- HELPER: HAIVERSINE DISTANCE ---
 function getDistance(lat1, lon1, lat2, lon2) {
     const R = 6371; 
     const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -249,7 +247,6 @@ function getDistance(lat1, lon1, lat2, lon2) {
     return R * c;
 }
 
-// --- SEARCH LOGIC ---
 function debounceSearch(input, resultsId, type) {
     const query = input.value;
     $(type === 'pickup' ? 'clear-p' : 'clear-d').style.display = query ? 'block' : 'none';
@@ -260,16 +257,13 @@ function debounceSearch(input, resultsId, type) {
         try {
             const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lat=3.14&lon=101.69&countrycode=MY&limit=10`);
             const data = await res.json();
-            
-            // Basic De-duplication based on name and city
             const seen = new Set();
             const uniqueFeatures = data.features.filter(f => {
-                const identifier = `${f.properties.name}-${f.properties.city}-${f.properties.street}`;
+                const identifier = `${f.properties.name}-${f.properties.city}`;
                 if (seen.has(identifier)) return false;
                 seen.add(identifier);
                 return true;
             });
-
             renderResults(uniqueFeatures, resultsId, type);
         } catch (e) { console.error(e); }
     }, 300);
@@ -278,65 +272,41 @@ function debounceSearch(input, resultsId, type) {
 function renderResults(features, resultsId, type) {
     const list = $(resultsId);
     if (!features.length) { list.style.display = 'none'; return; }
-
     list.innerHTML = features.map(f => {
         const p = f.properties;
         const [lon, lat] = f.geometry.coordinates;
         const name = p.name || "Unknown Place";
-        const subAddress = `${p.street ? p.street + ', ' : ''}${p.postcode ? p.postcode + ', ' : ''}${p.city || p.state || 'Malaysia'}`;
-        
-        // Dynamic Distance Calculation
+        const subAddress = `${p.street ? p.street + ', ' : ''}${p.city || p.state || 'Malaysia'}`;
         let distLabel = "";
         if (pickupCoord) {
             const d = getDistance(pickupCoord[0], pickupCoord[1], lat, lon);
             distLabel = d < 1 ? `${(d * 1000).toFixed(0)}m` : `${d.toFixed(1)}km`;
         }
-        
-        return `
-            <div class="autocomplete-item" onclick="selectLoc('${type}', [${lat}, ${lon}], '${name.replace(/'/g, "\\'")}')">
+        return `<div class="autocomplete-item" onclick="selectLoc('${type}', [${lat}, ${lon}], '${name.replace(/'/g, "\\'")}')">
                 <div class="item-icon">📍</div>
                 <div class="item-info">
                     <div class="item-name">${name}</div>
-                    <div class="item-address">
-                        <span class="item-dist">${distLabel}</span> ${subAddress}
-                    </div>
-                </div>
-            </div>`;
+                    <div class="item-address"><span class="item-dist">${distLabel}</span> ${subAddress}</div>
+                </div></div>`;
     }).join('');
     list.style.display = 'block';
 }
 
 function selectLoc(type, coord, label) {
-    if (type === 'pickup') { 
-        pickupCoord = coord; 
-        $("pickup").value = label; 
-        $("p-results").style.display = 'none'; 
-    } else { 
-        dropoffCoord = coord; 
-        $("dropoff").value = label; 
-        $("d-results").style.display = 'none'; 
-    }
+    if (type === 'pickup') { pickupCoord = coord; $("pickup").value = label; $("p-results").style.display = 'none'; } 
+    else { dropoffCoord = coord; $("dropoff").value = label; $("d-results").style.display = 'none'; }
     calculate();
 }
 
-// --- SWAP LOGIC ---
 $("swap-btn").onclick = () => {
-    const pVal = $("pickup").value;
-    const dVal = $("dropoff").value;
-    $("pickup").value = dVal;
-    $("dropoff").value = pVal;
-
-    const tempCoord = pickupCoord;
-    pickupCoord = dropoffCoord;
-    dropoffCoord = tempCoord;
-
+    const pVal = $("pickup").value, dVal = $("dropoff").value;
+    $("pickup").value = dVal; $("dropoff").value = pVal;
+    const tempCoord = pickupCoord; pickupCoord = dropoffCoord; dropoffCoord = tempCoord;
     if (pickupCoord && dropoffCoord) calculate();
 };
 
-// --- FARE CALCULATION ---
 async function calculate() {
     if (!pickupCoord || !dropoffCoord) return;
-    
     try {
         const res = await fetch("https://api.openrouteservice.org/v2/directions/driving-car", {
             method: "POST",
@@ -353,27 +323,30 @@ async function calculate() {
 
         const isPeak = (hour >= 6 && hour < 9) || (hour >= 12.5 && hour < 14.5) || (hour >= 17 && hour < 20);
         const isMidnight = (hour >= 0 && hour < 6);
-        const isInterstate = km > 100;
+        const isInterstate = km > CONFIG.RATES.INTERSTATE_THRESHOLD;
 
-        let baseFare = CONFIG.RATES.BASE;
-        let midnightSurcharge = isMidnight ? (baseFare * CONFIG.RATES.MIDNIGHT_MULT) : 0;
-        let dynamicRate = Math.min(CONFIG.RATES.KM_STANDARD * (isPeak ? 1.2 : 1.0) * (isInterstate ? CONFIG.RATES.INTERSTATE_MULT : 1.0), CONFIG.RATES.KM_CAP);
+        // 1. Calculate Base Components
+        let kmRate = isInterstate ? Math.min(CONFIG.RATES.KM_STANDARD * CONFIG.RATES.INTERSTATE_MULT, CONFIG.RATES.KM_CAP) : CONFIG.RATES.KM_STANDARD;
         let timeFare = isPeak ? (durationMin * CONFIG.RATES.PEAK_MIN_RATE) : 0;
+        
+        // 2. Sum Subtotal
+        let subtotal = CONFIG.RATES.BASE + (km * kmRate) + timeFare;
 
-        let total = baseFare + (km * dynamicRate) + timeFare + midnightSurcharge;
+        // 3. Apply Surcharges to Total Fare
+        let total = subtotal;
+        if (isPeak) total *= CONFIG.RATES.PEAK_MULT;
+        if (isMidnight) total *= CONFIG.RATES.MIDNIGHT_MULT;
         
         $("fare").innerText = `RM ${Math.round(total)}`;
         $("badge").innerText = isInterstate ? "Interstate" : (isMidnight ? "Midnight" : (isPeak ? "Peak Hour" : "Standard"));
         
         $("summary").innerHTML = `📏 <b>${km.toFixed(1)} km</b> | ⏱️ <b>${durationMin} min</b><br>
-            <span style="font-size:11px; color:var(--gray-text);">Base RM ${baseFare.toFixed(2)} + ${isPeak ? 'Traffic Surcharge' : 'Standard Rate'}</span>`;
+            <span style="font-size:11px; color:var(--gray-text);">Incl. ${isMidnight ? '50% Midnight' : (isPeak ? '25% Peak' : 'Standard')} Surcharge on total</span>`;
         
         $("results").style.display = 'block';
-
         if (routeLayer) map.removeLayer(routeLayer);
         routeLayer = L.polyline(decodePoly(route.geometry), {color: '#059669', weight: 5}).addTo(map);
         map.fitBounds(routeLayer.getBounds(), {padding: [50,150]});
-        
     } catch (err) { console.error(err); }
 }
 
@@ -394,27 +367,21 @@ function decodePoly(str) {
 $("pickup").oninput = e => debounceSearch(e.target, "p-results", "pickup");
 $("dropoff").oninput = e => debounceSearch(e.target, "d-results", "dropoff");
 $("departure-time").onchange = () => calculate();
-
 $("gps-btn").onclick = () => {
     navigator.geolocation.getCurrentPosition(async pos => {
         const lat = pos.coords.latitude, lon = pos.coords.longitude;
         try {
             const res = await fetch(`https://photon.komoot.io/reverse?lon=${lon}&lat=${lat}`);
             const data = await res.json();
-            const name = data.features[0].properties.name || "My Current Location";
-            selectLoc('pickup', [lat, lon], name);
+            selectLoc('pickup', [lat, lon], data.features[0].properties.name || "Current Location");
         } catch(e) { selectLoc('pickup', [lat, lon], "My Location"); }
     });
 };
 
 $("clear-p").onclick = () => { $("pickup").value = ''; $("p-results").style.display = 'none'; $("clear-p").style.display = 'none'; pickupCoord = null; };
 $("clear-d").onclick = () => { $("dropoff").value = ''; $("d-results").style.display = 'none'; $("clear-d").style.display = 'none'; dropoffCoord = null; };
-
 document.addEventListener('click', (e) => {
-    if (!e.target.closest('.input-group')) {
-        $("p-results").style.display = 'none';
-        $("d-results").style.display = 'none';
-    }
+    if (!e.target.closest('.input-group')) { $("p-results").style.display = 'none'; $("d-results").style.display = 'none'; }
 });
 </script>
 </body>
