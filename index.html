@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - v5.7.1 PRO</title>
+    <title>Rideshare MY - v5.7.2 PRO</title>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -172,8 +172,7 @@
     </div>
     <p id="summary" style="font-size:12px; color:#4b5563; margin-top:8px; line-height:1.4;"></p>
     
-    <div id="breakdown" class="fare-breakdown">
-        </div>
+    <div id="breakdown" class="fare-breakdown"></div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -189,7 +188,7 @@ const CONFIG = {
         MIDNIGHT_MULT: 1.1, 
         PEAK_MULT: 1.2,     
         TIME_RATE: 0.20,
-        INTERSTATE_INCENTIVE: 50.00, // Fixed Driver Incentive
+        INTERSTATE_INCENTIVE: 50.00,
         INTERSTATE_THRESHOLD: 100
     }
 };
@@ -200,6 +199,7 @@ let pickupCoord, dropoffCoord, searchTimer, routeLayer;
 const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([3.1478, 101.6953], 12);
 L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").addTo(map);
 
+// Initialize time
 const now = new Date();
 now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
 $("departure-time").value = now.toISOString().slice(0,16);
@@ -209,7 +209,6 @@ function debounceSearch(input, resultsId, type) {
     $(type === 'pickup' ? 'clear-p' : 'clear-d').style.display = query ? 'block' : 'none';
     clearTimeout(searchTimer);
     if (query.length < 2) { $(resultsId).style.display = 'none'; return; }
-
     searchTimer = setTimeout(async () => {
         try {
             const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lat=3.14&lon=101.69&countrycode=MY&limit=10`);
@@ -257,7 +256,6 @@ async function calculate() {
         const isPeak = (hour >= 6 && hour < 9) || (hour >= 12.5 && hour < 14.5) || (hour >= 17 && hour < 20);
         const isMidnight = (hour >= 0 && hour < 6);
 
-        // 1. Regressive Distance
         let distFare = 0;
         if (km <= 50) distFare = km * CONFIG.RATES.KM_TIER_1;
         else if (km <= 150) distFare = (50 * CONFIG.RATES.KM_TIER_1) + ((km - 50) * CONFIG.RATES.KM_TIER_2);
@@ -266,28 +264,24 @@ async function calculate() {
         const timeFare = durationMin * CONFIG.RATES.TIME_RATE;
         let subtotal = CONFIG.RATES.BASE + distFare + timeFare;
 
-        // 2. Interstate Incentive
         const isInterstate = km > CONFIG.RATES.INTERSTATE_THRESHOLD;
         if (isInterstate) subtotal += CONFIG.RATES.INTERSTATE_INCENTIVE;
 
-        // 3. Multipliers
         let total = subtotal;
         if (isPeak) total *= CONFIG.RATES.PEAK_MULT;
         if (isMidnight) total *= CONFIG.RATES.MIDNIGHT_MULT;
         
-        // UI Updates
         $("fare").innerText = `RM ${Math.round(total)}`;
         $("badge").innerText = isInterstate ? "Interstate +" : "Standard";
         $("summary").innerHTML = `📏 <b>${km.toFixed(1)} km</b> | ⏱️ <b>${durationMin} min</b>`;
         
-        // Populate Breakdown
         $("breakdown").innerHTML = `
             <span>Base Fare</span> <span>RM ${CONFIG.RATES.BASE.toFixed(2)}</span>
             <span>Distance (${km.toFixed(1)}km)</span> <span>RM ${distFare.toFixed(2)}</span>
             <span>Time (${durationMin}m)</span> <span>RM ${timeFare.toFixed(2)}</span>
             ${isInterstate ? `<span style="color:var(--primary)">Interstate Incentive</span> <span style="color:var(--primary)">+ RM 50.00</span>` : ''}
-            ${isPeak ? `<span>Peak Surcharge (20%)</span> <span>Included</span>` : ''}
-            ${isMidnight ? `<span>Midnight Surcharge (10%)</span> <span>Included</span>` : ''}
+            ${isPeak ? `<span>Peak Surcharge (20%)</span> <span>Applied</span>` : ''}
+            ${isMidnight ? `<span>Midnight Surcharge (10%)</span> <span>Applied</span>` : ''}
         `;
         
         $("results").style.display = 'block';
@@ -311,8 +305,10 @@ function decodePoly(str) {
     return coordinates;
 }
 
+// Event Listeners
 $("pickup").oninput = e => debounceSearch(e.target, "p-results", "pickup");
 $("dropoff").oninput = e => debounceSearch(e.target, "d-results", "dropoff");
+$("departure-time").oninput = () => calculate(); // FIX: Refresh fare when time changes
 $("swap-btn").onclick = () => {
     let p = $("pickup").value, d = $("dropoff").value;
     $("pickup").value = d; $("dropoff").value = p;
