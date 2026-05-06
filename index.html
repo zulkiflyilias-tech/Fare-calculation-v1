@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - v5.6.0 PRO</title>
+    <title>Rideshare MY - v5.6.1 PRO</title>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -34,7 +34,6 @@
             position: relative;
         }
 
-        /* Container for inputs and swap button */
         .inputs-container {
             display: flex;
             align-items: center;
@@ -80,7 +79,7 @@
 
         input {
             width: 100%;
-            padding: 12px 85px 12px 35px; /* Added left padding for icon */
+            padding: 12px 85px 12px 35px;
             border: 1.5px solid #e5e7eb;
             border-radius: 12px;
             box-sizing: border-box;
@@ -88,7 +87,6 @@
             background: #f9fafb;
         }
 
-        /* Marker Icons inside input */
         .input-icon {
             position: absolute;
             left: 12px;
@@ -113,7 +111,6 @@
             font-size: 18px;
         }
 
-        /* Search Results styling matching your image */
         .autocomplete-list {
             position: absolute;
             top: 100%;
@@ -142,7 +139,12 @@
         .item-info { flex: 1; }
         .item-name { font-weight: 600; color: #1f2937; font-size: 14px; margin-bottom: 2px; }
         .item-address { color: #6b7280; font-size: 11px; line-height: 1.4; display: block; }
-        .item-dist { color: #9ca3af; font-size: 11px; margin-right: 8px; }
+        .item-dist { 
+            color: var(--primary); 
+            font-weight: 700;
+            font-size: 11px; 
+            margin-right: 8px; 
+        }
 
         #map { flex-grow: 1; width: 100%; z-index: 1; }
 
@@ -236,8 +238,18 @@ const now = new Date();
 now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
 $("departure-time").value = now.toISOString().slice(0,16);
 
-// --- SEARCH LOGIC ---
+// --- HELPER: HAIVERSINE DISTANCE ---
+function getDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; 
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
 
+// --- SEARCH LOGIC ---
 function debounceSearch(input, resultsId, type) {
     const query = input.value;
     $(type === 'pickup' ? 'clear-p' : 'clear-d').style.display = query ? 'block' : 'none';
@@ -246,10 +258,19 @@ function debounceSearch(input, resultsId, type) {
 
     searchTimer = setTimeout(async () => {
         try {
-            // Added lat/lon bias for Malaysia center
-            const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lat=3.14&lon=101.69&countrycode=MY&limit=6`);
+            const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lat=3.14&lon=101.69&countrycode=MY&limit=10`);
             const data = await res.json();
-            renderResults(data.features, resultsId, type);
+            
+            // Basic De-duplication based on name and city
+            const seen = new Set();
+            const uniqueFeatures = data.features.filter(f => {
+                const identifier = `${f.properties.name}-${f.properties.city}-${f.properties.street}`;
+                if (seen.has(identifier)) return false;
+                seen.add(identifier);
+                return true;
+            });
+
+            renderResults(uniqueFeatures, resultsId, type);
         } catch (e) { console.error(e); }
     }, 300);
 }
@@ -260,21 +281,24 @@ function renderResults(features, resultsId, type) {
 
     list.innerHTML = features.map(f => {
         const p = f.properties;
+        const [lon, lat] = f.geometry.coordinates;
         const name = p.name || "Unknown Place";
-        const city = p.city || p.state || "";
-        const postcode = p.postcode ? p.postcode + ", " : "";
-        const street = p.street ? p.street + ", " : "";
+        const subAddress = `${p.street ? p.street + ', ' : ''}${p.postcode ? p.postcode + ', ' : ''}${p.city || p.state || 'Malaysia'}`;
         
-        // Formatted like your image
-        const subAddress = `${street}${postcode}${city}, ${p.state || 'Malaysia'}`;
+        // Dynamic Distance Calculation
+        let distLabel = "";
+        if (pickupCoord) {
+            const d = getDistance(pickupCoord[0], pickupCoord[1], lat, lon);
+            distLabel = d < 1 ? `${(d * 1000).toFixed(0)}m` : `${d.toFixed(1)}km`;
+        }
         
         return `
-            <div class="autocomplete-item" onclick="selectLoc('${type}', [${f.geometry.coordinates[1]}, ${f.geometry.coordinates[0]}], '${name.replace(/'/g, "\\'")}')">
-                <div class="item-icon">🕒</div>
+            <div class="autocomplete-item" onclick="selectLoc('${type}', [${lat}, ${lon}], '${name.replace(/'/g, "\\'")}')">
+                <div class="item-icon">📍</div>
                 <div class="item-info">
                     <div class="item-name">${name}</div>
                     <div class="item-address">
-                        <span class="item-dist">31km</span> ${subAddress}
+                        <span class="item-dist">${distLabel}</span> ${subAddress}
                     </div>
                 </div>
             </div>`;
@@ -283,20 +307,25 @@ function renderResults(features, resultsId, type) {
 }
 
 function selectLoc(type, coord, label) {
-    if (type === 'pickup') { pickupCoord = coord; $("pickup").value = label; $("p-results").style.display = 'none'; }
-    else { dropoffCoord = coord; $("dropoff").value = label; $("d-results").style.display = 'none'; }
+    if (type === 'pickup') { 
+        pickupCoord = coord; 
+        $("pickup").value = label; 
+        $("p-results").style.display = 'none'; 
+    } else { 
+        dropoffCoord = coord; 
+        $("dropoff").value = label; 
+        $("d-results").style.display = 'none'; 
+    }
     calculate();
 }
 
 // --- SWAP LOGIC ---
 $("swap-btn").onclick = () => {
-    // Swap Inputs
     const pVal = $("pickup").value;
     const dVal = $("dropoff").value;
     $("pickup").value = dVal;
     $("dropoff").value = pVal;
 
-    // Swap Coordinates
     const tempCoord = pickupCoord;
     pickupCoord = dropoffCoord;
     dropoffCoord = tempCoord;
