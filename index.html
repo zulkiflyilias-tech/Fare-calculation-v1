@@ -3,30 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - v5.8.1</title>
+    <title>Rideshare MY - v5.8.2 PRO</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <style>
-        :root { --primary: #059669; --bg: #f3f4f6; --card-bg: #ffffff; --text: #1f2937; --gray-text: #6b7280; }
+        :root { --primary: #059669; --bg: #f3f4f6; --card-bg: #ffffff; --text: #1f2937; --gray-text: #6b7280; --accent: #f59e0b; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background: var(--bg); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
         .search-panel { background: var(--card-bg); padding: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); z-index: 1005; }
         .inputs-container { display: flex; align-items: center; gap: 12px; }
         .inputs-flex { flex: 1; }
+        
         .input-group { position: relative; margin-bottom: 12px; }
         .input-group label { display: block; font-size: 10px; font-weight: 800; margin-bottom: 4px; color: var(--gray-text); text-transform: uppercase; }
-        input { width: 100%; padding: 12px 85px 12px 16px; border: 1.5px solid #e5e7eb; border-radius: 12px; box-sizing: border-box; font-size: 13px; background: #f9fafb; }
+        
+        input { width: 100%; padding: 12px 85px 12px 16px; border: 1.5px solid #e5e7eb; border-radius: 12px; box-sizing: border-box; font-size: 13px; background: #f9fafb; transition: 0.2s; }
+        input:focus { border-color: var(--primary); outline: none; background: #fff; }
+        
         .swap-btn { background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; color: var(--primary); display: flex; align-items: center; justify-content: center; }
         .btn-container { position: absolute; right: 8px; top: 24px; display: flex; gap: 4px; }
         .icon-btn { background: transparent; border: none; cursor: pointer; padding: 6px; color: #9ca3af; font-size: 18px; }
+        
         .autocomplete-list { position: absolute; top: 100%; left: 0; right: 0; background: white; z-index: 9999; max-height: 200px; overflow-y: auto; border-radius: 0 0 12px 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #e5e7eb; display: none; }
         .autocomplete-item { padding: 12px 16px; border-bottom: 1px solid #f3f4f6; cursor: pointer; }
+        .autocomplete-item:hover { background: #f9fafb; }
+
         #map { flex-grow: 1; width: 100%; z-index: 1; }
-        .results-card { position: fixed; bottom: 20px; left: 16px; right: 16px; background: white; padding: 20px; border-radius: 24px; box-shadow: 0 -10px 40px rgba(0,0,0,0.2); z-index: 1002; display: none; }
+
+        .results-card { position: fixed; bottom: 20px; left: 16px; right: 16px; background: white; padding: 20px; border-radius: 24px; box-shadow: 0 -10px 40px rgba(0,0,0,0.2); z-index: 1002; display: none; border: 1px solid #f1f5f9; }
+        .fare-header { display: flex; justify-content: space-between; align-items: center; }
         .fare-breakdown { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e5e7eb; font-size: 11px; color: var(--gray-text); display: grid; grid-template-columns: 1fr auto; gap: 4px; }
+        
         .action-bar { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 15px; }
-        .action-btn { border: none; border-radius: 12px; padding: 10px; font-size: 10px; font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; transition: 0.2s; text-transform: uppercase; }
+        .action-btn { border: none; border-radius: 12px; padding: 10px; font-size: 10px; font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; transition: 0.2s; text-transform: uppercase; }
         .btn-whatsapp { background: #25D366; color: white; }
         .btn-copy { background: #f1f5f9; color: #475569; }
         .btn-maps { background: #4285F4; color: white; }
+        .action-btn:active { transform: scale(0.95); opacity: 0.9; }
     </style>
 </head>
 <body>
@@ -55,7 +67,7 @@
         <button id="swap-btn" class="swap-btn">⇅</button>
     </div>
     <div class="input-group" style="margin-top: 12px; margin-bottom:0;">
-        <label>Departure Date & Time</label>
+        <label>Travel Schedule</label>
         <input type="datetime-local" id="departure-time">
     </div>
 </div>
@@ -63,12 +75,13 @@
 <div id="map"></div>
 
 <div id="results" class="results-card">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
+    <div class="fare-header">
         <h2 id="fare" style="margin:0; color:var(--primary); font-size:32px;">RM 0</h2>
         <span id="badge" style="font-size:10px; font-weight:800; padding:4px 10px; background:#f1f5f9; border-radius:20px;">STANDARD</span>
     </div>
     <p id="summary" style="font-size:12px; color:#4b5563; margin-top:8px;"></p>
     <div id="breakdown" class="fare-breakdown"></div>
+    
     <div class="action-bar">
         <button class="action-btn btn-whatsapp" id="btn-whatsapp"><span>💬</span> WhatsApp</button>
         <button class="action-btn btn-copy" id="btn-copy"><span>📋</span> Copy</button>
@@ -82,13 +95,14 @@ const CONFIG = {
     ORS_KEY: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0=",
     RATES: { 
         BASE: 5.00, KM_TIER_1: 1.25, KM_TIER_2: 1.00, KM_TIER_3: 0.85,
-        MIDNIGHT_MULT: 1.1, PEAK_MULT: 1.2, TIME_RATE: 0.20,
-        INTERSTATE_INCENTIVE: 50.00, INTERSTATE_THRESHOLD: 100
+        TIME_RATE: 0.20, INTERSTATE_INCENTIVE: 50.00, INTERSTATE_THRESHOLD: 100,
+        // PROPOSED STRATEGY MULTIPLIERS
+        MIDNIGHT: 1.10, MORNING_PEAK: 1.30, LUNCH_SURGE: 1.10, EVENING_PEAK: 1.35
     }
 };
 
 const $ = id => document.getElementById(id);
-let pickupCoord, dropoffCoord, searchTimer, routeLayer, currentFare = 0;
+let pickupCoord, dropoffCoord, searchTimer, routeLayer, currentFare = 0, currentSurgeLabel = "Standard";
 
 const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([3.1478, 101.6953], 12);
 L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").addTo(map);
@@ -145,11 +159,18 @@ async function calculate() {
         const km = route.summary.distance / 1000;
         const durationMin = Math.ceil(route.summary.duration / 60);
         
-        const dateObj = new Date($("departure-time").value);
-        const hour = dateObj.getHours();
-        const isPeak = (hour >= 6 && hour < 9) || (hour >= 17 && hour < 20);
-        const isMidnight = (hour >= 0 && hour < 6);
+        // Dynamic Surcharge Logic
+        const dt = new Date($("departure-time").value);
+        const hour = dt.getHours() + (dt.getMinutes() / 60);
+        let activeMult = 1.0;
+        currentSurgeLabel = "Standard";
 
+        if (hour >= 0 && hour < 6) { activeMult = CONFIG.RATES.MIDNIGHT; currentSurgeLabel = "Midnight Surcharge (10%)"; }
+        else if (hour >= 7 && hour < 9) { activeMult = CONFIG.RATES.MORNING_PEAK; currentSurgeLabel = "Morning Peak (30%)"; }
+        else if (hour >= 12.5 && hour < 14.5) { activeMult = CONFIG.RATES.LUNCH_SURGE; currentSurgeLabel = "Lunch Surge (10%)"; }
+        else if (hour >= 17 && hour < 20) { activeMult = CONFIG.RATES.EVENING_PEAK; currentSurgeLabel = "Evening Peak (35%)"; }
+
+        // Distance Calculation (Regressive)
         let distFare = 0;
         if (km <= 50) distFare = km * CONFIG.RATES.KM_TIER_1;
         else if (km <= 150) distFare = (50 * CONFIG.RATES.KM_TIER_1) + ((km - 50) * CONFIG.RATES.KM_TIER_2);
@@ -160,19 +181,20 @@ async function calculate() {
         const isInterstate = km > CONFIG.RATES.INTERSTATE_THRESHOLD;
         if (isInterstate) subtotal += CONFIG.RATES.INTERSTATE_INCENTIVE;
 
-        let total = subtotal;
-        if (isPeak) total *= CONFIG.RATES.PEAK_MULT;
-        if (isMidnight) total *= CONFIG.RATES.MIDNIGHT_MULT;
-        currentFare = Math.round(total);
+        currentFare = Math.round(subtotal * activeMult);
 
+        // UI
         $("fare").innerText = `RM ${currentFare}`;
         $("badge").innerText = isInterstate ? "INTERSTATE" : "STANDARD";
+        $("badge").style.background = activeMult > 1 ? "#fff7ed" : "#f1f5f9";
+        $("badge").style.color = activeMult > 1 ? "#c2410c" : "#475569";
+        
         $("summary").innerHTML = `<b>${km.toFixed(1)} km</b> • <b>${durationMin} min</b>`;
         $("breakdown").innerHTML = `
-            <span>Base + Distance + Time</span> <span>RM ${(subtotal - (isInterstate ? 50 : 0)).toFixed(2)}</span>
-            ${isInterstate ? `<span style="color:var(--primary)">Interstate Incentive</span> <span style="color:var(--primary)">+ RM 50.00</span>` : ''}
-            ${isPeak || isMidnight ? `<span>Dynamic Surcharge</span> <span>Included</span>` : ''}
+            <span>Trip Subtotal</span> <span>RM ${subtotal.toFixed(2)}</span>
+            ${activeMult > 1 ? `<span style="color:var(--accent)">${currentSurgeLabel}</span> <span style="color:var(--accent)">Applied</span>` : '<span>Standard Hour</span> <span>No Surge</span>'}
         `;
+        
         $("results").style.display = 'block';
         if (routeLayer) map.removeLayer(routeLayer);
         routeLayer = L.polyline(decodePoly(route.geometry), {color: '#059669', weight: 5}).addTo(map);
@@ -201,22 +223,22 @@ $("btn-whatsapp").onclick = () => {
     const mapsLink = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent($("pickup").value)}&destination=${encodeURIComponent($("dropoff").value)}&travelmode=driving`;
     
     const msg = encodeURIComponent(
-        `🚕 *Booking Inquiry*\n\n` +
+        `🚕 *Booking Inquiry v5.8.2*\n\n` +
         `📍 *From:* ${$("pickup").value}\n` +
         `🏁 *To:* ${$("dropoff").value}\n` +
         `📅 *Date:* ${dateStr}\n` +
         `⏰ *Time:* ${timeStr}\n` +
-        `💰 *Fare:* RM ${currentFare}\n\n` +
-        `🗺️ *Open in Maps:*\n${mapsLink}`
+        `💰 *Fare:* RM ${currentFare}\n` +
+        `⚡ *Rate:* ${currentSurgeLabel}\n\n` +
+        `🗺️ *Navigation Link:*\n${mapsLink}`
     );
     window.open(`https://wa.me/?text=${msg}`, '_blank');
 };
 
 $("btn-copy").onclick = () => {
-    const dt = new Date($("departure-time").value);
-    const text = `Trip Details:\nPickup: ${$("pickup").value}\nDropoff: ${$("dropoff").value}\nTime: ${dt.toLocaleString()}\nFare: RM ${currentFare}`;
+    const text = `Ride v5.8.2\nFrom: ${$("pickup").value}\nTo: ${$("dropoff").value}\nFare: RM ${currentFare}\nType: ${currentSurgeLabel}`;
     navigator.clipboard.writeText(text);
-    alert("Copied to clipboard!");
+    alert("Trip details copied!");
 };
 
 $("btn-maps").onclick = () => {
