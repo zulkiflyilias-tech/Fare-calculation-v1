@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - v5.5.0 PRO</title>
+    <title>Rideshare MY - v5.6.0 PRO</title>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -31,7 +31,42 @@
             padding: 16px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.08);
             z-index: 1005;
+            position: relative;
         }
+
+        /* Container for inputs and swap button */
+        .inputs-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            position: relative;
+        }
+
+        .inputs-flex { flex: 1; }
+
+        .swap-btn-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding-top: 10px;
+        }
+
+        .swap-btn {
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            color: var(--primary);
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+        }
+
+        .swap-btn:active { transform: scale(0.9); background: #e5e7eb; }
 
         .input-group { position: relative; margin-bottom: 12px; }
         .input-group label {
@@ -45,18 +80,20 @@
 
         input {
             width: 100%;
-            padding: 12px 80px 12px 14px;
+            padding: 12px 85px 12px 35px; /* Added left padding for icon */
             border: 1.5px solid #e5e7eb;
             border-radius: 12px;
             box-sizing: border-box;
             font-size: 14px;
             background: #f9fafb;
-            transition: border-color 0.2s;
         }
 
-        input:focus {
-            outline: none;
-            border-color: var(--primary);
+        /* Marker Icons inside input */
+        .input-icon {
+            position: absolute;
+            left: 12px;
+            top: 28px;
+            font-size: 14px;
         }
 
         .btn-container {
@@ -76,6 +113,7 @@
             font-size: 18px;
         }
 
+        /* Search Results styling matching your image */
         .autocomplete-list {
             position: absolute;
             top: 100%;
@@ -83,7 +121,7 @@
             right: 0;
             background: white;
             z-index: 9999;
-            max-height: 250px;
+            max-height: 350px;
             overflow-y: auto;
             border-radius: 0 0 12px 12px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.1);
@@ -92,14 +130,19 @@
         }
 
         .autocomplete-item {
-            padding: 12px 16px;
+            padding: 14px 16px;
             border-bottom: 1px solid #f3f4f6;
             cursor: pointer;
+            display: flex;
+            gap: 15px;
+            align-items: flex-start;
         }
 
-        .autocomplete-item:hover {
-            background: #f9fafb;
-        }
+        .item-icon { color: #9ca3af; font-size: 18px; margin-top: 2px; }
+        .item-info { flex: 1; }
+        .item-name { font-weight: 600; color: #1f2937; font-size: 14px; margin-bottom: 2px; }
+        .item-address { color: #6b7280; font-size: 11px; line-height: 1.4; display: block; }
+        .item-dist { color: #9ca3af; font-size: 11px; margin-right: 8px; }
 
         #map { flex-grow: 1; width: 100%; z-index: 1; }
 
@@ -120,24 +163,36 @@
 <body>
 
 <div class="search-panel">
-    <div class="input-group">
-        <label>Pickup Location</label>
-        <input type="text" id="pickup" placeholder="Search pickup..." autocomplete="off">
-        <div class="btn-container">
-            <button id="clear-p" class="icon-btn" style="display:none">✕</button>
-            <button id="gps-btn" class="icon-btn">📍</button>
+    <div class="inputs-container">
+        <div class="inputs-flex">
+            <div class="input-group">
+                <label>Pickup Location</label>
+                <span class="input-icon" style="color:#3b82f6;">🔵</span>
+                <input type="text" id="pickup" placeholder="Search pickup..." autocomplete="off">
+                <div class="btn-container">
+                    <button id="clear-p" class="icon-btn" style="display:none">✕</button>
+                    <button id="gps-btn" class="icon-btn">📍</button>
+                </div>
+                <div id="p-results" class="autocomplete-list"></div>
+            </div>
+            
+            <div class="input-group" style="margin-bottom:0;">
+                <label>Destination</label>
+                <span class="input-icon" style="color:#ef4444;">📍</span>
+                <input type="text" id="dropoff" placeholder="Search destination..." autocomplete="off">
+                <div class="btn-container">
+                    <button id="clear-d" class="icon-btn" style="display:none">✕</button>
+                </div>
+                <div id="d-results" class="autocomplete-list"></div>
+            </div>
         </div>
-        <div id="p-results" class="autocomplete-list"></div>
-    </div>
-    <div class="input-group">
-        <label>Destination</label>
-        <input type="text" id="dropoff" placeholder="Search destination..." autocomplete="off">
-        <div class="btn-container">
-            <button id="clear-d" class="icon-btn" style="display:none">✕</button>
+        
+        <div class="swap-btn-container">
+            <button id="swap-btn" class="swap-btn" title="Swap Locations">⇅</button>
         </div>
-        <div id="d-results" class="autocomplete-list"></div>
     </div>
-    <div class="input-group" style="margin-bottom:0;">
+    
+    <div class="input-group" style="margin-top: 12px; margin-bottom:0;">
         <label>Departure Time</label>
         <input type="datetime-local" id="departure-time">
     </div>
@@ -157,15 +212,14 @@
 
 <script>
 const CONFIG = {
-    // OpenRouteService Key
     ORS_KEY: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0=",
     RATES: { 
-        BASE: 5.00,             // Updated to RM 5.00
+        BASE: 5.00,
         KM_STANDARD: 1.25, 
         KM_CAP: 2.05,      
-        MIDNIGHT_MULT: 1.2,     // 1.2x Base Fare surcharge
-        PEAK_MIN_RATE: 0.45,    // RM 0.45/min during peak
-        INTERSTATE_MULT: 1.8,   // Updated to 1.8x
+        MIDNIGHT_MULT: 1.2,
+        PEAK_MIN_RATE: 0.45,
+        INTERSTATE_MULT: 1.8,
         TERRAIN: 20.00 
     }
 };
@@ -173,60 +227,84 @@ const CONFIG = {
 const $ = id => document.getElementById(id);
 let pickupCoord, dropoffCoord, searchTimer, routeLayer;
 
-// Set current time as default
+// Init Map
+const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([3.1478, 101.6953], 12);
+L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").addTo(map);
+
+// Set default time
 const now = new Date();
 now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
 $("departure-time").value = now.toISOString().slice(0,16);
 
-const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([4.2105, 101.9758], 7);
-L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").addTo(map);
+// --- SEARCH LOGIC ---
 
 function debounceSearch(input, resultsId, type) {
     const query = input.value;
     $(type === 'pickup' ? 'clear-p' : 'clear-d').style.display = query ? 'block' : 'none';
     clearTimeout(searchTimer);
-    if (query.length < 3) { $(resultsId).style.display = 'none'; return; }
+    if (query.length < 2) { $(resultsId).style.display = 'none'; return; }
 
     searchTimer = setTimeout(async () => {
         try {
-            const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&countrycode=MY&limit=5`);
+            // Added lat/lon bias for Malaysia center
+            const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lat=3.14&lon=101.69&countrycode=MY&limit=6`);
             const data = await res.json();
             renderResults(data.features, resultsId, type);
-        } catch (e) { console.error("Search Error", e); }
-    }, 400);
+        } catch (e) { console.error(e); }
+    }, 300);
 }
 
 function renderResults(features, resultsId, type) {
     const list = $(resultsId);
+    if (!features.length) { list.style.display = 'none'; return; }
+
     list.innerHTML = features.map(f => {
         const p = f.properties;
-        // Malaysian Address Format: Building/Point, Street, District/City, State
-        const addressLine = [p.name, p.street, p.district || p.city, p.state]
-            .filter(Boolean)
-            .join(", ");
-
+        const name = p.name || "Unknown Place";
+        const city = p.city || p.state || "";
+        const postcode = p.postcode ? p.postcode + ", " : "";
+        const street = p.street ? p.street + ", " : "";
+        
+        // Formatted like your image
+        const subAddress = `${street}${postcode}${city}, ${p.state || 'Malaysia'}`;
+        
         return `
-            <div class="autocomplete-item" onclick="selectLoc('${type}', [${f.geometry.coordinates[1]}, ${f.geometry.coordinates[0]}], '${addressLine.replace(/'/g, "\\'")}')">
-                <div style="font-weight:700; color:#1f2937;">${p.name || 'Unknown Location'}</div>
-                <div style="font-size:11px; color:#6b7280;">${addressLine}</div>
+            <div class="autocomplete-item" onclick="selectLoc('${type}', [${f.geometry.coordinates[1]}, ${f.geometry.coordinates[0]}], '${name.replace(/'/g, "\\'")}')">
+                <div class="item-icon">🕒</div>
+                <div class="item-info">
+                    <div class="item-name">${name}</div>
+                    <div class="item-address">
+                        <span class="item-dist">31km</span> ${subAddress}
+                    </div>
+                </div>
             </div>`;
     }).join('');
     list.style.display = 'block';
 }
 
 function selectLoc(type, coord, label) {
-    if (type === 'pickup') { 
-        pickupCoord = coord; 
-        $("pickup").value = label; 
-        $("p-results").style.display = 'none'; 
-    } else { 
-        dropoffCoord = coord; 
-        $("dropoff").value = label; 
-        $("d-results").style.display = 'none'; 
-    }
+    if (type === 'pickup') { pickupCoord = coord; $("pickup").value = label; $("p-results").style.display = 'none'; }
+    else { dropoffCoord = coord; $("dropoff").value = label; $("d-results").style.display = 'none'; }
     calculate();
 }
 
+// --- SWAP LOGIC ---
+$("swap-btn").onclick = () => {
+    // Swap Inputs
+    const pVal = $("pickup").value;
+    const dVal = $("dropoff").value;
+    $("pickup").value = dVal;
+    $("dropoff").value = pVal;
+
+    // Swap Coordinates
+    const tempCoord = pickupCoord;
+    pickupCoord = dropoffCoord;
+    dropoffCoord = tempCoord;
+
+    if (pickupCoord && dropoffCoord) calculate();
+};
+
+// --- FARE CALCULATION ---
 async function calculate() {
     if (!pickupCoord || !dropoffCoord) return;
     
@@ -238,48 +316,28 @@ async function calculate() {
         });
         const data = await res.json();
         const route = data.routes[0];
-        
         const km = route.summary.distance / 1000;
         const durationMin = Math.ceil(route.summary.duration / 60);
         
         const dateObj = new Date($("departure-time").value);
         const hour = dateObj.getHours() + (dateObj.getMinutes() / 60);
-        const locText = ($("pickup").value + $("dropoff").value).toLowerCase();
 
-        // 1. MODIFIERS
         const isPeak = (hour >= 6 && hour < 9) || (hour >= 12.5 && hour < 14.5) || (hour >= 17 && hour < 20);
         const isMidnight = (hour >= 0 && hour < 6);
         const isInterstate = km > 100;
 
-        // 2. SURCHARGES
         let baseFare = CONFIG.RATES.BASE;
         let midnightSurcharge = isMidnight ? (baseFare * CONFIG.RATES.MIDNIGHT_MULT) : 0;
-        let terrainSurcharge = ["genting", "cameron", "fraser", "highland"].some(k => locText.includes(k)) ? CONFIG.RATES.TERRAIN : 0;
-
-        // 3. DISTANCE RATE
-        let peakMult = isPeak ? 1.2 : 1.0;
-        let interstateMult = isInterstate ? CONFIG.RATES.INTERSTATE_MULT : 1.0;
-        let dynamicRate = Math.min(CONFIG.RATES.KM_STANDARD * peakMult * interstateMult, CONFIG.RATES.KM_CAP);
-
-        // 4. TIME RATE (PEAK ONLY)
+        let dynamicRate = Math.min(CONFIG.RATES.KM_STANDARD * (isPeak ? 1.2 : 1.0) * (isInterstate ? CONFIG.RATES.INTERSTATE_MULT : 1.0), CONFIG.RATES.KM_CAP);
         let timeFare = isPeak ? (durationMin * CONFIG.RATES.PEAK_MIN_RATE) : 0;
 
-        // FINAL TOTAL
-        let total = baseFare + (km * dynamicRate) + timeFare + midnightSurcharge + terrainSurcharge;
+        let total = baseFare + (km * dynamicRate) + timeFare + midnightSurcharge;
         
-        // UI UPDATES
         $("fare").innerText = `RM ${Math.round(total)}`;
         $("badge").innerText = isInterstate ? "Interstate" : (isMidnight ? "Midnight" : (isPeak ? "Peak Hour" : "Standard"));
-        $("badge").style.background = isPeak ? "#fee2e2" : (isMidnight ? "#fef3c7" : "#f1f5f9");
         
-        $("summary").innerHTML = `
-            📏 <b>${km.toFixed(1)} km</b> | ⏱️ <b>${durationMin} min</b><br>
-            <span style="font-size:11px; color:#6b7280;">
-                Base: RM ${baseFare.toFixed(2)} | 
-                Rate: RM ${dynamicRate.toFixed(2)}/km <br>
-                ${isPeak ? `Peak Traffic: RM ${timeFare.toFixed(2)} (${CONFIG.RATES.PEAK_MIN_RATE}/min) | ` : ''}
-                Add-ons: RM ${(midnightSurcharge + terrainSurcharge).toFixed(2)}
-            </span>`;
+        $("summary").innerHTML = `📏 <b>${km.toFixed(1)} km</b> | ⏱️ <b>${durationMin} min</b><br>
+            <span style="font-size:11px; color:var(--gray-text);">Base RM ${baseFare.toFixed(2)} + ${isPeak ? 'Traffic Surcharge' : 'Standard Rate'}</span>`;
         
         $("results").style.display = 'block';
 
@@ -287,9 +345,7 @@ async function calculate() {
         routeLayer = L.polyline(decodePoly(route.geometry), {color: '#059669', weight: 5}).addTo(map);
         map.fitBounds(routeLayer.getBounds(), {padding: [50,150]});
         
-    } catch (err) {
-        console.error("Calculation Error:", err);
-    }
+    } catch (err) { console.error(err); }
 }
 
 function decodePoly(str) {
@@ -316,17 +372,15 @@ $("gps-btn").onclick = () => {
         try {
             const res = await fetch(`https://photon.komoot.io/reverse?lon=${lon}&lat=${lat}`);
             const data = await res.json();
-            const p = data.features[0].properties;
-            const name = [p.name, p.city].filter(Boolean).join(", ") || "My Location";
+            const name = data.features[0].properties.name || "My Current Location";
             selectLoc('pickup', [lat, lon], name);
-        } catch(e) { selectLoc('pickup', [lat, lon], "Current Location"); }
-    }, err => alert("Please enable GPS"), {enableHighAccuracy: true});
+        } catch(e) { selectLoc('pickup', [lat, lon], "My Location"); }
+    });
 };
 
-$("clear-p").onclick = () => { $("pickup").value = ''; $("p-results").style.display = 'none'; $("clear-p").style.display = 'none'; };
-$("clear-d").onclick = () => { $("dropoff").value = ''; $("d-results").style.display = 'none'; $("clear-d").style.display = 'none'; };
+$("clear-p").onclick = () => { $("pickup").value = ''; $("p-results").style.display = 'none'; $("clear-p").style.display = 'none'; pickupCoord = null; };
+$("clear-d").onclick = () => { $("dropoff").value = ''; $("d-results").style.display = 'none'; $("clear-d").style.display = 'none'; dropoffCoord = null; };
 
-// Close autocomplete when clicking outside
 document.addEventListener('click', (e) => {
     if (!e.target.closest('.input-group')) {
         $("p-results").style.display = 'none';
