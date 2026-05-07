@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - v5.8.4 PRO</title>
+    <title>Rideshare MY - v5.8.5 PRO</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <style>
         :root { --primary: #059669; --bg: #f3f4f6; --card-bg: #ffffff; --text: #1f2937; --gray-text: #6b7280; --accent: #f59e0b; }
@@ -16,6 +16,7 @@
         .input-group label { display: block; font-size: 10px; font-weight: 800; margin-bottom: 4px; color: var(--gray-text); text-transform: uppercase; }
         input { width: 100%; padding: 12px 85px 12px 16px; border: 1.5px solid #e5e7eb; border-radius: 12px; box-sizing: border-box; font-size: 14px; background: #f9fafb; transition: 0.2s; }
         input:focus { border-color: var(--primary); outline: none; background: #fff; }
+        
         .swap-btn { background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; color: var(--primary); display: flex; align-items: center; justify-content: center; }
         .btn-container { position: absolute; right: 8px; top: 24px; display: flex; gap: 4px; }
         .icon-btn { background: transparent; border: none; cursor: pointer; padding: 6px; color: #9ca3af; font-size: 18px; }
@@ -23,7 +24,6 @@
         .autocomplete-list { position: absolute; top: 100%; left: 0; right: 0; background: white; z-index: 9999; max-height: 280px; overflow-y: auto; border-radius: 0 0 16px 16px; box-shadow: 0 12px 24px rgba(0,0,0,0.15); display: none; margin-top: 4px; border: 1px solid #eee; }
         .autocomplete-item { display: flex; align-items: center; padding: 12px 16px; gap: 12px; cursor: pointer; border-bottom: 1px solid #f9fafb; }
         .loc-icon { background: #f3f4f6; color: #6b7280; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-        .loc-details { display: flex; flex-direction: column; overflow: hidden; }
         .loc-name { font-weight: 600; font-size: 14px; color: var(--text); }
         .loc-address { font-size: 12px; color: var(--gray-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
@@ -37,12 +37,12 @@
             box-shadow: 0 20px 60px rgba(0,0,0,0.3); z-index: 9999; flex-direction: column; 
         }
         .invoice-table { width: 100%; border-collapse: collapse; font-size: 13px; color: var(--text); }
-        .invoice-table td { padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
-        .invoice-table .amount { text-align: right; font-family: monospace; font-weight: 600; }
-        .invoice-total { margin-top: 15px; padding-top: 15px; border-top: 2px solid var(--primary); display: flex; justify-content: space-between; font-weight: 800; font-size: 18px; }
+        .invoice-table td { padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
+        .invoice-table .rate-label { font-size: 10px; color: var(--gray-text); display: block; margin-top: 2px; font-weight: normal; }
+        .invoice-table .amount { text-align: right; font-family: monospace; font-weight: 600; font-size: 14px; }
+        .invoice-total { margin-top: 15px; padding-top: 15px; border-top: 2px solid var(--primary); display: flex; justify-content: space-between; font-weight: 800; font-size: 20px; }
         .close-modal-btn { margin-top: 20px; width: 100%; padding: 14px; border: none; border-radius: 14px; background: #f3f4f6; font-weight: 700; cursor: pointer; color: var(--text); }
 
-        /* Results Card */
         .results-card { position: fixed; bottom: 20px; left: 16px; right: 16px; background: white; padding: 20px; border-radius: 24px; box-shadow: 0 -10px 40px rgba(0,0,0,0.2); z-index: 1002; display: none; border: 1px solid #f1f5f9; }
         .fare-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
         #fare { margin:0; color:var(--primary); font-size:32px; }
@@ -116,8 +116,13 @@
 const CONFIG = {
     ORS_KEY: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0=",
     RATES: { 
-        BASE: 5.00, KM_TIER_1: 1.25, KM_TIER_2: 1.00, KM_TIER_3: 0.85,
-        TIME_RATE: 0.20, INTERSTATE_INCENTIVE: 50.00, INTERSTATE_THRESHOLD: 100,
+        BASE: 5.00, 
+        KM_TIER_1: 1.25, 
+        KM_TIER_2: 1.00, 
+        KM_TIER_3: 0.85,
+        TIME_RATE: 0.20, 
+        INTERSTATE_INCENTIVE: 50.00, 
+        INTERSTATE_THRESHOLD: 100,
         MIDNIGHT: 1.10, MORNING_PEAK: 1.30, LUNCH_SURGE: 1.10, EVENING_PEAK: 1.35
     }
 };
@@ -202,9 +207,24 @@ async function calculate() {
         else if (hour >= 17 && hour < 20) { activeMult = CONFIG.RATES.EVENING_PEAK; currentSurgeLabel = "Evening Peak (35%)"; }
 
         let distFare = 0, tierHtml = "";
-        if (km <= 50) { distFare = km * CONFIG.RATES.KM_TIER_1; tierHtml = `<tr><td>Distance (T1)</td><td class="amount">RM ${distFare.toFixed(2)}</td></tr>`; }
-        else if (km <= 150) { distFare = (50 * CONFIG.RATES.KM_TIER_1) + ((km - 50) * CONFIG.RATES.KM_TIER_2); tierHtml = `<tr><td>Distance (T1)</td><td class="amount">RM 62.50</td></tr><tr><td>Distance (T2)</td><td class="amount">RM ${((km-50)*CONFIG.RATES.KM_TIER_2).toFixed(2)}</td></tr>`; }
-        else { distFare = (50 * CONFIG.RATES.KM_TIER_1) + (100 * CONFIG.RATES.KM_TIER_2) + ((km - 150) * CONFIG.RATES.KM_TIER_3); tierHtml = `<tr><td>Distance (T1)</td><td class="amount">RM 62.50</td></tr><tr><td>Distance (T2)</td><td class="amount">RM 100.00</td></tr><tr><td>Distance (T3)</td><td class="amount">RM ${((km-150)*CONFIG.RATES.KM_TIER_3).toFixed(2)}</td></tr>`; }
+        if (km <= 50) { 
+            distFare = km * CONFIG.RATES.KM_TIER_1; 
+            tierHtml = `<tr><td>Distance (Tier 1)<span class="rate-label">${km.toFixed(1)} km @ RM ${CONFIG.RATES.KM_TIER_1.toFixed(2)}/km</span></td><td class="amount">RM ${distFare.toFixed(2)}</td></tr>`; 
+        } else if (km <= 150) { 
+            const t1 = 50 * CONFIG.RATES.KM_TIER_1;
+            const t2 = (km - 50) * CONFIG.RATES.KM_TIER_2;
+            distFare = t1 + t2; 
+            tierHtml = `<tr><td>Distance (Tier 1)<span class="rate-label">50.0 km @ RM ${CONFIG.RATES.KM_TIER_1.toFixed(2)}/km</span></td><td class="amount">RM ${t1.toFixed(2)}</td></tr>
+                        <tr><td>Distance (Tier 2)<span class="rate-label">${(km-50).toFixed(1)} km @ RM ${CONFIG.RATES.KM_TIER_2.toFixed(2)}/km</span></td><td class="amount">RM ${t2.toFixed(2)}</td></tr>`; 
+        } else { 
+            const t1 = 50 * CONFIG.RATES.KM_TIER_1;
+            const t2 = 100 * CONFIG.RATES.KM_TIER_2;
+            const t3 = (km - 150) * CONFIG.RATES.KM_TIER_3;
+            distFare = t1 + t2 + t3; 
+            tierHtml = `<tr><td>Distance (Tier 1)<span class="rate-label">50.0 km @ RM ${CONFIG.RATES.KM_TIER_1.toFixed(2)}/km</span></td><td class="amount">RM ${t1.toFixed(2)}</td></tr>
+                        <tr><td>Distance (Tier 2)<span class="rate-label">100.0 km @ RM ${CONFIG.RATES.KM_TIER_2.toFixed(2)}/km</span></td><td class="amount">RM ${t2.toFixed(2)}</td></tr>
+                        <tr><td>Distance (Tier 3)<span class="rate-label">${(km-150).toFixed(1)} km @ RM ${CONFIG.RATES.KM_TIER_3.toFixed(2)}/km</span></td><td class="amount">RM ${t3.toFixed(2)}</td></tr>`; 
+        }
 
         const timeFare = durationMin * CONFIG.RATES.TIME_RATE;
         let subtotal = CONFIG.RATES.BASE + distFare + timeFare;
@@ -215,7 +235,19 @@ async function calculate() {
         $("fare").innerText = `RM ${currentFare}`;
         $("badge").innerText = isInterstate ? "INTERSTATE" : "STANDARD";
         $("summary").innerHTML = `<b>${km.toFixed(1)} km</b> • <b>${durationMin} min</b>`;
-        $("invoice-content").innerHTML = `<table class="invoice-table"><tr><td>Base Fare</td><td class="amount">RM 5.00</td></tr>${tierHtml}<tr><td>Time</td><td class="amount">RM ${timeFare.toFixed(2)}</td></tr>${activeMult > 1 ? `<tr style="color:var(--accent)"><td>Surge</td><td class="amount">x${activeMult.toFixed(2)}</td></tr>` : ''}</table><div class="invoice-total"><span>Total</span><span>RM ${currentFare.toFixed(2)}</span></div>`;
+        
+        $("invoice-content").innerHTML = `
+            <table class="invoice-table">
+                <tr><td>Base Fare<span class="rate-label">Fixed starting fee</span></td><td class="amount">RM ${CONFIG.RATES.BASE.toFixed(2)}</td></tr>
+                ${tierHtml}
+                <tr><td>Time<span class="rate-label">${durationMin} min @ RM ${CONFIG.RATES.TIME_RATE.toFixed(2)}/min</span></td><td class="amount">RM ${timeFare.toFixed(2)}</td></tr>
+                ${isInterstate ? `<tr><td>Interstate Incentive<span class="rate-label">Long distance cross-border fee</span></td><td class="amount">RM ${CONFIG.RATES.INTERSTATE_INCENTIVE.toFixed(2)}</td></tr>` : ''}
+                ${activeMult > 1 ? `<tr style="color:var(--accent)"><td>${currentSurgeLabel}<span class="rate-label">Peak hour multiplier</span></td><td class="amount">x${activeMult.toFixed(2)}</td></tr>` : ''}
+            </table>
+            <div class="invoice-total">
+                <span>Total Payable</span>
+                <span>RM ${currentFare.toFixed(2)}</span>
+            </div>`;
         
         $("results").style.display = 'block';
         if (routeLayer) map.removeLayer(routeLayer);
@@ -243,20 +275,14 @@ $("gps-btn").onclick = () => {
     navigator.geolocation.getCurrentPosition(async pos => {
         const lat = pos.coords.latitude, lon = pos.coords.longitude;
         try {
-            // FIX: Actual Reverse Geocoding call to Photon API
             const res = await fetch(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lon}`);
             const data = await res.json();
             if (data.features && data.features.length > 0) {
                 const p = data.features[0].properties;
-                // Format: Street name or place name + city
                 const addr = `${p.name || p.street || 'Current Location'}, ${p.city || p.state || ''}`;
                 selectLoc('pickup', [lat, lon], addr);
-            } else {
-                selectLoc('pickup', [lat, lon], "Current Location");
-            }
-        } catch(e) {
-            selectLoc('pickup', [lat, lon], "Current Location");
-        }
+            } else { selectLoc('pickup', [lat, lon], "Current Location"); }
+        } catch(e) { selectLoc('pickup', [lat, lon], "Current Location"); }
     }, () => {
         alert("GPS access denied.");
         $("pickup").placeholder = "Set pickup...";
@@ -264,7 +290,7 @@ $("gps-btn").onclick = () => {
 };
 
 $("btn-whatsapp").onclick = () => {
-    const msg = encodeURIComponent(`🚕 *Booking Inquiry*\n\n📍 From: ${$("pickup").value}\n🏁 To: ${$("dropoff").value}\n💰 Fare: RM ${currentFare}`);
+    const msg = encodeURIComponent(`🚕 *Booking Inquiry*\n\n📍 From: ${$("pickup").value}\n🏁 To: ${$("dropoff").value}\n💰 Fare: RM ${currentFare}\n⚡ Rate: ${currentSurgeLabel}`);
     window.open(`https://wa.me/?text=${msg}`, '_blank');
 };
 $("btn-copy").onclick = () => { navigator.clipboard.writeText(`From: ${$("pickup").value}\nTo: ${$("dropoff").value}\nFare: RM ${currentFare}`); alert("Copied!"); };
