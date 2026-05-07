@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - v5.8.6 PRO</title>
+    <title>Rideshare MY - v5.8.7 PRO</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <style>
         :root { --primary: #059669; --bg: #f3f4f6; --card-bg: #ffffff; --text: #1f2937; --gray-text: #6b7280; --accent: #f59e0b; }
@@ -44,7 +44,23 @@
         .invoice-total { margin-top: 15px; padding-top: 15px; border-top: 2px solid var(--primary); display: flex; justify-content: space-between; font-weight: 800; font-size: 20px; }
         .close-modal-btn { margin-top: 20px; width: 100%; padding: 14px; border: none; border-radius: 14px; background: #f3f4f6; font-weight: 700; cursor: pointer; color: var(--text); }
 
-        .results-card { position: fixed; bottom: 20px; left: 16px; right: 16px; background: white; padding: 20px; border-radius: 24px; box-shadow: 0 -10px 40px rgba(0,0,0,0.2); z-index: 1002; display: none; border: 1px solid #f1f5f9; }
+        /* Smooth Transition for Results Card */
+        .results-card { 
+            position: fixed; bottom: 20px; left: 16px; right: 16px; 
+            background: white; padding: 20px; border-radius: 24px; 
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.2); z-index: 1002; 
+            border: 1px solid #f1f5f9;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform: translateY(150%);
+            opacity: 0;
+            pointer-events: none;
+        }
+        .results-card.visible {
+            transform: translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
         .fare-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
         #fare { margin:0; color:var(--primary); font-size:32px; }
         .tap-hint { font-size: 9px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -252,7 +268,9 @@ async function calculate() {
                 <span>RM ${currentFare.toFixed(2)}</span>
             </div>`;
         
-        $("results").style.display = 'block';
+        // Use class list for smooth entry
+        $("results").classList.add('visible');
+        
         if (routeLayer) map.removeLayer(routeLayer);
         routeLayer = L.polyline(decodePoly(route.geometry), {color: '#059669', weight: 5}).addTo(map);
         map.fitBounds(routeLayer.getBounds(), {padding: [50,150]});
@@ -273,7 +291,6 @@ function decodePoly(str) {
     return coordinates;
 }
 
-// Format date and time for shared messages
 const formatDateTime = (val) => {
     if (!val) return "Not set";
     const d = new Date(val);
@@ -306,7 +323,6 @@ $("gps-btn").onclick = () => {
     });
 };
 
-// WhatsApp Sharing Improvements
 $("btn-whatsapp").onclick = () => {
     const pickup = $("pickup").value;
     const dropoff = $("dropoff").value;
@@ -324,7 +340,6 @@ $("btn-whatsapp").onclick = () => {
     window.open(`https://wa.me/?text=${msg}`, '_blank');
 };
 
-// Copy to Clipboard Improvements
 $("btn-copy").onclick = () => {
     const pickup = $("pickup").value;
     const dropoff = $("dropoff").value;
@@ -345,9 +360,11 @@ $("btn-copy").onclick = () => {
     });
 };
 
+// Fixed Google Maps Deep Link
 $("btn-maps").onclick = () => { 
     if(pickupCoord && dropoffCoord) {
-        window.open(`https://www.google.com/maps/dir/?api=1&origin=${pickupCoord[0]},${pickupCoord[1]}&destination=${dropoffCoord[0]},${dropoffCoord[1]}&travelmode=driving`, '_blank'); 
+        const url = `https://www.google.com/maps/dir/?api=1&origin=${pickupCoord[0]},${pickupCoord[1]}&destination=${dropoffCoord[0]},${dropoffCoord[1]}&travelmode=driving`;
+        window.open(url, '_blank'); 
     }
 };
 
@@ -359,8 +376,14 @@ $("swap-btn").onclick = () => {
     let tC = pickupCoord; pickupCoord = dropoffCoord; dropoffCoord = tC;
     calculate();
 };
-$("clear-p").onclick = () => { $("pickup").value = ''; pickupCoord = null; $("clear-p").style.display='none'; $("p-results").style.display='none'; };
-$("clear-d").onclick = () => { $("dropoff").value = ''; dropoffCoord = null; $("clear-d").style.display='none'; $("d-results").style.display='none'; };
+$("clear-p").onclick = () => { 
+    $("pickup").value = ''; pickupCoord = null; $("clear-p").style.display='none'; 
+    $("p-results").style.display='none'; $("results").classList.remove('visible'); 
+};
+$("clear-d").onclick = () => { 
+    $("dropoff").value = ''; dropoffCoord = null; $("clear-d").style.display='none'; 
+    $("d-results").style.display='none'; $("results").classList.remove('visible'); 
+};
 </script>
 </body>
 </html>
