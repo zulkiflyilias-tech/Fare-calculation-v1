@@ -9,7 +9,7 @@
         :root { --primary: #059669; --bg: #f3f4f6; --card-bg: #ffffff; --text: #1f2937; --gray-text: #6b7280; --accent: #f59e0b; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background: var(--bg); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
-        .search-panel { background: var(--card-bg); padding: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); z-index: 1005; }
+        .search-panel { background: var(--card-bg); padding: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); z-index: 1005; flex-shrink: 0; }
         .inputs-container { display: flex; align-items: center; gap: 12px; }
         .inputs-flex { flex: 1; }
         
@@ -23,7 +23,6 @@
         .btn-container { position: absolute; right: 8px; top: 24px; display: flex; gap: 4px; }
         .icon-btn { background: transparent; border: none; cursor: pointer; padding: 6px; color: #9ca3af; font-size: 18px; }
         
-        /* Grab-style Autocomplete */
         .autocomplete-list { position: absolute; top: 100%; left: 0; right: 0; background: white; z-index: 9999; max-height: 280px; overflow-y: auto; border-radius: 0 0 16px 16px; box-shadow: 0 12px 24px rgba(0,0,0,0.15); display: none; margin-top: 4px; border: 1px solid #eee; }
         .autocomplete-item { display: flex; align-items: center; padding: 12px 16px; gap: 12px; cursor: pointer; border-bottom: 1px solid #f9fafb; transition: background 0.2s; }
         .autocomplete-item:active { background: #f3f4f6; }
@@ -34,21 +33,32 @@
 
         #map { flex-grow: 1; width: 100%; z-index: 1; }
 
-        .results-card { position: fixed; bottom: 20px; left: 16px; right: 16px; background: white; padding: 20px; border-radius: 24px; box-shadow: 0 -10px 40px rgba(0,0,0,0.2); z-index: 1002; display: none; border: 1px solid #f1f5f9; max-height: 80vh; overflow-y: auto; }
+        .results-card { 
+            position: fixed; bottom: 20px; left: 16px; right: 16px; 
+            background: white; padding: 20px; border-radius: 24px; 
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.2); z-index: 1002; 
+            display: none; border: 1px solid #f1f5f9; 
+            max-height: calc(100vh - 120px); 
+            flex-direction: column; 
+        }
         
-        .fare-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .fare-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; flex-shrink: 0; }
         #fare { margin:0; color:var(--primary); font-size:32px; }
         .tap-hint { font-size: 9px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; }
 
-        .fare-breakdown { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e5e7eb; display: none; flex-direction: column; }
+        .fare-breakdown { 
+            margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e5e7eb; 
+            display: none; flex-direction: column; 
+            overflow-y: auto; -webkit-overflow-scrolling: touch;
+        }
         .invoice-table { width: 100%; border-collapse: collapse; font-size: 12px; color: var(--text); }
         .invoice-table tr { border-bottom: 1px solid #f1f5f9; }
         .invoice-table td { padding: 8px 0; }
         .invoice-table .label { color: var(--gray-text); }
         .invoice-table .amount { text-align: right; font-family: monospace; font-weight: 600; }
-        .invoice-total { margin-top: 10px; padding-top: 10px; border-top: 2px solid var(--primary); display: flex; justify-content: space-between; font-weight: 800; font-size: 16px; }
+        .invoice-total { margin-top: 10px; padding-top: 10px; border-top: 2px solid var(--primary); display: flex; justify-content: space-between; font-weight: 800; font-size: 16px; position: sticky; bottom: 0; background: white; }
         
-        .action-bar { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .action-bar { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 15px; flex-shrink: 0; }
         .action-btn { border: none; border-radius: 12px; padding: 10px; font-size: 10px; font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; transition: 0.2s; text-transform: uppercase; }
         .btn-whatsapp { background: #25D366; color: white; }
         .btn-copy { background: #f1f5f9; color: #475569; }
@@ -97,7 +107,7 @@
         <span id="badge" style="font-size:10px; font-weight:800; padding:4px 10px; background:#f1f5f9; border-radius:20px;">STANDARD</span>
     </div>
     
-    <p id="summary" style="font-size:12px; color:#4b5563; margin-top:8px;"></p>
+    <p id="summary" style="font-size:12px; color:#4b5563; margin-top:8px; flex-shrink:0;"></p>
     
     <div id="breakdown" class="fare-breakdown"></div>
     
@@ -148,7 +158,6 @@ function debounceSearch(input, resultsId, type) {
     if (query.length < 2) { $(resultsId).style.display = 'none'; return; }
     searchTimer = setTimeout(async () => {
         try {
-            // Using Photon API for OpenStreetMap data
             const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lat=3.14&lon=101.69&countrycode=MY&limit=10`);
             const data = await res.json();
             renderResults(data.features, resultsId, type);
@@ -159,19 +168,13 @@ function debounceSearch(input, resultsId, type) {
 function renderResults(features, resultsId, type) {
     const list = $(resultsId);
     if (!features.length) { list.style.display = 'none'; return; }
-    
     list.innerHTML = features.map(f => {
         const p = f.properties;
         const [lon, lat] = f.geometry.coordinates;
-        
-        // Grab-style name vs address parsing
         const mainName = p.name || p.street || "Location";
-        const addressParts = [p.street, p.district, p.city, p.state]
-            .filter(part => part && part !== mainName);
+        const addressParts = [p.street, p.district, p.city, p.state].filter(part => part && part !== mainName);
         const subAddress = addressParts.length > 0 ? addressParts.join(', ') : "Malaysia";
-        
         const fullLabel = `${mainName}, ${subAddress}`;
-
         return `
             <div class="autocomplete-item" onclick="selectLoc('${type}', [${lat}, ${lon}], '${fullLabel.replace(/'/g, "\\'")}')">
                 <div class="loc-icon">📍</div>
@@ -256,7 +259,7 @@ async function calculate() {
             </div>
         `;
         
-        $("results").style.display = 'block';
+        $("results").style.display = 'flex';
         if (routeLayer) map.removeLayer(routeLayer);
         routeLayer = L.polyline(decodePoly(route.geometry), {color: '#059669', weight: 5}).addTo(map);
         map.fitBounds(routeLayer.getBounds(), {padding: [50,150]});
@@ -281,18 +284,8 @@ $("btn-whatsapp").onclick = () => {
     const dt = new Date($("departure-time").value);
     const dateStr = dt.toLocaleDateString('en-MY', { weekday:'short', day:'2-digit', month:'short' });
     const timeStr = dt.toLocaleTimeString('en-MY', { hour:'2-digit', minute:'2-digit' });
-    const mapsLink = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent($("pickup").value)}&destination=${encodeURIComponent($("dropoff").value)}&travelmode=driving`;
-    
-    const msg = encodeURIComponent(
-        `🚕 *Booking Inquiry*\n\n` +
-        `📍 *From:* ${$("pickup").value}\n` +
-        `🏁 *To:* ${$("dropoff").value}\n` +
-        `📅 *Date:* ${dateStr}\n` +
-        `⏰ *Time:* ${timeStr}\n` +
-        `💰 *Fare:* RM ${currentFare}\n` +
-        `⚡ *Rate:* ${currentSurgeLabel}\n\n` +
-        `🗺️ *Navigation Link:*\n${mapsLink}`
-    );
+    const mapsLink = `http://maps.google.com/?saddr=${encodeURIComponent($("pickup").value)}&daddr=${encodeURIComponent($("dropoff").value)}&directionsmode=driving`;
+    const msg = encodeURIComponent(`🚕 *Booking Inquiry*\n\n📍 *From:* ${$("pickup").value}\n🏁 *To:* ${$("dropoff").value}\n📅 *Date:* ${dateStr}\n⏰ *Time:* ${timeStr}\n💰 *Fare:* RM ${currentFare}\n⚡ *Rate:* ${currentSurgeLabel}\n\n🗺️ *Navigation:*\n${mapsLink}`);
     window.open(`https://wa.me/?text=${msg}`, '_blank');
 };
 
