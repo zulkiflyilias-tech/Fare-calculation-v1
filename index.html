@@ -23,48 +23,81 @@
         .btn-container { position: absolute; right: 8px; top: 24px; display: flex; gap: 4px; }
         .icon-btn { background: transparent; border: none; cursor: pointer; padding: 6px; color: #9ca3af; font-size: 18px; }
         
-        /* Autocomplete Z-index fix */
-        .autocomplete-list { position: absolute; top: 100%; left: 0; right: 0; background: white; z-index: 10000; max-height: 280px; overflow-y: auto; border-radius: 0 0 16px 16px; box-shadow: 0 12px 24px rgba(0,0,0,0.15); display: none; margin-top: 4px; border: 1px solid #eee; }
-        .autocomplete-item { display: flex; align-items: center; padding: 12px 16px; gap: 12px; cursor: pointer; border-bottom: 1px solid #f9fafb; }
-        .loc-icon { background: #f3f4f6; color: #6b7280; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-        .loc-name { font-weight: 600; font-size: 14px; color: var(--text); }
-        .loc-address { font-size: 12px; color: var(--gray-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        /* UPDATED AUTOCOMPLETE UI */
+        .autocomplete-list { 
+            position: absolute; 
+            top: 100%; 
+            left: 0; 
+            right: 0; 
+            background: white; 
+            z-index: 10000; 
+            max-height: 420px; 
+            overflow-y: auto; 
+            border-radius: 0 0 12px 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12); 
+            border: 1px solid #e0e0e0;
+            border-top: none;
+            display: none;
+        }
+
+        .autocomplete-item { 
+            display: flex; 
+            align-items: center; 
+            padding: 12px 16px; 
+            cursor: pointer; 
+            border-bottom: 1px solid #f8f9fa; 
+            transition: background 0.2s;
+        }
+
+        .autocomplete-item:hover { background: #f1f3f4; }
+
+        .loc-details {
+            flex: 1;
+            min-width: 0; /* Necessary for ellipsis logic */
+        }
+
+        .loc-name { 
+            font-weight: 500; 
+            font-size: 15px; 
+            color: #202124; 
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .loc-address { 
+            font-size: 13px; 
+            color: #70757a; 
+            display: block;
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+        }
+
+        .loc-arrow {
+            color: #bdc1c6;
+            font-size: 18px;
+            margin-left: 12px;
+            flex-shrink: 0;
+        }
 
         #map { flex-grow: 1; width: 100%; z-index: 1; }
 
+        /* MODAL & RESULTS */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 9998; }
-        .fare-breakdown { 
-            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-            width: 85%; max-width: 340px; background: white; padding: 24px; border-radius: 28px; 
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3); z-index: 9999; flex-direction: column; 
-        }
+        .fare-breakdown { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; max-width: 340px; background: white; padding: 24px; border-radius: 28px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); z-index: 9999; flex-direction: column; }
         .invoice-table { width: 100%; border-collapse: collapse; font-size: 13px; color: var(--text); }
         .invoice-table td { padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
-        .invoice-table .rate-label { font-size: 10px; color: var(--gray-text); display: block; margin-top: 2px; font-weight: normal; }
+        .invoice-table .rate-label { font-size: 10px; color: var(--gray-text); display: block; margin-top: 2px; }
         .invoice-table .amount { text-align: right; font-family: monospace; font-weight: 600; font-size: 14px; }
         .invoice-total { margin-top: 15px; padding-top: 15px; border-top: 2px solid var(--primary); display: flex; justify-content: space-between; font-weight: 800; font-size: 20px; }
         .close-modal-btn { margin-top: 20px; width: 100%; padding: 14px; border: none; border-radius: 14px; background: #f3f4f6; font-weight: 700; cursor: pointer; color: var(--text); }
 
-        .results-card { 
-            position: fixed; bottom: 20px; left: 16px; right: 16px; 
-            background: white; padding: 20px; border-radius: 24px; 
-            box-shadow: 0 -10px 40px rgba(0,0,0,0.2); z-index: 1002; 
-            border: 1px solid #f1f5f9;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            transform: translateY(150%);
-            opacity: 0;
-            pointer-events: none;
-        }
-        .results-card.visible {
-            transform: translateY(0);
-            opacity: 1;
-            pointer-events: auto;
-        }
-
+        .results-card { position: fixed; bottom: 20px; left: 16px; right: 16px; background: white; padding: 20px; border-radius: 24px; box-shadow: 0 -10px 40px rgba(0,0,0,0.2); z-index: 1002; border: 1px solid #f1f5f9; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform: translateY(150%); opacity: 0; pointer-events: none; }
+        .results-card.visible { transform: translateY(0); opacity: 1; pointer-events: auto; }
         .fare-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
         #fare { margin:0; color:var(--primary); font-size:32px; }
-        .tap-hint { font-size: 9px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; }
-
         .action-bar { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 15px; }
         .action-btn { border: none; border-radius: 12px; padding: 10px; font-size: 10px; font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; text-transform: uppercase; }
         .btn-whatsapp { background: #25D366; color: white; }
@@ -116,7 +149,7 @@
     <div class="fare-header" onclick="toggleBreakdown()">
         <div id="fare-container">
             <h2 id="fare">RM 0</h2>
-            <div class="tap-hint">Tap for details ▾</div>
+            <div style="font-size: 9px; color: #9ca3af; text-transform: uppercase;">Tap for details ▾</div>
         </div>
         <span id="badge" style="font-size:10px; font-weight:800; padding:4px 10px; background:#f1f5f9; border-radius:20px;">STANDARD</span>
     </div>
@@ -133,13 +166,8 @@
 const CONFIG = {
     ORS_KEY: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0=",
     RATES: { 
-        BASE: 5.00, 
-        KM_TIER_1: 1.25, 
-        KM_TIER_2: 1.00, 
-        KM_TIER_3: 0.85,
-        TIME_RATE: 0.20, 
-        INTERSTATE_INCENTIVE: 50.00, 
-        INTERSTATE_THRESHOLD: 100,
+        BASE: 5.00, KM_TIER_1: 1.25, KM_TIER_2: 1.00, KM_TIER_3: 0.85,
+        TIME_RATE: 0.20, INTERSTATE_INCENTIVE: 50.00, INTERSTATE_THRESHOLD: 100,
         MIDNIGHT: 1.10, MORNING_PEAK: 1.30, LUNCH_SURGE: 1.10, EVENING_PEAK: 1.35
     }
 };
@@ -176,7 +204,7 @@ function debounceSearch(input, resultsId, type) {
     }, 300);
 }
 
-// FIX A: De-duplicated rendering logic
+// THE ENHANCED RENDERER
 function renderResults(features, resultsId, type) {
     const list = $(resultsId);
     if (!features.length) { list.style.display = 'none'; return; }
@@ -184,7 +212,7 @@ function renderResults(features, resultsId, type) {
     const seen = new Set();
     const uniqueFeatures = features.filter(f => {
         const p = f.properties;
-        const key = `${p.name || ''}-${p.district || ''}-${p.city || ''}`.toLowerCase();
+        const key = `${p.name}-${p.district}-${p.city}`.toLowerCase();
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
@@ -193,16 +221,28 @@ function renderResults(features, resultsId, type) {
     list.innerHTML = uniqueFeatures.map(f => {
         const p = f.properties;
         const [lon, lat] = f.geometry.coordinates;
+        
         const mainName = p.name || p.street || "Location";
-        const subAddress = [p.district, p.city, p.state].filter(x => x && x !== mainName).join(', ') || "Malaysia";
+        
+        // Full Hierarchy Parsing
+        const detailParts = [
+            p.street, 
+            p.district, 
+            p.city, 
+            p.state
+        ].filter(part => part && part !== mainName);
+
+        const subAddress = detailParts.join(', ') || "Malaysia";
         const fullLabel = `${mainName}, ${subAddress}`;
-        return `<div class="autocomplete-item" onclick="selectLoc('${type}', [${lat}, ${lon}], '${fullLabel.replace(/'/g, "\\'")}')">
-            <div class="loc-icon">📍</div>
-            <div class="loc-details">
-                <div class="loc-name">${mainName}</div>
-                <div class="loc-address">${subAddress}</div>
-            </div>
-        </div>`;
+
+        return `
+            <div class="autocomplete-item" onclick="selectLoc('${type}', [${lat}, ${lon}], '${fullLabel.replace(/'/g, "\\'")}')">
+                <div class="loc-details">
+                    <div class="loc-name">${mainName}</div>
+                    <div class="loc-address">${subAddress}</div>
+                </div>
+                <div class="loc-arrow">↖</div>
+            </div>`;
     }).join('');
     list.style.display = 'block';
 }
@@ -279,7 +319,6 @@ async function calculate() {
             </div>`;
         
         $("results").classList.add('visible');
-        
         if (routeLayer) map.removeLayer(routeLayer);
         routeLayer = L.polyline(decodePoly(route.geometry), {color: '#059669', weight: 5}).addTo(map);
         map.fitBounds(routeLayer.getBounds(), {padding: [50,150]});
@@ -300,13 +339,8 @@ function decodePoly(str) {
     return coordinates;
 }
 
-const formatDateTime = (val) => {
-    if (!val) return "Not set";
-    const d = new Date(val);
-    return d.toLocaleDateString('en-MY', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-};
-
-$("departure-time").addEventListener('change', () => { if (pickupCoord && dropoffCoord) calculate(); });
+$("pickup").oninput = e => debounceSearch(e.target, "p-results", "pickup");
+$("dropoff").oninput = e => debounceSearch(e.target, "d-results", "dropoff");
 
 $("gps-btn").onclick = () => {
     $("pickup").placeholder = "Locating...";
@@ -327,33 +361,28 @@ $("gps-btn").onclick = () => {
 $("btn-whatsapp").onclick = () => {
     const pickup = $("pickup").value;
     const dropoff = $("dropoff").value;
-    const schedule = formatDateTime($("departure-time").value);
-    const distance = $("summary").innerText.split('•')[0].trim();
-    const msg = encodeURIComponent(`*Booking Inquiry*\n\n*Pickup:* ${pickup}\n*Destination:* ${dropoff}\n*Schedule:* ${schedule}\n*Distance:* ${distance}\n*Fare:* RM ${currentFare}`);
+    const msg = encodeURIComponent(`*Booking Inquiry*\n\n*Pickup:* ${pickup}\n*Destination:* ${dropoff}\n*Fare:* RM ${currentFare}`);
     window.open(`https://wa.me/60108988182?text=${msg}`, '_blank');
 };
 
 $("btn-copy").onclick = () => {
-    const textToCopy = `Booking Inquiry\n\nPickup: ${$("pickup").value}\nDestination: ${$("dropoff").value}\nSchedule: ${formatDateTime($("departure-time").value)}\nDistance: ${$("summary").innerText.split('•')[0].trim()}\nFare: RM ${currentFare}\nRate: ${currentSurgeLabel}`;
-    navigator.clipboard.writeText(textToCopy).then(() => { alert("Details copied to clipboard!"); });
+    const textToCopy = `Booking Inquiry\n\nPickup: ${$("pickup").value}\nDestination: ${$("dropoff").value}\nFare: RM ${currentFare}`;
+    navigator.clipboard.writeText(textToCopy).then(() => { alert("Details copied!"); });
 };
 
-// FIX B: Fixed Google Maps Deep Link syntax
 $("btn-maps").onclick = () => { 
     if(pickupCoord && dropoffCoord) {
-        const url = `https://www.google.com/maps/dir/?api=1&origin=${pickupCoord[0]},${pickupCoord[1]}&destination=${dropoffCoord[0]},${dropoffCoord[1]}&travelmode=driving`;
-        window.open(url, '_blank'); 
+        window.open(`https://www.google.com/maps/dir/?api=1&origin=${pickupCoord[0]},${pickupCoord[1]}&destination=${dropoffCoord[0]},${dropoffCoord[1]}&travelmode=driving`, '_blank'); 
     }
 };
 
-$("pickup").oninput = e => debounceSearch(e.target, "p-results", "pickup");
-$("dropoff").oninput = e => debounceSearch(e.target, "d-results", "dropoff");
 $("swap-btn").onclick = () => {
     let pV = $("pickup").value, dV = $("dropoff").value;
     $("pickup").value = dV; $("dropoff").value = pV;
     let tC = pickupCoord; pickupCoord = dropoffCoord; dropoffCoord = tC;
     calculate();
 };
+
 $("clear-p").onclick = () => { $("pickup").value = ''; pickupCoord = null; $("clear-p").style.display='none'; $("p-results").style.display='none'; $("results").classList.remove('visible'); };
 $("clear-d").onclick = () => { $("dropoff").value = ''; dropoffCoord = null; $("clear-d").style.display='none'; $("d-results").style.display='none'; $("results").classList.remove('visible'); };
 </script>
