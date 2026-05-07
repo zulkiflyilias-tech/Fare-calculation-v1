@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - v6.0.0 Precision</title>
+    <title>Rideshare MY - Precision v6.1</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <style>
         :root { --primary: #059669; --bg: #f3f4f6; --card-bg: #ffffff; --text: #1f2937; --gray-text: #6b7280; --accent: #f59e0b; }
@@ -117,8 +117,9 @@ let pickupCoord, dropoffCoord, searchTimer, routeLayer, currentFare = 0;
 const map = L.map("map", { zoomControl: false }).setView([3.1478, 101.6953], 12);
 L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").addTo(map);
 
+// Improved Overpass Query for Malls/POIs
 async function fetchEntrances(lat, lon) {
-    const query = `[out:json][timeout:15];(node["entrance"](around:150,${lat},${lon});node["railway"~"entrance|exit"](around:150,${lat},${lon});node["highway"="bus_stop"](around:150,${lat},${lon}););out body;`;
+    const query = `[out:json][timeout:15];(node["entrance"](around:250,${lat},${lon});node["railway"~"entrance|exit"](around:250,${lat},${lon});node["highway"="bus_stop"](around:250,${lat},${lon});way["amenity"="parking_entrance"](around:250,${lat},${lon}););out center;`;
     try {
         const res = await fetch(CONFIG.OVERPASS_URL, { method: "POST", body: query });
         const data = await res.json();
@@ -149,28 +150,33 @@ async function renderResults(features, resultsId, type) {
         const [lon, lat] = f.geometry.coordinates;
         
         const mainName = p.name || p.street || "Location";
-        const fullAddr = [p.name, p.street, p.district, p.city, p.state].filter(Boolean).join(', ');
+        const fullAddr = [p.name, p.district, p.city, p.state].filter(Boolean).join(', ');
 
         const item = document.createElement('div');
         item.className = 'autocomplete-item';
         item.innerHTML = `<div class="loc-icon">📍</div><div style="overflow:hidden"><div class="loc-name">${mainName}</div><div class="loc-address">${fullAddr}</div></div>`;
-        item.onclick = () => selectLoc(type, [lat, lon], fullAddr);
+        item.onclick = () => selectLoc(type, [lat, lon], mainName);
         list.appendChild(item);
 
-        // Malaysian POI Deep-Dive
-        const poiKeywords = ['mall', 'station', 'hospital', 'terminal', 'university', 'plaza', 'tower'];
-        const isPOI = poiKeywords.some(k => (p.name||'').toLowerCase().includes(k)) || p.osm_value === 'mall';
+        // Malaysian POI keywords for entrance deep-dive
+        const poiKeywords = ['mall', 'station', 'hospital', 'plaza', 'sentral', 'university', 'tower', 'airport'];
+        const isPOI = poiKeywords.some(k => (p.name||'').toLowerCase().includes(k));
 
         if (isPOI) {
             const entrances = await fetchEntrances(lat, lon);
-            entrances.slice(0, 5).forEach(ent => {
+            entrances.slice(0, 8).forEach(ent => {
                 const entName = ent.tags.name || ent.tags.ref || `Entrance (${ent.tags.entrance || 'Gate'})`;
                 const sub = document.createElement('div');
                 sub.className = 'autocomplete-item';
                 sub.style.paddingLeft = "40px";
                 sub.style.background = "#fcfcfc";
-                sub.innerHTML = `<div class="loc-icon" style="width:24px; height:24px; font-size:12px;">🚪</div><div style="overflow:hidden"><div class="loc-name" style="font-size:13px; color:var(--primary);">${entName}</div><div class="loc-address">Exit/Gate for ${mainName}</div></div>`;
-                sub.onclick = (e) => { e.stopPropagation(); selectLoc(type, [ent.lat, ent.lon], `${mainName} (${entName})`); };
+                sub.innerHTML = `<div class="loc-icon" style="width:24px; height:24px; font-size:12px;">🚪</div><div style="overflow:hidden"><div class="loc-name" style="font-size:13px; color:var(--primary);">${entName}</div><div class="loc-address">Drop-off/Pick-up for ${mainName}</div></div>`;
+                sub.onclick = (e) => { 
+                    e.stopPropagation(); 
+                    const eLat = ent.lat || ent.center.lat;
+                    const eLon = ent.lon || ent.center.lon;
+                    selectLoc(type, [eLat, eLon], `${mainName} (${entName})`); 
+                };
                 list.appendChild(sub);
             });
         }
@@ -180,6 +186,11 @@ async function renderResults(features, resultsId, type) {
 function selectLoc(type, coord, label) {
     if (type === 'pickup') { pickupCoord = coord; $("pickup").value = label; $("p-results").style.display = 'none'; } 
     else { dropoffCoord = coord; $("dropoff").value = label; $("d-results").style.display = 'none'; }
+    
+    // Auto-center map on selection
+    map.setView(coord, 16);
+    L.marker(coord).addTo(map);
+
     if (pickupCoord && dropoffCoord) calculate();
 }
 
@@ -204,7 +215,7 @@ async function calculate() {
         if (routeLayer) map.removeLayer(routeLayer);
         routeLayer = L.polyline(decodePoly(route.geometry), {color: '#059669', weight: 5}).addTo(map);
         map.fitBounds(routeLayer.getBounds(), {padding: [50, 50]});
-    } catch (e) { alert("Error calculating route."); }
+    } catch (e) { console.error(e); }
 }
 
 function decodePoly(str) {
@@ -223,12 +234,35 @@ function decodePoly(str) {
 
 $("pickup").oninput = e => debounceSearch(e.target, "p-results", "pickup");
 $("dropoff").oninput = e => debounceSearch(e.target, "d-results", "dropoff");
+
+// Updated GPS with Reverse Geocoding
 $("gps-btn").onclick = () => {
-    navigator.geolocation.getCurrentPosition(p => selectLoc('pickup', [p.coords.latitude, p.coords.longitude], "My Current Location"));
+    navigator.geolocation.getCurrentPosition(async p => {
+        const lat = p.coords.latitude;
+        const lon = p.coords.longitude;
+        try {
+            // Fetch real address for pickup label
+            const res = await fetch(`https://photon.komoot.io/reverse?lon=${lon}&lat=${lat}`);
+            const data = await res.json();
+            const address = data.features[0].properties.name || data.features[0].properties.street || "My Location";
+            selectLoc('pickup', [lat, lon], address);
+        } catch (e) {
+            selectLoc('pickup', [lat, lon], "My Location");
+        }
+    });
 };
+
 $("btn-whatsapp").onclick = () => {
     const msg = encodeURIComponent(`Booking: ${$("pickup").value} to ${$("dropoff").value} (RM${currentFare})`);
     window.open(`https://wa.me/60108988182?text=${msg}`);
+};
+
+$("swap-btn").onclick = () => {
+    const pV = $("pickup").value, dV = $("dropoff").value;
+    const pC = pickupCoord, dC = dropoffCoord;
+    $("pickup").value = dV; $("dropoff").value = pV;
+    pickupCoord = dC; dropoffCoord = pC;
+    if(pickupCoord && dropoffCoord) calculate();
 };
 </script>
 </body>
