@@ -17,7 +17,6 @@
         input { width: 100%; padding: 12px 16px; border: 1.5px solid #e5e7eb; border-radius: 12px; box-sizing: border-box; font-size: 14px; background: #f9fafb; transition: 0.2s; }
         input:focus { border-color: var(--primary); outline: none; background: #fff; }
         
-        /* Adjusted padding for inputs with buttons */
         #pickup, #dropoff { padding-right: 85px; }
 
         .swap-btn { background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; color: var(--primary); display: flex; align-items: center; justify-content: center; }
@@ -205,7 +204,6 @@ async function calculate() {
         const hour = dt.getHours() + (dt.getMinutes() / 60);
         let activeMult = 1.0; currentSurgeLabel = "Standard";
 
-        // Surge logic
         if (hour >= 0 && hour < 6) { activeMult = CONFIG.RATES.MIDNIGHT; currentSurgeLabel = "Midnight Surcharge (10%)"; }
         else if (hour >= 7 && hour < 9) { activeMult = CONFIG.RATES.MORNING_PEAK; currentSurgeLabel = "Morning Peak (30%)"; }
         else if (hour >= 12.5 && hour < 14.5) { activeMult = CONFIG.RATES.LUNCH_SURGE; currentSurgeLabel = "Lunch Surge (10%)"; }
@@ -275,7 +273,16 @@ function decodePoly(str) {
     return coordinates;
 }
 
-// Fixed: Explicitly trigger calculation when time input changes
+// Format date and time for shared messages
+const formatDateTime = (val) => {
+    if (!val) return "Not set";
+    const d = new Date(val);
+    return d.toLocaleDateString('en-MY', { 
+        day: '2-digit', month: 'short', year: 'numeric', 
+        hour: '2-digit', minute: '2-digit' 
+    });
+};
+
 $("departure-time").addEventListener('change', () => {
     if (pickupCoord && dropoffCoord) calculate();
 });
@@ -299,12 +306,52 @@ $("gps-btn").onclick = () => {
     });
 };
 
+// WhatsApp Sharing Improvements
 $("btn-whatsapp").onclick = () => {
-    const msg = encodeURIComponent(`🚕 *Booking Inquiry*\n\n📍 From: ${$("pickup").value}\n🏁 To: ${$("dropoff").value}\n💰 Fare: RM ${currentFare}\n⚡ Rate: ${currentSurgeLabel}`);
+    const pickup = $("pickup").value;
+    const dropoff = $("dropoff").value;
+    const schedule = formatDateTime($("departure-time").value);
+    const distance = $("summary").innerText.split('•')[0].trim();
+    
+    const msg = encodeURIComponent(
+        `🚕 *Booking Inquiry*\n\n` +
+        `📍 *Pickup:* ${pickup}\n` +
+        `🏁 *Destination:* ${dropoff}\n` +
+        `📅 *Schedule:* ${schedule}\n` +
+        `📏 *Distance:* ${distance}\n` +
+        `💰 *Fare:* RM ${currentFare}\n` +
+        `⚡ *Rate:* ${currentSurgeLabel}`
+    );
     window.open(`https://wa.me/?text=${msg}`, '_blank');
 };
-$("btn-copy").onclick = () => { navigator.clipboard.writeText(`From: ${$("pickup").value}\nTo: ${$("dropoff").value}\nFare: RM ${currentFare}`); alert("Copied!"); };
-$("btn-maps").onclick = () => { window.open(`https://www.google.com/maps/dir/?api=1&origin=${pickupCoord[0]},${pickupCoord[1]}&destination=${dropoffCoord[0]},${dropoffCoord[1]}&travelmode=driving`, '_blank'); };
+
+// Copy to Clipboard Improvements
+$("btn-copy").onclick = () => {
+    const pickup = $("pickup").value;
+    const dropoff = $("dropoff").value;
+    const schedule = formatDateTime($("departure-time").value);
+    const distance = $("summary").innerText.split('•')[0].trim();
+    
+    const textToCopy = 
+        `Booking Inquiry\n\n` +
+        `Pickup: ${pickup}\n` +
+        `Destination: ${dropoff}\n` +
+        `Schedule: ${schedule}\n` +
+        `Distance: ${distance}\n` +
+        `Fare: RM ${currentFare}\n` +
+        `Rate: ${currentSurgeLabel}`;
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+        alert("Details copied to clipboard!");
+    });
+};
+
+$("btn-maps").onclick = () => { 
+    if(pickupCoord && dropoffCoord) {
+        window.open(`https://www.google.com/maps/dir/?api=1&origin=${pickupCoord[0]},${pickupCoord[1]}&destination=${dropoffCoord[0]},${dropoffCoord[1]}&travelmode=driving`, '_blank'); 
+    }
+};
+
 $("pickup").oninput = e => debounceSearch(e.target, "p-results", "pickup");
 $("dropoff").oninput = e => debounceSearch(e.target, "d-results", "dropoff");
 $("swap-btn").onclick = () => {
