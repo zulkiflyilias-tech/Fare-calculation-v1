@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - v5.8.5 PRO</title>
+    <title>Rideshare MY - v5.8.6 PRO</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <style>
         :root { --primary: #059669; --bg: #f3f4f6; --card-bg: #ffffff; --text: #1f2937; --gray-text: #6b7280; --accent: #f59e0b; }
@@ -14,9 +14,12 @@
         .inputs-flex { flex: 1; }
         .input-group { position: relative; margin-bottom: 12px; }
         .input-group label { display: block; font-size: 10px; font-weight: 800; margin-bottom: 4px; color: var(--gray-text); text-transform: uppercase; }
-        input { width: 100%; padding: 12px 85px 12px 16px; border: 1.5px solid #e5e7eb; border-radius: 12px; box-sizing: border-box; font-size: 14px; background: #f9fafb; transition: 0.2s; }
+        input { width: 100%; padding: 12px 16px; border: 1.5px solid #e5e7eb; border-radius: 12px; box-sizing: border-box; font-size: 14px; background: #f9fafb; transition: 0.2s; }
         input:focus { border-color: var(--primary); outline: none; background: #fff; }
         
+        /* Adjusted padding for inputs with buttons */
+        #pickup, #dropoff { padding-right: 85px; }
+
         .swap-btn { background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; color: var(--primary); display: flex; align-items: center; justify-content: center; }
         .btn-container { position: absolute; right: 8px; top: 24px; display: flex; gap: 4px; }
         .icon-btn { background: transparent; border: none; cursor: pointer; padding: 6px; color: #9ca3af; font-size: 18px; }
@@ -29,7 +32,6 @@
 
         #map { flex-grow: 1; width: 100%; z-index: 1; }
 
-        /* Modal Styles */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 9998; }
         .fare-breakdown { 
             display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
@@ -133,6 +135,7 @@ let pickupCoord, dropoffCoord, searchTimer, routeLayer, currentFare = 0, current
 const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([3.1478, 101.6953], 12);
 L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").addTo(map);
 
+// Set default time to current
 const now = new Date();
 now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
 $("departure-time").value = now.toISOString().slice(0,16);
@@ -201,6 +204,8 @@ async function calculate() {
         const dt = new Date($("departure-time").value);
         const hour = dt.getHours() + (dt.getMinutes() / 60);
         let activeMult = 1.0; currentSurgeLabel = "Standard";
+
+        // Surge logic
         if (hour >= 0 && hour < 6) { activeMult = CONFIG.RATES.MIDNIGHT; currentSurgeLabel = "Midnight Surcharge (10%)"; }
         else if (hour >= 7 && hour < 9) { activeMult = CONFIG.RATES.MORNING_PEAK; currentSurgeLabel = "Morning Peak (30%)"; }
         else if (hour >= 12.5 && hour < 14.5) { activeMult = CONFIG.RATES.LUNCH_SURGE; currentSurgeLabel = "Lunch Surge (10%)"; }
@@ -209,21 +214,21 @@ async function calculate() {
         let distFare = 0, tierHtml = "";
         if (km <= 50) { 
             distFare = km * CONFIG.RATES.KM_TIER_1; 
-            tierHtml = `<tr><td>Distance (Tier 1)<span class="rate-label">${km.toFixed(1)} km @ RM ${CONFIG.RATES.KM_TIER_1.toFixed(2)}/km</span></td><td class="amount">RM ${distFare.toFixed(2)}</td></tr>`; 
+            tierHtml = `<tr><td>Distance (T1)<span class="rate-label">${km.toFixed(1)} km @ RM ${CONFIG.RATES.KM_TIER_1.toFixed(2)}/km</span></td><td class="amount">RM ${distFare.toFixed(2)}</td></tr>`; 
         } else if (km <= 150) { 
             const t1 = 50 * CONFIG.RATES.KM_TIER_1;
             const t2 = (km - 50) * CONFIG.RATES.KM_TIER_2;
             distFare = t1 + t2; 
-            tierHtml = `<tr><td>Distance (Tier 1)<span class="rate-label">50.0 km @ RM ${CONFIG.RATES.KM_TIER_1.toFixed(2)}/km</span></td><td class="amount">RM ${t1.toFixed(2)}</td></tr>
-                        <tr><td>Distance (Tier 2)<span class="rate-label">${(km-50).toFixed(1)} km @ RM ${CONFIG.RATES.KM_TIER_2.toFixed(2)}/km</span></td><td class="amount">RM ${t2.toFixed(2)}</td></tr>`; 
+            tierHtml = `<tr><td>Distance (T1)<span class="rate-label">50.0 km @ RM ${CONFIG.RATES.KM_TIER_1.toFixed(2)}/km</span></td><td class="amount">RM ${t1.toFixed(2)}</td></tr>
+                        <tr><td>Distance (T2)<span class="rate-label">${(km-50).toFixed(1)} km @ RM ${CONFIG.RATES.KM_TIER_2.toFixed(2)}/km</span></td><td class="amount">RM ${t2.toFixed(2)}</td></tr>`; 
         } else { 
             const t1 = 50 * CONFIG.RATES.KM_TIER_1;
             const t2 = 100 * CONFIG.RATES.KM_TIER_2;
             const t3 = (km - 150) * CONFIG.RATES.KM_TIER_3;
             distFare = t1 + t2 + t3; 
-            tierHtml = `<tr><td>Distance (Tier 1)<span class="rate-label">50.0 km @ RM ${CONFIG.RATES.KM_TIER_1.toFixed(2)}/km</span></td><td class="amount">RM ${t1.toFixed(2)}</td></tr>
-                        <tr><td>Distance (Tier 2)<span class="rate-label">100.0 km @ RM ${CONFIG.RATES.KM_TIER_2.toFixed(2)}/km</span></td><td class="amount">RM ${t2.toFixed(2)}</td></tr>
-                        <tr><td>Distance (Tier 3)<span class="rate-label">${(km-150).toFixed(1)} km @ RM ${CONFIG.RATES.KM_TIER_3.toFixed(2)}/km</span></td><td class="amount">RM ${t3.toFixed(2)}</td></tr>`; 
+            tierHtml = `<tr><td>Distance (T1)<span class="rate-label">50.0 km @ RM ${CONFIG.RATES.KM_TIER_1.toFixed(2)}/km</span></td><td class="amount">RM ${t1.toFixed(2)}</td></tr>
+                        <tr><td>Distance (T2)<span class="rate-label">100.0 km @ RM ${CONFIG.RATES.KM_TIER_2.toFixed(2)}/km</span></td><td class="amount">RM ${t2.toFixed(2)}</td></tr>
+                        <tr><td>Distance (T3)<span class="rate-label">${(km-150).toFixed(1)} km @ RM ${CONFIG.RATES.KM_TIER_3.toFixed(2)}/km</span></td><td class="amount">RM ${t3.toFixed(2)}</td></tr>`; 
         }
 
         const timeFare = durationMin * CONFIG.RATES.TIME_RATE;
@@ -238,10 +243,10 @@ async function calculate() {
         
         $("invoice-content").innerHTML = `
             <table class="invoice-table">
-                <tr><td>Base Fare<span class="rate-label">Fixed starting fee</span></td><td class="amount">RM ${CONFIG.RATES.BASE.toFixed(2)}</td></tr>
+                <tr><td>Base Fare<span class="rate-label">Fixed fee</span></td><td class="amount">RM ${CONFIG.RATES.BASE.toFixed(2)}</td></tr>
                 ${tierHtml}
                 <tr><td>Time<span class="rate-label">${durationMin} min @ RM ${CONFIG.RATES.TIME_RATE.toFixed(2)}/min</span></td><td class="amount">RM ${timeFare.toFixed(2)}</td></tr>
-                ${isInterstate ? `<tr><td>Interstate Incentive<span class="rate-label">Long distance cross-border fee</span></td><td class="amount">RM ${CONFIG.RATES.INTERSTATE_INCENTIVE.toFixed(2)}</td></tr>` : ''}
+                ${isInterstate ? `<tr><td>Interstate Incentive<span class="rate-label">Cross-border fee</span></td><td class="amount">RM ${CONFIG.RATES.INTERSTATE_INCENTIVE.toFixed(2)}</td></tr>` : ''}
                 ${activeMult > 1 ? `<tr style="color:var(--accent)"><td>${currentSurgeLabel}<span class="rate-label">Peak hour multiplier</span></td><td class="amount">x${activeMult.toFixed(2)}</td></tr>` : ''}
             </table>
             <div class="invoice-total">
@@ -269,6 +274,11 @@ function decodePoly(str) {
     }
     return coordinates;
 }
+
+// Fixed: Explicitly trigger calculation when time input changes
+$("departure-time").addEventListener('change', () => {
+    if (pickupCoord && dropoffCoord) calculate();
+});
 
 $("gps-btn").onclick = () => {
     $("pickup").placeholder = "Locating...";
@@ -303,8 +313,8 @@ $("swap-btn").onclick = () => {
     let tC = pickupCoord; pickupCoord = dropoffCoord; dropoffCoord = tC;
     calculate();
 };
-$("clear-p").onclick = () => { $("pickup").value = ''; pickupCoord = null; $("clear-p").style.display='none'; };
-$("clear-d").onclick = () => { $("dropoff").value = ''; dropoffCoord = null; $("clear-d").style.display='none'; };
+$("clear-p").onclick = () => { $("pickup").value = ''; pickupCoord = null; $("clear-p").style.display='none'; $("p-results").style.display='none'; };
+$("clear-d").onclick = () => { $("dropoff").value = ''; dropoffCoord = null; $("clear-d").style.display='none'; $("d-results").style.display='none'; };
 </script>
 </body>
 </html>
