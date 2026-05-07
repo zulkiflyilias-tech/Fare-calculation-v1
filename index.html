@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - v5.9.1 PRO</title>
+    <title>Rideshare MY - v5.9.2 PRO</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <style>
-        :root { --primary: #059669; --bg: #f3f4f6; --card-bg: #ffffff; --text: #1f2937; --gray-text: #6b7280; --accent: #f59e0b; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background: var(--bg); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        :root { --primary: #059669; --bg: #f3f4f6; --card-bg: #ffffff; --text: #1f2937; --gray-text: #6b7280; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; background: var(--bg); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
+        /* Search Panel */
         .search-panel { background: var(--card-bg); padding: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); z-index: 1005; }
         .inputs-container { display: flex; align-items: center; gap: 12px; }
         .inputs-flex { flex: 1; }
@@ -16,39 +17,23 @@
         .input-group label { display: block; font-size: 10px; font-weight: 800; margin-bottom: 4px; color: var(--gray-text); text-transform: uppercase; }
         input { width: 100%; padding: 12px 16px; border: 1.5px solid #e5e7eb; border-radius: 12px; box-sizing: border-box; font-size: 14px; background: #f9fafb; transition: 0.2s; }
         input:focus { border-color: var(--primary); outline: none; background: #fff; }
-        
-        #pickup, #dropoff { padding-right: 85px; }
+        #pickup, #dropoff { padding-right: 40px; }
 
-        .swap-btn { background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; color: var(--primary); display: flex; align-items: center; justify-content: center; }
-        .btn-container { position: absolute; right: 8px; top: 24px; display: flex; gap: 4px; }
-        .icon-btn { background: transparent; border: none; cursor: pointer; padding: 6px; color: #9ca3af; font-size: 18px; }
-        
-        .autocomplete-list { position: absolute; top: 100%; left: 0; right: 0; background: white; z-index: 10000; max-height: 280px; overflow-y: auto; border-radius: 0 0 16px 16px; box-shadow: 0 12px 24px rgba(0,0,0,0.15); display: none; margin-top: 4px; border: 1px solid #eee; }
+        /* Autocomplete */
+        .autocomplete-list { position: absolute; top: 100%; left: 0; right: 0; background: white; z-index: 10000; max-height: 300px; overflow-y: auto; border-radius: 0 0 16px 16px; box-shadow: 0 12px 24px rgba(0,0,0,0.15); display: none; margin-top: 4px; border: 1px solid #eee; }
         .autocomplete-item { display: flex; align-items: center; padding: 12px 16px; gap: 12px; cursor: pointer; border-bottom: 1px solid #f9fafb; }
         .loc-icon { background: #f3f4f6; color: #6b7280; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-        .loc-details { overflow: hidden; }
-        .loc-name { font-weight: 600; font-size: 14px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .loc-name { font-weight: 600; font-size: 14px; color: var(--text); }
         .loc-address { font-size: 11px; color: var(--gray-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         #map { flex-grow: 1; width: 100%; z-index: 1; }
 
-        .results-card { position: fixed; bottom: 20px; left: 16px; right: 16px; background: white; padding: 20px; border-radius: 24px; box-shadow: 0 -10px 40px rgba(0,0,0,0.2); z-index: 1002; border: 1px solid #f1f5f9; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform: translateY(150%); opacity: 0; pointer-events: none; }
-        .results-card.visible { transform: translateY(0); opacity: 1; pointer-events: auto; }
-        .fare-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-        #fare { margin:0; color:var(--primary); font-size:32px; }
-        
+        /* Results Card */
+        .results-card { position: fixed; bottom: 20px; left: 16px; right: 16px; background: white; padding: 20px; border-radius: 24px; box-shadow: 0 -10px 40px rgba(0,0,0,0.2); z-index: 1002; transform: translateY(150%); transition: 0.4s; opacity: 0; }
+        .results-card.visible { transform: translateY(0); opacity: 1; }
         .action-bar { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 15px; }
-        .action-btn { border: none; border-radius: 12px; padding: 10px; font-size: 10px; font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; text-transform: uppercase; }
+        .action-btn { border: none; border-radius: 12px; padding: 10px; font-size: 10px; font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; }
         .btn-whatsapp { background: #25D366; color: white; }
-        .btn-copy { background: #f1f5f9; color: #475569; }
-        .btn-maps { background: #4285F4; color: white; }
-
-        /* Modal / Breakdown styles */
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 9998; }
-        .fare-breakdown { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; max-width: 340px; background: white; padding: 24px; border-radius: 28px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); z-index: 9999; flex-direction: column; }
-        .invoice-table { width: 100%; border-collapse: collapse; font-size: 13px; color: var(--text); }
-        .invoice-table td { padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
-        .invoice-total { margin-top: 15px; padding-top: 15px; border-top: 2px solid var(--primary); display: flex; justify-content: space-between; font-weight: 800; font-size: 20px; }
     </style>
 </head>
 <body>
@@ -58,45 +43,29 @@
         <div class="inputs-flex">
             <div class="input-group">
                 <label>Pickup</label>
-                <input type="text" id="pickup" placeholder="Set pickup..." autocomplete="off">
-                <div class="btn-container">
-                    <button id="clear-p" class="icon-btn" style="display:none">✕</button>
-                    <button id="gps-btn" class="icon-btn">📍</button>
-                </div>
+                <input type="text" id="pickup" placeholder="Search pickup..." autocomplete="off">
                 <div id="p-results" class="autocomplete-list"></div>
             </div>
             <div class="input-group" style="margin-bottom:0;">
                 <label>Destination</label>
-                <input type="text" id="dropoff" placeholder="Where to?" autocomplete="off">
-                <div class="btn-container">
-                    <button id="clear-d" class="icon-btn" style="display:none">✕</button>
-                </div>
+                <input type="text" id="dropoff" placeholder="Search destination..." autocomplete="off">
                 <div id="d-results" class="autocomplete-list"></div>
             </div>
         </div>
-        <button id="swap-btn" class="swap-btn">⇅</button>
     </div>
 </div>
 
 <div id="map"></div>
 
-<div id="modal-overlay" class="modal-overlay" onclick="toggleBreakdown()"></div>
-<div id="breakdown" class="fare-breakdown">
-    <h3 style="margin: 0 0 15px 0;">Fare Breakdown</h3>
-    <div id="invoice-content"></div>
-    <button style="margin-top:20px; width:100%; padding:14px; border:none; border-radius:14px; background:#f3f4f6; font-weight:700;" onclick="toggleBreakdown()">Close</button>
-</div>
-
 <div id="results" class="results-card">
-    <div class="fare-header" onclick="toggleBreakdown()">
-        <div><h2 id="fare">RM 0</h2><div style="font-size:9px; color:#9ca3af;">Tap for details ▾</div></div>
-        <span id="badge" style="font-size:10px; font-weight:800; padding:4px 10px; background:#f1f5f9; border-radius:20px;">STANDARD</span>
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h2 id="fare" style="margin:0; color:var(--primary); font-size:32px;">RM 0</h2>
+        <span id="dist" style="font-size:12px; font-weight:700; color:var(--gray-text);">0 km</span>
     </div>
-    <p id="summary" style="font-size:12px; color:#4b5563; margin-top:8px;"></p>
     <div class="action-bar">
-        <button class="action-btn btn-whatsapp" id="btn-whatsapp"><span>💬</span> WhatsApp</button>
-        <button class="action-btn btn-copy" id="btn-copy"><span>📋</span> Copy</button>
-        <button class="action-btn btn-maps" id="btn-maps"><span>🗺️</span> Maps App</button>
+        <button class="action-btn btn-whatsapp" id="btn-whatsapp">💬 WhatsApp</button>
+        <button class="action-btn" style="background:#f1f5f9;" id="btn-copy">📋 Copy</button>
+        <button class="action-btn" style="background:#4285F4; color:white;" id="btn-maps">🗺️ Maps</button>
     </div>
 </div>
 
@@ -104,13 +73,18 @@
 <script>
 const CONFIG = {
     ORS_KEY: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0=",
-    RATES: { BASE: 5.0, KM_TIER_1: 1.25, KM_TIER_2: 1.0, KM_TIER_3: 0.85, TIME_RATE: 0.20, INTERSTATE_THRESHOLD: 100, INTERSTATE_INCENTIVE: 50 },
     HOTSPOTS: {
         "Setia City Mall": [
-            { name: "Setia City Mall - West Entrance (Village)", lat: 3.10852, lon: 101.44315 },
-            { name: "Setia City Mall - Main Lobby (South Entrance)", lat: 3.10931, lon: 101.44473 },
-            { name: "Setia City Mall - East Entrance (Convention)", lat: 3.11025, lon: 101.44618 },
-            { name: "Setia City Mall - North Entrance (Lulu)", lat: 3.11112, lon: 101.44521 }
+            { name: "SCM - West Entrance (Village)", lat: 3.10852, lon: 101.44315 },
+            { name: "SCM - Main Lobby (South)", lat: 3.10931, lon: 101.44473 },
+            { name: "SCM - East Entrance (Convention)", lat: 3.11025, lon: 101.44618 },
+            { name: "SCM - North Entrance (Lulu)", lat: 3.11112, lon: 101.44521 }
+        ],
+        "KLCC": [
+            { name: "Suria KLCC - Ramlee Entrance", lat: 3.1576, lon: 101.7116 },
+            { name: "KLCC - Convention Centre Side", lat: 3.1539, lon: 101.7135 },
+            { name: "Petronas Twin Towers - Main Lobby", lat: 3.1579, lon: 101.7122 },
+            { name: "Suria KLCC - Ampang Entrance", lat: 3.1586, lon: 101.7128 }
         ]
     }
 };
@@ -118,64 +92,46 @@ const CONFIG = {
 const $ = id => document.getElementById(id);
 let pickupCoord, dropoffCoord, searchTimer, routeLayer;
 
-const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([3.1478, 101.6953], 12);
+const map = L.map("map", { zoomControl: false }).setView([3.1478, 101.6953], 12);
 L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").addTo(map);
-
-function toggleBreakdown() {
-    const isVisible = $("breakdown").style.display === "flex";
-    $("breakdown").style.display = isVisible ? "none" : "flex";
-    $("modal-overlay").style.display = isVisible ? "none" : "block";
-}
-
-function debounceSearch(input, resultsId, type) {
-    clearTimeout(searchTimer);
-    const query = input.value;
-    $(type === 'pickup' ? 'clear-p' : 'clear-d').style.display = query ? 'block' : 'none';
-    if (query.length < 3) { $(resultsId).style.display = 'none'; return; }
-    searchTimer = setTimeout(async () => {
-        try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=my&addressdetails=1&limit=8`);
-            const data = await res.json();
-            renderResults(data, resultsId, type);
-        } catch (e) { console.error(e); }
-    }, 600);
-}
 
 function renderResults(features, resultsId, type) {
     const list = $(resultsId);
     const query = (type === 'pickup' ? $("pickup").value : $("dropoff").value).toLowerCase();
-    
     let html = "";
 
-    // 1. FORCED HOTSPOT INJECTION (Priority)
-    if (query.includes("setia city") || query.includes("scm")) {
-        CONFIG.HOTSPOTS["Setia City Mall"].forEach(spot => {
-            html += `
-            <div class="autocomplete-item" onclick="selectLoc('${type}', [${spot.lat}, ${spot.lon}], '${spot.name}')">
-                <div class="loc-icon" style="background:#def7ec; color:#059669;">🚪</div>
-                <div class="loc-details">
-                    <div class="loc-name" style="color:#059669;">${spot.name}</div>
-                    <div class="loc-address">Persiaran Setia Dagang, Setia Alam</div>
-                </div>
-            </div>`;
-        });
+    // 1. HOTSPOT INJECTION (Checks for Setia City or KLCC)
+    for (const key in CONFIG.HOTSPOTS) {
+        if (query.includes(key.toLowerCase()) || (key === "Setia City Mall" && query.includes("scm")) || (key === "KLCC" && query.includes("klcc"))) {
+            CONFIG.HOTSPOTS[key].forEach(spot => {
+                html += `
+                <div class="autocomplete-item" onclick="selectLoc('${type}', [${spot.lat}, ${spot.lon}], '${spot.name}')">
+                    <div class="loc-icon" style="background:#def7ec; color:#059669;">🚪</div>
+                    <div class="loc-details">
+                        <div class="loc-name" style="color:#059669;">${spot.name}</div>
+                        <div class="loc-address">${key}, Malaysia</div>
+                    </div>
+                </div>`;
+            });
+        }
     }
 
-    // 2. RENDER API RESULTS
+    // 2. API RESULTS with Landmark Name Fix
     features.forEach(f => {
-        const addr = f.address;
-        const mainName = addr.mall || addr.amenity || addr.building || addr.highway || addr.name || addr.house_number || "Pinned Location";
+        const a = f.address;
+        const mainName = a.mall || a.amenity || a.building || a.attraction || a.tourism || a.leisure || a.shop || a.name || "Location";
         
-        // Skip duplicate generic mall center if entrances are shown
-        if (mainName.toLowerCase().includes("setia city mall") && html !== "") return;
+        // Avoid duplicates if we already showed hotspots
+        if (mainName.toLowerCase().includes("setia city") && html.includes("SCM")) return;
+        if (mainName.toLowerCase().includes("klcc") && html.includes("KLCC")) return;
 
-        const subAddress = f.display_name.split(',').slice(1, 4).join(',').trim();
+        const sub = f.display_name.split(',').slice(1, 4).join(',').trim();
         html += `
-        <div class="autocomplete-item" onclick="selectLoc('${type}', [${f.lat}, ${f.lon}], '${f.display_name.replace(/'/g, "\\'")}')">
+        <div class="autocomplete-item" onclick="selectLoc('${type}', [${f.lat}, ${f.lon}], '${mainName}')">
             <div class="loc-icon">📍</div>
             <div class="loc-details">
                 <div class="loc-name">${mainName}</div>
-                <div class="loc-address">${subAddress}</div>
+                <div class="loc-address">${sub}</div>
             </div>
         </div>`;
     });
@@ -200,23 +156,17 @@ async function calculate() {
         const data = await res.json();
         const route = data.routes[0];
         const km = route.summary.distance / 1000;
-        const durationMin = Math.ceil(route.summary.duration / 60);
-
-        let distFare = km * (km <= 50 ? CONFIG.RATES.KM_TIER_1 : (km <= 150 ? CONFIG.RATES.KM_TIER_2 : CONFIG.RATES.KM_TIER_3));
-        let total = Math.round(CONFIG.RATES.BASE + distFare + (durationMin * CONFIG.RATES.TIME_RATE));
         
-        if (km > CONFIG.RATES.INTERSTATE_THRESHOLD) total += CONFIG.RATES.INTERSTATE_INCENTIVE;
+        // Simple Fare: RM 5 Base + RM 1.25 per KM
+        const total = Math.round(5 + (km * 1.25));
 
         $("fare").innerText = `RM ${total}`;
-        $("summary").innerHTML = `<b>${km.toFixed(1)} km</b> • <b>${durationMin} min</b>`;
-        $("badge").innerText = km > 100 ? "INTERSTATE" : "STANDARD";
-        
-        $("invoice-content").innerHTML = `<table class="invoice-table"><tr><td>Base & Distance</td><td style="text-align:right">RM ${(total - (durationMin * 0.2)).toFixed(2)}</td></tr><tr><td>Time (${durationMin}m)</td><td style="text-align:right">RM ${(durationMin * 0.2).toFixed(2)}</td></tr></table><div class="invoice-total"><span>Total</span><span>RM ${total.toFixed(2)}</span></div>`;
+        $("dist").innerText = `${km.toFixed(1)} km`;
         $("results").classList.add('visible');
         
         if (routeLayer) map.removeLayer(routeLayer);
         routeLayer = L.polyline(decodePoly(route.geometry), {color: '#059669', weight: 5}).addTo(map);
-        map.fitBounds(routeLayer.getBounds(), {padding: [50,150]});
+        map.fitBounds(routeLayer.getBounds(), {padding: [50, 50]});
     } catch (e) { console.error(e); }
 }
 
@@ -234,35 +184,25 @@ function decodePoly(str) {
     return coordinates;
 }
 
-$("pickup").oninput = e => debounceSearch(e.target, "p-results", "pickup");
-$("dropoff").oninput = e => debounceSearch(e.target, "d-results", "dropoff");
-$("gps-btn").onclick = () => {
-    navigator.geolocation.getCurrentPosition(async pos => {
-        const lat = pos.coords.latitude, lon = pos.coords.longitude;
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
-        const data = await res.json();
-        selectLoc('pickup', [lat, lon], data.display_name);
-    });
+$("pickup").oninput = e => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(async () => {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${e.target.value}&countrycodes=my&addressdetails=1&limit=6`);
+        renderResults(await res.json(), "p-results", "pickup");
+    }, 500);
+};
+
+$("dropoff").oninput = e => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(async () => {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${e.target.value}&countrycodes=my&addressdetails=1&limit=6`);
+        renderResults(await res.json(), "d-results", "dropoff");
+    }, 500);
 };
 
 $("btn-whatsapp").onclick = () => {
-    const msg = encodeURIComponent(`Booking Inquiry\nPickup: ${$("pickup").value}\nDest: ${$("dropoff").value}\nFare: ${$("fare").innerText}`);
+    const msg = encodeURIComponent(`Booking: ${$("pickup").value} to ${$("dropoff").value}. Fare: ${$("fare").innerText}`);
     window.open(`https://wa.me/60108988182?text=${msg}`);
-};
-
-$("btn-maps").onclick = () => {
-    if(pickupCoord && dropoffCoord) window.open(`https://www.google.com/maps/dir/?api=1&origin=${pickupCoord[0]},${pickupCoord[1]}&destination=${dropoffCoord[0]},${dropoffCoord[1]}&travelmode=driving`);
-};
-
-$("btn-copy").onclick = () => {
-    navigator.clipboard.writeText(`Booking: ${$("pickup").value} to ${$("dropoff").value}. Fare: ${$("fare").innerText}`);
-    alert("Copied!");
-};
-
-$("swap-btn").onclick = () => {
-    let pV = $("pickup").value, dV = $("dropoff").value, tC = pickupCoord;
-    $("pickup").value = dV; $("dropoff").value = pV; pickupCoord = dropoffCoord; dropoffCoord = tC;
-    if (pickupCoord && dropoffCoord) calculate();
 };
 </script>
 </body>
