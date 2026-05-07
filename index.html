@@ -330,14 +330,14 @@ $("btn-whatsapp").onclick = () => {
     const distance = $("summary").innerText.split('•')[0].trim();
     
     const msg = encodeURIComponent(
-        `🚕 *Booking Inquiry*\n\n` +
-        `📍 *Pickup:* ${pickup}\n` +
-        `🏁 *Destination:* ${dropoff}\n` +
-        `📅 *Schedule:* ${schedule}\n` +
-        `📏 *Distance:* ${distance}\n` +
-        `💰 *Fare:* RM ${currentFare}`
+        `*Booking Inquiry*\n\n` +
+        `*Pickup:* ${pickup}\n` +
+        `*Destination:* ${dropoff}\n` +
+        `*Schedule:* ${schedule}\n` +
+        `*Distance:* ${distance}\n` +
+        `*Fare:* RM ${currentFare}`
     );
-    window.open(`https://wa.me/?text=${msg}`, '_blank');
+    window.open(`https://wa.me/60108988182?text=${msg}`, '_blank');
 };
 
 $("btn-copy").onclick = () => {
