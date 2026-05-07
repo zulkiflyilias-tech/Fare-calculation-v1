@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - v5.8.8 PRO</title>
+    <title>Rideshare MY - v5.8.9 PRO</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <style>
         :root { --primary: #059669; --bg: #f3f4f6; --card-bg: #ffffff; --text: #1f2937; --gray-text: #6b7280; --accent: #f59e0b; }
@@ -23,12 +23,12 @@
         .btn-container { position: absolute; right: 8px; top: 24px; display: flex; gap: 4px; }
         .icon-btn { background: transparent; border: none; cursor: pointer; padding: 6px; color: #9ca3af; font-size: 18px; }
         
-        /* Autocomplete Z-index fix */
         .autocomplete-list { position: absolute; top: 100%; left: 0; right: 0; background: white; z-index: 10000; max-height: 280px; overflow-y: auto; border-radius: 0 0 16px 16px; box-shadow: 0 12px 24px rgba(0,0,0,0.15); display: none; margin-top: 4px; border: 1px solid #eee; }
         .autocomplete-item { display: flex; align-items: center; padding: 12px 16px; gap: 12px; cursor: pointer; border-bottom: 1px solid #f9fafb; }
         .loc-icon { background: #f3f4f6; color: #6b7280; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-        .loc-name { font-weight: 600; font-size: 14px; color: var(--text); }
-        .loc-address { font-size: 12px; color: var(--gray-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .loc-details { overflow: hidden; }
+        .loc-name { font-weight: 600; font-size: 14px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .loc-address { font-size: 11px; color: var(--gray-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         #map { flex-grow: 1; width: 100%; z-index: 1; }
 
@@ -133,13 +133,8 @@
 const CONFIG = {
     ORS_KEY: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0=",
     RATES: { 
-        BASE: 5.00, 
-        KM_TIER_1: 1.25, 
-        KM_TIER_2: 1.00, 
-        KM_TIER_3: 0.85,
-        TIME_RATE: 0.20, 
-        INTERSTATE_INCENTIVE: 50.00, 
-        INTERSTATE_THRESHOLD: 100,
+        BASE: 5.00, KM_TIER_1: 1.25, KM_TIER_2: 1.00, KM_TIER_3: 0.85,
+        TIME_RATE: 0.20, INTERSTATE_INCENTIVE: 50.00, INTERSTATE_THRESHOLD: 100,
         MIDNIGHT: 1.10, MORNING_PEAK: 1.30, LUNCH_SURGE: 1.10, EVENING_PEAK: 1.35
     }
 };
@@ -155,8 +150,7 @@ now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
 $("departure-time").value = now.toISOString().slice(0,16);
 
 function toggleBreakdown() {
-    const modal = $("breakdown");
-    const overlay = $("modal-overlay");
+    const modal = $("breakdown"), overlay = $("modal-overlay");
     const isVisible = modal.style.display === "flex";
     modal.style.display = isVisible ? "none" : "flex";
     overlay.style.display = isVisible ? "none" : "block";
@@ -166,37 +160,28 @@ function debounceSearch(input, resultsId, type) {
     const query = input.value;
     $(type === 'pickup' ? 'clear-p' : 'clear-d').style.display = query ? 'block' : 'none';
     clearTimeout(searchTimer);
-    if (query.length < 2) { $(resultsId).style.display = 'none'; return; }
+    if (query.length < 3) { $(resultsId).style.display = 'none'; return; }
     searchTimer = setTimeout(async () => {
         try {
-            const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lat=3.14&lon=101.69&countrycode=MY&limit=15`);
+            // Using Nominatim for rich address data
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=my&addressdetails=1&limit=10`);
             const data = await res.json();
-            renderResults(data.features, resultsId, type);
+            renderResults(data, resultsId, type);
         } catch (e) { console.error(e); }
-    }, 300);
+    }, 600);
 }
 
-// FIX A: De-duplicated rendering logic
 function renderResults(features, resultsId, type) {
     const list = $(resultsId);
-    if (!features.length) { list.style.display = 'none'; return; }
+    if (!features || !features.length) { list.style.display = 'none'; return; }
     
-    const seen = new Set();
-    const uniqueFeatures = features.filter(f => {
-        const p = f.properties;
-        const key = `${p.name || ''}-${p.district || ''}-${p.city || ''}`.toLowerCase();
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-    });
+    list.innerHTML = features.map(f => {
+        const addr = f.address;
+        const mainName = addr.amenity || addr.building || addr.road || addr.suburb || "Location";
+        const subAddress = f.display_name.split(',').slice(1).join(',').trim();
+        const fullLabel = f.display_name;
 
-    list.innerHTML = uniqueFeatures.map(f => {
-        const p = f.properties;
-        const [lon, lat] = f.geometry.coordinates;
-        const mainName = p.name || p.street || "Location";
-        const subAddress = [p.district, p.city, p.state].filter(x => x && x !== mainName).join(', ') || "Malaysia";
-        const fullLabel = `${mainName}, ${subAddress}`;
-        return `<div class="autocomplete-item" onclick="selectLoc('${type}', [${lat}, ${lon}], '${fullLabel.replace(/'/g, "\\'")}')">
+        return `<div class="autocomplete-item" onclick="selectLoc('${type}', [${f.lat}, ${f.lon}], '${fullLabel.replace(/'/g, "\\'")}')">
             <div class="loc-icon">📍</div>
             <div class="loc-details">
                 <div class="loc-name">${mainName}</div>
@@ -279,7 +264,6 @@ async function calculate() {
             </div>`;
         
         $("results").classList.add('visible');
-        
         if (routeLayer) map.removeLayer(routeLayer);
         routeLayer = L.polyline(decodePoly(route.geometry), {color: '#059669', weight: 5}).addTo(map);
         map.fitBounds(routeLayer.getBounds(), {padding: [50,150]});
@@ -300,45 +284,30 @@ function decodePoly(str) {
     return coordinates;
 }
 
-const formatDateTime = (val) => {
-    if (!val) return "Not set";
-    const d = new Date(val);
-    return d.toLocaleDateString('en-MY', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-};
-
-$("departure-time").addEventListener('change', () => { if (pickupCoord && dropoffCoord) calculate(); });
-
 $("gps-btn").onclick = () => {
-    $("pickup").placeholder = "Locating...";
+    $("pickup").placeholder = "Locating via GPS...";
     navigator.geolocation.getCurrentPosition(async pos => {
         const lat = pos.coords.latitude, lon = pos.coords.longitude;
         try {
-            const res = await fetch(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lon}`);
+            // Using Overpass-powered Nominatim for highly detailed reverse geocoding
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`);
             const data = await res.json();
-            if (data.features && data.features.length > 0) {
-                const p = data.features[0].properties;
-                const addr = `${p.name || p.street || 'Current Location'}, ${p.city || p.state || ''}`;
-                selectLoc('pickup', [lat, lon], addr);
-            } else { selectLoc('pickup', [lat, lon], "Current Location"); }
+            const addr = data.display_name || "Current Location";
+            selectLoc('pickup', [lat, lon], addr);
         } catch(e) { selectLoc('pickup', [lat, lon], "Current Location"); }
     }, () => { alert("GPS access denied."); $("pickup").placeholder = "Set pickup..."; });
 };
 
 $("btn-whatsapp").onclick = () => {
-    const pickup = $("pickup").value;
-    const dropoff = $("dropoff").value;
-    const schedule = formatDateTime($("departure-time").value);
-    const distance = $("summary").innerText.split('•')[0].trim();
-    const msg = encodeURIComponent(`*Booking Inquiry*\n\n*Pickup:* ${pickup}\n*Destination:* ${dropoff}\n*Schedule:* ${schedule}\n*Distance:* ${distance}\n*Fare:* RM ${currentFare}`);
+    const msg = encodeURIComponent(`*Booking Inquiry*\n\n*Pickup:* ${$("pickup").value}\n*Destination:* ${$("dropoff").value}\n*Distance:* ${$("summary").innerText.split('•')[0].trim()}\n*Fare:* RM ${currentFare}`);
     window.open(`https://wa.me/60108988182?text=${msg}`, '_blank');
 };
 
 $("btn-copy").onclick = () => {
-    const textToCopy = `Booking Inquiry\n\nPickup: ${$("pickup").value}\nDestination: ${$("dropoff").value}\nSchedule: ${formatDateTime($("departure-time").value)}\nDistance: ${$("summary").innerText.split('•')[0].trim()}\nFare: RM ${currentFare}\nRate: ${currentSurgeLabel}`;
-    navigator.clipboard.writeText(textToCopy).then(() => { alert("Details copied to clipboard!"); });
+    const textToCopy = `Booking Inquiry\nPickup: ${$("pickup").value}\nDestination: ${$("dropoff").value}\nFare: RM ${currentFare}`;
+    navigator.clipboard.writeText(textToCopy).then(() => alert("Copied!"));
 };
 
-// FIX B: Fixed Google Maps Deep Link syntax
 $("btn-maps").onclick = () => { 
     if(pickupCoord && dropoffCoord) {
         const url = `https://www.google.com/maps/dir/?api=1&origin=${pickupCoord[0]},${pickupCoord[1]}&destination=${dropoffCoord[0]},${dropoffCoord[1]}&travelmode=driving`;
