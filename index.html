@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - v5.9.3 PRO</title>
+    <title>Rideshare MY - v5.9.4 PRO</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <style>
         :root { --primary: #059669; --bg: #f3f4f6; --card-bg: #ffffff; --text: #1f2937; --gray-text: #6b7280; }
@@ -58,21 +58,20 @@ const CONFIG = {
     ORS_KEY: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0=",
     HOTSPOTS: {
         "Setia City Mall": [
-            { name: "SCM - West Entrance (Village)", lat: 3.10852, lon: 101.44315 },
             { name: "SCM - Main Lobby (South Entrance)", lat: 3.10931, lon: 101.44473 },
-            { name: "SCM - East Entrance (Convention)", lat: 3.11025, lon: 101.44618 },
-            { name: "SCM - North Entrance (Lulu)", lat: 3.11112, lon: 101.44521 }
+            { name: "SCM - West Entrance (Village)", lat: 3.10852, lon: 101.44315 }
         ],
         "KLCC": [
             { name: "Suria KLCC - Ramlee Entrance", lat: 3.1576, lon: 101.7116 },
-            { name: "KLCC - Convention Centre Side", lat: 3.1539, lon: 101.7135 },
             { name: "Petronas Twin Towers - Main Lobby", lat: 3.1579, lon: 101.7122 }
         ],
         "Mid Valley": [
             { name: "Mid Valley - North Court Entrance", lat: 3.1189, lon: 101.6761 },
-            { name: "Mid Valley - South Court Entrance", lat: 3.1168, lon: 101.6775 },
-            { name: "Mid Valley - Boulevard Entrance", lat: 3.1175, lon: 101.6788 },
-            { name: "The Gardens Mall - Main Entrance", lat: 3.1186, lon: 101.6752 }
+            { name: "Mid Valley - South Court Entrance", lat: 3.1168, lon: 101.6775 }
+        ],
+        "Sunway Pyramid": [
+            { name: "Sunway Pyramid - Main Entrance", lat: 3.0731, lon: 101.6077 },
+            { name: "Sunway Pyramid - Lion Head Entrance", lat: 3.0725, lon: 101.6058 }
         ]
     }
 };
@@ -87,8 +86,9 @@ function renderResults(features, resultsId, type) {
     const list = $(resultsId);
     const query = (type === 'pickup' ? $("pickup").value : $("dropoff").value).toLowerCase();
     let html = "";
+    let hotspotFound = false;
 
-    // 1. DYNAMIC HOTSPOT CHECK (Works for SCM, KLCC, Mid Valley, etc.)
+    // 1. HOTSPOT LOGIC (Limited to 2 options)
     for (const key in CONFIG.HOTSPOTS) {
         if (query.includes(key.toLowerCase()) || (key === "Setia City Mall" && query.includes("scm"))) {
             CONFIG.HOTSPOTS[key].forEach(spot => {
@@ -97,33 +97,33 @@ function renderResults(features, resultsId, type) {
                     <div class="loc-icon" style="background:#def7ec; color:#059669;">🚪</div>
                     <div class="loc-details">
                         <div class="loc-name" style="color:#059669;">${spot.name}</div>
-                        <div class="loc-address">${key}, Malaysia</div>
+                        <div class="loc-address">Selangor/KL, Malaysia</div>
                     </div>
                 </div>`;
             });
+            hotspotFound = true;
         }
     }
 
-    // 2. API RESULTS
-    features.forEach(f => {
-        const a = f.address;
-        const mainName = a.mall || a.amenity || a.building || a.attraction || a.tourism || a.shop || a.name || "Location";
-        
-        // Anti-duplicate logic
-        let isDuplicate = false;
-        for(const k in CONFIG.HOTSPOTS) if(mainName.toLowerCase().includes(k.toLowerCase())) isDuplicate = true;
-        if(isDuplicate && html !== "") return;
+    // 2. API LOGIC (Only if no Hotspot found & ignores generic "Location")
+    if (!hotspotFound) {
+        features.forEach(f => {
+            const a = f.address;
+            const mainName = a.mall || a.amenity || a.building || a.attraction || a.tourism || a.shop || a.name;
 
-        const sub = f.display_name.split(',').slice(1, 4).join(',').trim();
-        html += `
-        <div class="autocomplete-item" onclick="selectLoc('${type}', [${f.lat}, ${f.lon}], '${mainName}')">
-            <div class="loc-icon">📍</div>
-            <div class="loc-details">
-                <div class="loc-name">${mainName}</div>
-                <div class="loc-address">${sub}</div>
-            </div>
-        </div>`;
-    });
+            if (mainName) {
+                const sub = f.display_name.split(',').slice(1, 4).join(',').trim();
+                html += `
+                <div class="autocomplete-item" onclick="selectLoc('${type}', [${f.lat}, ${f.lon}], '${mainName}')">
+                    <div class="loc-icon">📍</div>
+                    <div class="loc-details">
+                        <div class="loc-name">${mainName}</div>
+                        <div class="loc-address">${sub}</div>
+                    </div>
+                </div>`;
+            }
+        });
+    }
 
     list.innerHTML = html;
     list.style.display = html ? 'block' : 'none';
