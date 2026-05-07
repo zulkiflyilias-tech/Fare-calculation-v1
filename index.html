@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - v5.8.8 PRO</title>
+    <title>Rideshare MY - v5.8.8 PRO (Overpass Enabled)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <style>
         :root { --primary: #059669; --bg: #f3f4f6; --card-bg: #ffffff; --text: #1f2937; --gray-text: #6b7280; --accent: #f59e0b; }
@@ -23,79 +23,24 @@
         .btn-container { position: absolute; right: 8px; top: 24px; display: flex; gap: 4px; }
         .icon-btn { background: transparent; border: none; cursor: pointer; padding: 6px; color: #9ca3af; font-size: 18px; }
         
-        /* UPDATED AUTOCOMPLETE UI */
         .autocomplete-list { 
-            position: absolute; 
-            top: 100%; 
-            left: 0; 
-            right: 0; 
-            background: white; 
-            z-index: 10000; 
-            max-height: 420px; 
-            overflow-y: auto; 
-            border-radius: 0 0 12px 12px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.12); 
-            border: 1px solid #e0e0e0;
-            border-top: none;
-            display: none;
+            position: absolute; top: 100%; left: 0; right: 0; background: white; z-index: 10000; 
+            max-height: 420px; overflow-y: auto; border-radius: 0 0 12px 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12); border: 1px solid #e0e0e0; border-top: none; display: none;
         }
 
-        .autocomplete-item { 
-            display: flex; 
-            align-items: center; 
-            padding: 12px 16px; 
-            cursor: pointer; 
-            border-bottom: 1px solid #f8f9fa; 
-            transition: background 0.2s;
-        }
-
+        .autocomplete-item { display: flex; align-items: center; padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #f8f9fa; transition: background 0.2s; }
         .autocomplete-item:hover { background: #f1f3f4; }
-
-        .loc-details {
-            flex: 1;
-            min-width: 0; /* Necessary for ellipsis logic */
-        }
-
-        .loc-name { 
-            font-weight: 500; 
-            font-size: 15px; 
-            color: #202124; 
-            margin-bottom: 2px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .loc-address { 
-            font-size: 13px; 
-            color: #70757a; 
-            display: block;
-            white-space: nowrap; 
-            overflow: hidden; 
-            text-overflow: ellipsis; 
-        }
-
-        .loc-arrow {
-            color: #bdc1c6;
-            font-size: 18px;
-            margin-left: 12px;
-            flex-shrink: 0;
-        }
+        .loc-details { flex: 1; min-width: 0; }
+        .loc-name { font-weight: 500; font-size: 15px; color: #202124; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .loc-address { font-size: 13px; color: #70757a; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .loc-arrow { color: #bdc1c6; font-size: 18px; margin-left: 12px; flex-shrink: 0; }
+        .entrance-badge { font-size: 9px; background: #e8f5e9; color: #2e7d32; padding: 2px 6px; border-radius: 4px; margin-left: 8px; vertical-align: middle; }
 
         #map { flex-grow: 1; width: 100%; z-index: 1; }
 
-        /* MODAL & RESULTS */
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 9998; }
-        .fare-breakdown { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; max-width: 340px; background: white; padding: 24px; border-radius: 28px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); z-index: 9999; flex-direction: column; }
-        .invoice-table { width: 100%; border-collapse: collapse; font-size: 13px; color: var(--text); }
-        .invoice-table td { padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
-        .invoice-table .rate-label { font-size: 10px; color: var(--gray-text); display: block; margin-top: 2px; }
-        .invoice-table .amount { text-align: right; font-family: monospace; font-weight: 600; font-size: 14px; }
-        .invoice-total { margin-top: 15px; padding-top: 15px; border-top: 2px solid var(--primary); display: flex; justify-content: space-between; font-weight: 800; font-size: 20px; }
-        .close-modal-btn { margin-top: 20px; width: 100%; padding: 14px; border: none; border-radius: 14px; background: #f3f4f6; font-weight: 700; cursor: pointer; color: var(--text); }
-
-        .results-card { position: fixed; bottom: 20px; left: 16px; right: 16px; background: white; padding: 20px; border-radius: 24px; box-shadow: 0 -10px 40px rgba(0,0,0,0.2); z-index: 1002; border: 1px solid #f1f5f9; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform: translateY(150%); opacity: 0; pointer-events: none; }
-        .results-card.visible { transform: translateY(0); opacity: 1; pointer-events: auto; }
+        .results-card { position: fixed; bottom: 20px; left: 16px; right: 16px; background: white; padding: 20px; border-radius: 24px; box-shadow: 0 -10px 40px rgba(0,0,0,0.2); z-index: 1002; border: 1px solid #f1f5f9; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform: translateY(150%); opacity: 0; pointer-events: auto; }
+        .results-card.visible { transform: translateY(0); opacity: 1; }
         .fare-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
         #fare { margin:0; color:var(--primary); font-size:32px; }
         .action-bar { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 15px; }
@@ -130,34 +75,22 @@
         </div>
         <button id="swap-btn" class="swap-btn">⇅</button>
     </div>
-    <div class="input-group" style="margin-top: 12px; margin-bottom:0;">
-        <label>Travel Schedule</label>
-        <input type="datetime-local" id="departure-time">
-    </div>
 </div>
 
 <div id="map"></div>
 
-<div id="modal-overlay" class="modal-overlay" onclick="toggleBreakdown()"></div>
-<div id="breakdown" class="fare-breakdown">
-    <h3 style="margin: 0 0 15px 0; font-size: 18px;">Fare Breakdown</h3>
-    <div id="invoice-content"></div>
-    <button class="close-modal-btn" onclick="toggleBreakdown()">Close</button>
-</div>
-
 <div id="results" class="results-card">
-    <div class="fare-header" onclick="toggleBreakdown()">
-        <div id="fare-container">
+    <div class="fare-header">
+        <div>
             <h2 id="fare">RM 0</h2>
-            <div style="font-size: 9px; color: #9ca3af; text-transform: uppercase;">Tap for details ▾</div>
+            <div id="summary" style="font-size:12px; color:#4b5563;"></div>
         </div>
         <span id="badge" style="font-size:10px; font-weight:800; padding:4px 10px; background:#f1f5f9; border-radius:20px;">STANDARD</span>
     </div>
-    <p id="summary" style="font-size:12px; color:#4b5563; margin-top:8px;"></p>
     <div class="action-bar">
-        <button class="action-btn btn-whatsapp" id="btn-whatsapp"><span>💬</span> WhatsApp</button>
-        <button class="action-btn btn-copy" id="btn-copy"><span>📋</span> Copy</button>
-        <button class="action-btn btn-maps" id="btn-maps"><span>🗺️</span> Maps App</button>
+        <button class="action-btn btn-whatsapp" id="btn-whatsapp">WhatsApp</button>
+        <button class="action-btn btn-copy" id="btn-copy">Copy</button>
+        <button class="action-btn btn-maps" id="btn-maps">Maps</button>
     </div>
 </div>
 
@@ -165,85 +98,86 @@
 <script>
 const CONFIG = {
     ORS_KEY: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0=",
-    RATES: { 
-        BASE: 5.00, KM_TIER_1: 1.25, KM_TIER_2: 1.00, KM_TIER_3: 0.85,
-        TIME_RATE: 0.20, INTERSTATE_INCENTIVE: 50.00, INTERSTATE_THRESHOLD: 100,
-        MIDNIGHT: 1.10, MORNING_PEAK: 1.30, LUNCH_SURGE: 1.10, EVENING_PEAK: 1.35
-    }
+    RATES: { BASE: 5.00, KM: 1.20, TIME: 0.20 }
 };
 
 const $ = id => document.getElementById(id);
-let pickupCoord, dropoffCoord, searchTimer, routeLayer, currentFare = 0, currentSurgeLabel = "Standard";
+let pickupCoord, dropoffCoord, searchTimer, routeLayer;
 
-const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([3.1478, 101.6953], 12);
+const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([3.1478, 101.6953], 13);
 L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").addTo(map);
 
-const now = new Date();
-now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-$("departure-time").value = now.toISOString().slice(0,16);
-
-function toggleBreakdown() {
-    const modal = $("breakdown");
-    const overlay = $("modal-overlay");
-    const isVisible = modal.style.display === "flex";
-    modal.style.display = isVisible ? "none" : "flex";
-    overlay.style.display = isVisible ? "none" : "block";
-}
-
+// DEBOUNCE SEARCH
 function debounceSearch(input, resultsId, type) {
     const query = input.value;
     $(type === 'pickup' ? 'clear-p' : 'clear-d').style.display = query ? 'block' : 'none';
     clearTimeout(searchTimer);
-    if (query.length < 2) { $(resultsId).style.display = 'none'; return; }
-    searchTimer = setTimeout(async () => {
-        try {
-            const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lat=3.14&lon=101.69&countrycode=MY&limit=15`);
-            const data = await res.json();
-            renderResults(data.features, resultsId, type);
-        } catch (e) { console.error(e); }
-    }, 300);
+    if (query.length < 3) { $(resultsId).style.display = 'none'; return; }
+    searchTimer = setTimeout(() => fetchLocations(query, resultsId, type), 400);
 }
 
-// THE ENHANCED RENDERER
-function renderResults(features, resultsId, type) {
-    const list = $(resultsId);
-    if (!features.length) { list.style.display = 'none'; return; }
-    
-    const seen = new Set();
-    const uniqueFeatures = features.filter(f => {
-        const p = f.properties;
-        const key = `${p.name}-${p.district}-${p.city}`.toLowerCase();
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-    });
+async function fetchLocations(query, resultsId, type) {
+    try {
+        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lat=3.14&lon=101.69&limit=10`);
+        const data = await res.json();
+        renderResults(data.features, resultsId, type, query);
+    } catch (e) { console.error(e); }
+}
 
-    list.innerHTML = uniqueFeatures.map(f => {
+async function fetchEntrances(lat, lon, name) {
+    // Overpass API Query: Finds entrances/gates within 300m of the main POI
+    const query = `[out:json];(node["entrance"](around:300,${lat},${lon});node["gate"](around:300,${lat},${lon}););out body;`;
+    try {
+        const res = await fetch("https://overpass-api.de/api/interpreter", {
+            method: "POST",
+            body: query
+        });
+        const data = await res.json();
+        return data.elements.map(el => ({
+            name: `${name} - ${el.tags.description || el.tags.name || el.tags.ref || 'Entrance'}`,
+            lat: el.lat,
+            lon: el.lon,
+            isEntrance: true
+        }));
+    } catch (e) { return []; }
+}
+
+async function renderResults(features, resultsId, type, originalQuery) {
+    const list = $(resultsId);
+    let html = "";
+
+    for (const f of features) {
         const p = f.properties;
         const [lon, lat] = f.geometry.coordinates;
-        
         const mainName = p.name || p.street || "Location";
-        
-        // Full Hierarchy Parsing
-        const detailParts = [
-            p.street, 
-            p.district, 
-            p.city, 
-            p.state
-        ].filter(part => part && part !== mainName);
+        const subAddress = [p.street, p.district, p.city].filter(x => x && x !== mainName).join(', ');
 
-        const subAddress = detailParts.join(', ') || "Malaysia";
-        const fullLabel = `${mainName}, ${subAddress}`;
-
-        return `
-            <div class="autocomplete-item" onclick="selectLoc('${type}', [${lat}, ${lon}], '${fullLabel.replace(/'/g, "\\'")}')">
+        // Main Result
+        html += `
+            <div class="autocomplete-item" onclick="selectLoc('${type}', [${lat}, ${lon}], '${mainName}')">
                 <div class="loc-details">
                     <div class="loc-name">${mainName}</div>
-                    <div class="loc-address">${subAddress}</div>
+                    <div class="loc-address">${subAddress || 'Malaysia'}</div>
                 </div>
                 <div class="loc-arrow">↖</div>
             </div>`;
-    }).join('');
+
+        // If it's a major landmark (like KLCC), fetch entrances dynamically
+        if (["mall", "station", "hospital", "stadium", "complex"].some(word => mainName.toLowerCase().includes(word)) || mainName.toLowerCase().includes(originalQuery.toLowerCase())) {
+            const entrances = await fetchEntrances(lat, lon, mainName);
+            entrances.forEach(ent => {
+                html += `
+                    <div class="autocomplete-item" onclick="selectLoc('${type}', [${ent.lat}, ${ent.lon}], '${ent.name}')" style="background: #fafafa; padding-left: 30px;">
+                        <div class="loc-details">
+                            <div class="loc-name">📍 ${ent.name} <span class="entrance-badge">PICK-UP</span></div>
+                            <div class="loc-address">Specific Entrance/Gate</div>
+                        </div>
+                    </div>`;
+            });
+        }
+    }
+
+    list.innerHTML = html || `<div class="autocomplete-item">No results found</div>`;
     list.style.display = 'block';
 }
 
@@ -255,74 +189,23 @@ function selectLoc(type, coord, label) {
 
 async function calculate() {
     if (!pickupCoord || !dropoffCoord) return;
-    try {
-        const res = await fetch("https://api.openrouteservice.org/v2/directions/driving-car", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": CONFIG.ORS_KEY },
-            body: JSON.stringify({ coordinates: [[pickupCoord[1], pickupCoord[0]], [dropoffCoord[1], dropoffCoord[0]]] })
-        });
-        const data = await res.json();
-        const route = data.routes[0];
-        const km = route.summary.distance / 1000;
-        const durationMin = Math.ceil(route.summary.duration / 60);
-        
-        const dt = new Date($("departure-time").value);
-        const hour = dt.getHours() + (dt.getMinutes() / 60);
-        let activeMult = 1.0; currentSurgeLabel = "Standard";
+    const res = await fetch("https://api.openrouteservice.org/v2/directions/driving-car", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": CONFIG.ORS_KEY },
+        body: JSON.stringify({ coordinates: [[pickupCoord[1], pickupCoord[0]], [dropoffCoord[1], dropoffCoord[0]]] })
+    });
+    const data = await res.json();
+    const route = data.routes[0];
+    const km = route.summary.distance / 1000;
+    const fare = Math.round(CONFIG.RATES.BASE + (km * CONFIG.RATES.KM));
 
-        if (hour >= 0 && hour < 6) { activeMult = CONFIG.RATES.MIDNIGHT; currentSurgeLabel = "Midnight Surcharge (10%)"; }
-        else if (hour >= 7 && hour < 9) { activeMult = CONFIG.RATES.MORNING_PEAK; currentSurgeLabel = "Morning Peak (30%)"; }
-        else if (hour >= 12.5 && hour < 14.5) { activeMult = CONFIG.RATES.LUNCH_SURGE; currentSurgeLabel = "Lunch Surge (10%)"; }
-        else if (hour >= 17 && hour < 20) { activeMult = CONFIG.RATES.EVENING_PEAK; currentSurgeLabel = "Evening Peak (35%)"; }
+    $("fare").innerText = `RM ${fare}`;
+    $("summary").innerText = `${km.toFixed(1)} km • ${Math.ceil(route.summary.duration/60)} min`;
+    $("results").classList.add('visible');
 
-        let distFare = 0, tierHtml = "";
-        if (km <= 50) { 
-            distFare = km * CONFIG.RATES.KM_TIER_1; 
-            tierHtml = `<tr><td>Distance (T1)<span class="rate-label">${km.toFixed(1)} km @ RM ${CONFIG.RATES.KM_TIER_1.toFixed(2)}/km</span></td><td class="amount">RM ${distFare.toFixed(2)}</td></tr>`; 
-        } else if (km <= 150) { 
-            const t1 = 50 * CONFIG.RATES.KM_TIER_1;
-            const t2 = (km - 50) * CONFIG.RATES.KM_TIER_2;
-            distFare = t1 + t2; 
-            tierHtml = `<tr><td>Distance (T1)<span class="rate-label">50.0 km @ RM ${CONFIG.RATES.KM_TIER_1.toFixed(2)}/km</span></td><td class="amount">RM ${t1.toFixed(2)}</td></tr>
-                        <tr><td>Distance (T2)<span class="rate-label">${(km-50).toFixed(1)} km @ RM ${CONFIG.RATES.KM_TIER_2.toFixed(2)}/km</span></td><td class="amount">RM ${t2.toFixed(2)}</td></tr>`; 
-        } else { 
-            const t1 = 50 * CONFIG.RATES.KM_TIER_1;
-            const t2 = 100 * CONFIG.RATES.KM_TIER_2;
-            const t3 = (km - 150) * CONFIG.RATES.KM_TIER_3;
-            distFare = t1 + t2 + t3; 
-            tierHtml = `<tr><td>Distance (T1)<span class="rate-label">50.0 km @ RM ${CONFIG.RATES.KM_TIER_1.toFixed(2)}/km</span></td><td class="amount">RM ${t1.toFixed(2)}</td></tr>
-                        <tr><td>Distance (T2)<span class="rate-label">100.0 km @ RM ${CONFIG.RATES.KM_TIER_2.toFixed(2)}/km</span></td><td class="amount">RM ${t2.toFixed(2)}</td></tr>
-                        <tr><td>Distance (T3)<span class="rate-label">${(km-150).toFixed(1)} km @ RM ${CONFIG.RATES.KM_TIER_3.toFixed(2)}/km</span></td><td class="amount">RM ${t3.toFixed(2)}</td></tr>`; 
-        }
-
-        const timeFare = durationMin * CONFIG.RATES.TIME_RATE;
-        let subtotal = CONFIG.RATES.BASE + distFare + timeFare;
-        const isInterstate = km > CONFIG.RATES.INTERSTATE_THRESHOLD;
-        if (isInterstate) subtotal += CONFIG.RATES.INTERSTATE_INCENTIVE;
-        currentFare = Math.round(subtotal * activeMult);
-
-        $("fare").innerText = `RM ${currentFare}`;
-        $("badge").innerText = isInterstate ? "INTERSTATE" : "STANDARD";
-        $("summary").innerHTML = `<b>${km.toFixed(1)} km</b> • <b>${durationMin} min</b>`;
-        
-        $("invoice-content").innerHTML = `
-            <table class="invoice-table">
-                <tr><td>Base Fare<span class="rate-label">Fixed fee</span></td><td class="amount">RM ${CONFIG.RATES.BASE.toFixed(2)}</td></tr>
-                ${tierHtml}
-                <tr><td>Time<span class="rate-label">${durationMin} min @ RM ${CONFIG.RATES.TIME_RATE.toFixed(2)}/min</span></td><td class="amount">RM ${timeFare.toFixed(2)}</td></tr>
-                ${isInterstate ? `<tr><td>Interstate Incentive<span class="rate-label">Cross-border fee</span></td><td class="amount">RM ${CONFIG.RATES.INTERSTATE_INCENTIVE.toFixed(2)}</td></tr>` : ''}
-                ${activeMult > 1 ? `<tr style="color:var(--accent)"><td>${currentSurgeLabel}<span class="rate-label">Peak hour multiplier</span></td><td class="amount">x${activeMult.toFixed(2)}</td></tr>` : ''}
-            </table>
-            <div class="invoice-total">
-                <span>Total Payable</span>
-                <span>RM ${currentFare.toFixed(2)}</span>
-            </div>`;
-        
-        $("results").classList.add('visible');
-        if (routeLayer) map.removeLayer(routeLayer);
-        routeLayer = L.polyline(decodePoly(route.geometry), {color: '#059669', weight: 5}).addTo(map);
-        map.fitBounds(routeLayer.getBounds(), {padding: [50,150]});
-    } catch (err) { console.error(err); }
+    if (routeLayer) map.removeLayer(routeLayer);
+    routeLayer = L.polyline(decodePoly(route.geometry), {color: '#059669', weight: 5}).addTo(map);
+    map.fitBounds(routeLayer.getBounds(), {padding: [50,50]});
 }
 
 function decodePoly(str) {
@@ -341,50 +224,12 @@ function decodePoly(str) {
 
 $("pickup").oninput = e => debounceSearch(e.target, "p-results", "pickup");
 $("dropoff").oninput = e => debounceSearch(e.target, "d-results", "dropoff");
-
-$("gps-btn").onclick = () => {
-    $("pickup").placeholder = "Locating...";
-    navigator.geolocation.getCurrentPosition(async pos => {
-        const lat = pos.coords.latitude, lon = pos.coords.longitude;
-        try {
-            const res = await fetch(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lon}`);
-            const data = await res.json();
-            if (data.features && data.features.length > 0) {
-                const p = data.features[0].properties;
-                const addr = `${p.name || p.street || 'Current Location'}, ${p.city || p.state || ''}`;
-                selectLoc('pickup', [lat, lon], addr);
-            } else { selectLoc('pickup', [lat, lon], "Current Location"); }
-        } catch(e) { selectLoc('pickup', [lat, lon], "Current Location"); }
-    }, () => { alert("GPS access denied."); $("pickup").placeholder = "Set pickup..."; });
-};
-
-$("btn-whatsapp").onclick = () => {
-    const pickup = $("pickup").value;
-    const dropoff = $("dropoff").value;
-    const msg = encodeURIComponent(`*Booking Inquiry*\n\n*Pickup:* ${pickup}\n*Destination:* ${dropoff}\n*Fare:* RM ${currentFare}`);
-    window.open(`https://wa.me/60108988182?text=${msg}`, '_blank');
-};
-
-$("btn-copy").onclick = () => {
-    const textToCopy = `Booking Inquiry\n\nPickup: ${$("pickup").value}\nDestination: ${$("dropoff").value}\nFare: RM ${currentFare}`;
-    navigator.clipboard.writeText(textToCopy).then(() => { alert("Details copied!"); });
-};
-
-$("btn-maps").onclick = () => { 
-    if(pickupCoord && dropoffCoord) {
-        window.open(`https://www.google.com/maps/dir/?api=1&origin=${pickupCoord[0]},${pickupCoord[1]}&destination=${dropoffCoord[0]},${dropoffCoord[1]}&travelmode=driving`, '_blank'); 
-    }
-};
-
 $("swap-btn").onclick = () => {
     let pV = $("pickup").value, dV = $("dropoff").value;
     $("pickup").value = dV; $("dropoff").value = pV;
     let tC = pickupCoord; pickupCoord = dropoffCoord; dropoffCoord = tC;
     calculate();
 };
-
-$("clear-p").onclick = () => { $("pickup").value = ''; pickupCoord = null; $("clear-p").style.display='none'; $("p-results").style.display='none'; $("results").classList.remove('visible'); };
-$("clear-d").onclick = () => { $("dropoff").value = ''; dropoffCoord = null; $("clear-d").style.display='none'; $("d-results").style.display='none'; $("results").classList.remove('visible'); };
 </script>
 </body>
 </html>
