@@ -350,7 +350,8 @@ $("btn-copy").onclick = () => {
 
 $("btn-maps").onclick = () => { 
     if(pickupCoord && dropoffCoord) {
-        window.open(`https://www.google.com/maps/dir/?api=1&origin=${pickupCoord[0]},${pickupCoord[1]}&destination=${dropoffCoord[0]},${dropoffCoord[1]}&travelmode=driving`, '_blank'); 
+        const url = `https://www.google.com/maps/dir/?api=1&origin=${pickupCoord[0]},${pickupCoord[1]}&destination=${dropoffCoord[0]},${dropoffCoord[1]}&travelmode=driving`;
+        window.open(url, '_system'); // '_system' helps trigger the app handler on many mobile browsers
     }
 };
 </script>
