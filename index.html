@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - v5.8.8 PRO</title>
+    <title>Rideshare MY - v5.9.0 PRO</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <style>
-        :root { --primary: #059669; --bg: #f3f4f6; --card-bg: #ffffff; --text: #1f2937; --gray-text: #6b7280; --accent: #f59e0b; }
+        :root { --primary: #059669; --bg: #f3f4f6; --card-bg: #ffffff; --text: #1f2937; --gray-text: #6b7280; --accent: #f59e0b; --danger: #ef4444; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background: var(--bg); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
         .search-panel { background: var(--card-bg); padding: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); z-index: 1005; }
@@ -18,12 +18,10 @@
         input:focus { border-color: var(--primary); outline: none; background: #fff; }
         
         #pickup, #dropoff { padding-right: 85px; }
-
         .swap-btn { background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; color: var(--primary); display: flex; align-items: center; justify-content: center; }
         .btn-container { position: absolute; right: 8px; top: 24px; display: flex; gap: 4px; }
         .icon-btn { background: transparent; border: none; cursor: pointer; padding: 6px; color: #9ca3af; font-size: 18px; }
         
-        /* Autocomplete Z-index fix */
         .autocomplete-list { position: absolute; top: 100%; left: 0; right: 0; background: white; z-index: 10000; max-height: 280px; overflow-y: auto; border-radius: 0 0 16px 16px; box-shadow: 0 12px 24px rgba(0,0,0,0.15); display: none; margin-top: 4px; border: 1px solid #eee; }
         .autocomplete-item { display: flex; align-items: center; padding: 12px 16px; gap: 12px; cursor: pointer; border-bottom: 1px solid #f9fafb; }
         .loc-icon { background: #f3f4f6; color: #6b7280; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
@@ -51,17 +49,9 @@
             box-shadow: 0 -10px 40px rgba(0,0,0,0.2); z-index: 1002; 
             border: 1px solid #f1f5f9;
             transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            transform: translateY(150%);
-            opacity: 0;
-            pointer-events: none;
+            transform: translateY(150%); opacity: 0; pointer-events: none;
         }
-        .results-card.visible {
-            transform: translateY(0);
-            opacity: 1;
-            pointer-events: auto;
-        }
-
-        .fare-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .results-card.visible { transform: translateY(0); opacity: 1; pointer-events: auto; }
         #fare { margin:0; color:var(--primary); font-size:32px; }
         .tap-hint { font-size: 9px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; }
 
@@ -113,8 +103,8 @@
 </div>
 
 <div id="results" class="results-card">
-    <div class="fare-header" onclick="toggleBreakdown()">
-        <div id="fare-container">
+    <div class="fare-header" onclick="toggleBreakdown()" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+        <div>
             <h2 id="fare">RM 0</h2>
             <div class="tap-hint">Tap for details ▾</div>
         </div>
@@ -134,18 +124,17 @@ const CONFIG = {
     ORS_KEY: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0=",
     RATES: { 
         BASE: 5.00, 
-        KM_TIER_1: 1.25, 
-        KM_TIER_2: 1.10, 
-        KM_TIER_3: 0.95,
+        KM_TIER_1: 1.25, KM_TIER_2: 1.10, KM_TIER_3: 0.95,
         TIME_RATE: 0.30, 
+        CONGESTION_SPEED: 25, // km/h
+        CONGESTION_FEE: 0.20, // Add per minute if speed < 25
         INTERSTATE_INCENTIVE: 50.00, 
-        INTERSTATE_THRESHOLD: 100,
-        MIDNIGHT: 1.10, MORNING_PEAK: 1.30, LUNCH_SURGE: 1.10, EVENING_PEAK: 1.35
+        SURGE: { MIDNIGHT: 1.10, MORNING: 1.30, LUNCH: 1.10, EVENING: 1.35 }
     }
 };
 
 const $ = id => document.getElementById(id);
-let pickupCoord, dropoffCoord, searchTimer, routeLayer, currentFare = 0, currentSurgeLabel = "Standard";
+let pickupCoord, dropoffCoord, pickupState, dropoffState, searchTimer, routeLayer, lastResult = null;
 
 const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([3.1478, 101.6953], 12);
 L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").addTo(map);
@@ -155,65 +144,14 @@ now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
 $("departure-time").value = now.toISOString().slice(0,16);
 
 function toggleBreakdown() {
-    const modal = $("breakdown");
-    const overlay = $("modal-overlay");
-    const isVisible = modal.style.display === "flex";
-    modal.style.display = isVisible ? "none" : "flex";
-    overlay.style.display = isVisible ? "none" : "block";
+    const isVisible = $("breakdown").style.display === "flex";
+    $("breakdown").style.display = isVisible ? "none" : "flex";
+    $("modal-overlay").style.display = isVisible ? "none" : "block";
 }
 
-function debounceSearch(input, resultsId, type) {
-    const query = input.value;
-    $(type === 'pickup' ? 'clear-p' : 'clear-d').style.display = query ? 'block' : 'none';
-    clearTimeout(searchTimer);
-    if (query.length < 2) { $(resultsId).style.display = 'none'; return; }
-    searchTimer = setTimeout(async () => {
-        try {
-            const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lat=3.14&lon=101.69&countrycode=MY&limit=15`);
-            const data = await res.json();
-            renderResults(data.features, resultsId, type);
-        } catch (e) { console.error(e); }
-    }, 300);
-}
+// --- LOGIC REFACTORED INTO MODULES ---
 
-// FIX A: De-duplicated rendering logic
-function renderResults(features, resultsId, type) {
-    const list = $(resultsId);
-    if (!features.length) { list.style.display = 'none'; return; }
-    
-    const seen = new Set();
-    const uniqueFeatures = features.filter(f => {
-        const p = f.properties;
-        const key = `${p.name || ''}-${p.district || ''}-${p.city || ''}`.toLowerCase();
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-    });
-
-    list.innerHTML = uniqueFeatures.map(f => {
-        const p = f.properties;
-        const [lon, lat] = f.geometry.coordinates;
-        const mainName = p.name || p.street || "Location";
-        const subAddress = [p.district, p.city, p.state].filter(x => x && x !== mainName).join(', ') || "Malaysia";
-        const fullLabel = `${mainName}, ${subAddress}`;
-        return `<div class="autocomplete-item" onclick="selectLoc('${type}', [${lat}, ${lon}], '${fullLabel.replace(/'/g, "\\'")}')">
-            <div class="loc-icon">📍</div>
-            <div class="loc-details">
-                <div class="loc-name">${mainName}</div>
-                <div class="loc-address">${subAddress}</div>
-            </div>
-        </div>`;
-    }).join('');
-    list.style.display = 'block';
-}
-
-function selectLoc(type, coord, label) {
-    if (type === 'pickup') { pickupCoord = coord; $("pickup").value = label; $("p-results").style.display = 'none'; } 
-    else { dropoffCoord = coord; $("dropoff").value = label; $("d-results").style.display = 'none'; }
-    calculate();
-}
-
-async function calculate() {
+async function getRoute() {
     if (!pickupCoord || !dropoffCoord) return;
     try {
         const res = await fetch("https://api.openrouteservice.org/v2/directions/driving-car", {
@@ -223,68 +161,102 @@ async function calculate() {
         });
         const data = await res.json();
         const route = data.routes[0];
-        const km = route.summary.distance / 1000;
-        const durationMin = Math.ceil(route.summary.duration / 60);
+        const result = calculateFare(route.summary.distance / 1000, Math.ceil(route.summary.duration / 60));
         
-        const dt = new Date($("departure-time").value);
-        const hour = dt.getHours() + (dt.getMinutes() / 60);
-        let activeMult = 1.0; currentSurgeLabel = "Standard";
+        renderRoute(route.geometry);
+        renderFare(result);
+        renderInvoice(result);
+        lastResult = result;
+    } catch (err) { console.error("Route calculation failed", err); }
+}
 
-        if (hour >= 0 && hour < 6) { activeMult = CONFIG.RATES.MIDNIGHT; currentSurgeLabel = "Midnight Surcharge (10%)"; }
-        else if (hour >= 7 && hour < 9) { activeMult = CONFIG.RATES.MORNING_PEAK; currentSurgeLabel = "Morning Peak (30%)"; }
-        else if (hour >= 12.5 && hour < 14.5) { activeMult = CONFIG.RATES.LUNCH_SURGE; currentSurgeLabel = "Lunch Surge (10%)"; }
-        else if (hour >= 17 && hour < 20) { activeMult = CONFIG.RATES.EVENING_PEAK; currentSurgeLabel = "Evening Peak (35%)"; }
+function calculateFare(km, durationMin) {
+    // 1. Time & Surge
+    const dt = new Date($("departure-time").value);
+    const hour = dt.getHours() + (dt.getMinutes() / 60);
+    let multiplier = 1.0, surgeLabel = "Standard";
 
-        let distFare = 0, tierHtml = "";
-        if (km <= 50) { 
-            distFare = km * CONFIG.RATES.KM_TIER_1; 
-            tierHtml = `<tr><td>Distance (T1)<span class="rate-label">${km.toFixed(1)} km @ RM ${CONFIG.RATES.KM_TIER_1.toFixed(2)}/km</span></td><td class="amount">RM ${distFare.toFixed(2)}</td></tr>`; 
-        } else if (km <= 150) { 
-            const t1 = 50 * CONFIG.RATES.KM_TIER_1;
+    if (hour >= 0 && hour < 6) { multiplier = CONFIG.RATES.SURGE.MIDNIGHT; surgeLabel = "Midnight Surcharge"; }
+    else if (hour >= 7 && hour < 9) { multiplier = CONFIG.RATES.SURGE.MORNING; surgeLabel = "Morning Peak"; }
+    else if (hour >= 12.5 && hour < 14.5) { multiplier = CONFIG.RATES.SURGE.LUNCH; surgeLabel = "Lunch Surge"; }
+    else if (hour >= 17 && hour < 20) { multiplier = CONFIG.RATES.SURGE.EVENING; surgeLabel = "Evening Peak"; }
+
+    // 2. Distance Tiers
+    let distFare = 0, tiers = [];
+    if (km <= 50) { 
+        distFare = km * CONFIG.RATES.KM_TIER_1;
+        tiers.push({ label: `Distance (T1)`, sub: `${km.toFixed(1)} km @ RM ${CONFIG.RATES.KM_TIER_1.toFixed(2)}`, val: distFare });
+    } else {
+        const t1 = 50 * CONFIG.RATES.KM_TIER_1;
+        tiers.push({ label: `Distance (T1)`, sub: `50.0 km @ RM ${CONFIG.RATES.KM_TIER_1.toFixed(2)}`, val: t1 });
+        if (km <= 150) {
             const t2 = (km - 50) * CONFIG.RATES.KM_TIER_2;
-            distFare = t1 + t2; 
-            tierHtml = `<tr><td>Distance (T1)<span class="rate-label">50.0 km @ RM ${CONFIG.RATES.KM_TIER_1.toFixed(2)}/km</span></td><td class="amount">RM ${t1.toFixed(2)}</td></tr>
-                        <tr><td>Distance (T2)<span class="rate-label">${(km-50).toFixed(1)} km @ RM ${CONFIG.RATES.KM_TIER_2.toFixed(2)}/km</span></td><td class="amount">RM ${t2.toFixed(2)}</td></tr>`; 
-        } else { 
-            const t1 = 50 * CONFIG.RATES.KM_TIER_1;
+            distFare = t1 + t2;
+            tiers.push({ label: `Distance (T2)`, sub: `${(km-50).toFixed(1)} km @ RM ${CONFIG.RATES.KM_TIER_2.toFixed(2)}`, val: t2 });
+        } else {
             const t2 = 100 * CONFIG.RATES.KM_TIER_2;
             const t3 = (km - 150) * CONFIG.RATES.KM_TIER_3;
-            distFare = t1 + t2 + t3; 
-            tierHtml = `<tr><td>Distance (T1)<span class="rate-label">50.0 km @ RM ${CONFIG.RATES.KM_TIER_1.toFixed(2)}/km</span></td><td class="amount">RM ${t1.toFixed(2)}</td></tr>
-                        <tr><td>Distance (T2)<span class="rate-label">100.0 km @ RM ${CONFIG.RATES.KM_TIER_2.toFixed(2)}/km</span></td><td class="amount">RM ${t2.toFixed(2)}</td></tr>
-                        <tr><td>Distance (T3)<span class="rate-label">${(km-150).toFixed(1)} km @ RM ${CONFIG.RATES.KM_TIER_3.toFixed(2)}/km</span></td><td class="amount">RM ${t3.toFixed(2)}</td></tr>`; 
+            distFare = t1 + t2 + t3;
+            tiers.push({ label: `Distance (T2)`, sub: `100.0 km @ RM ${CONFIG.RATES.KM_TIER_2.toFixed(2)}`, val: t2 });
+            tiers.push({ label: `Distance (T3)`, sub: `${(km-150).toFixed(1)} km @ RM ${CONFIG.RATES.KM_TIER_3.toFixed(2)}`, val: t3 });
         }
+    }
 
-        const timeFare = durationMin * CONFIG.RATES.TIME_RATE;
-        let subtotal = CONFIG.RATES.BASE + distFare + timeFare;
-        const isInterstate = km > CONFIG.RATES.INTERSTATE_THRESHOLD;
-        if (isInterstate) subtotal += CONFIG.RATES.INTERSTATE_INCENTIVE;
-        currentFare = Math.round(subtotal * activeMult);
+    // 3. Congestion Logic
+    const avgSpeed = km / (durationMin / 60);
+    const isCongested = avgSpeed < CONFIG.RATES.CONGESTION_SPEED;
+    const timeRate = isCongested ? (CONFIG.RATES.TIME_RATE + CONFIG.RATES.CONGESTION_FEE) : CONFIG.RATES.TIME_RATE;
+    const timeFare = durationMin * timeRate;
 
-        $("fare").innerText = `RM ${currentFare}`;
-        $("badge").innerText = isInterstate ? "INTERSTATE" : "STANDARD";
-        $("summary").innerHTML = `<b>${km.toFixed(1)} km</b> • <b>${durationMin} min</b>`;
-        
-        $("invoice-content").innerHTML = `
-            <table class="invoice-table">
-                <tr><td>Base Fare<span class="rate-label">Fixed fee</span></td><td class="amount">RM ${CONFIG.RATES.BASE.toFixed(2)}</td></tr>
-                ${tierHtml}
-                <tr><td>Time<span class="rate-label">${durationMin} min @ RM ${CONFIG.RATES.TIME_RATE.toFixed(2)}/min</span></td><td class="amount">RM ${timeFare.toFixed(2)}</td></tr>
-                ${isInterstate ? `<tr><td>Interstate Incentive<span class="rate-label">Cross-border fee</span></td><td class="amount">RM ${CONFIG.RATES.INTERSTATE_INCENTIVE.toFixed(2)}</td></tr>` : ''}
-                ${activeMult > 1 ? `<tr style="color:var(--accent)"><td>${currentSurgeLabel}<span class="rate-label">Peak hour multiplier</span></td><td class="amount">x${activeMult.toFixed(2)}</td></tr>` : ''}
-            </table>
-            <div class="invoice-total">
-                <span>Total Payable</span>
-                <span>RM ${currentFare.toFixed(2)}</span>
-            </div>`;
-        
-        $("results").classList.add('visible');
-        
-        if (routeLayer) map.removeLayer(routeLayer);
-        routeLayer = L.polyline(decodePoly(route.geometry), {color: '#059669', weight: 5}).addTo(map);
-        map.fitBounds(routeLayer.getBounds(), {padding: [50,150]});
-    } catch (err) { console.error(err); }
+    // 4. Interstate Check
+    const isInterstate = pickupState && dropoffState && (pickupState !== dropoffState);
+    const incentive = isInterstate ? CONFIG.RATES.INTERSTATE_INCENTIVE : 0;
+
+    const total = Math.round((CONFIG.RATES.BASE + distFare + timeFare + incentive) * multiplier);
+
+    return { total, km, durationMin, base: CONFIG.RATES.BASE, tiers, timeFare, timeRate, incentive, isInterstate, multiplier, surgeLabel, isCongested };
 }
+
+function renderFare(res) {
+    $("fare").innerText = `RM ${res.total}`;
+    $("badge").innerText = res.isInterstate ? "INTERSTATE" : "STANDARD";
+    $("badge").style.background = res.isInterstate ? "#dcfce7" : "#f1f5f9";
+    $("badge").style.color = res.isInterstate ? "#166534" : "#1f2937";
+    $("summary").innerHTML = `<b>${res.km.toFixed(1)} km</b> • <b>${res.durationMin} min</b>`;
+    $("results").classList.add('visible');
+}
+
+function renderInvoice(res) {
+    let html = `<table class="invoice-table">
+        <tr><td>Base Fare<span class="rate-label">Fixed booking fee</span></td><td class="amount">RM ${res.base.toFixed(2)}</td></tr>`;
+    
+    res.tiers.forEach(t => {
+        html += `<tr><td>${t.label}<span class="rate-label">${t.sub}</span></td><td class="amount">RM ${t.val.toFixed(2)}</td></tr>`;
+    });
+
+    html += `<tr><td>Time ${res.isCongested ? '<b style="color:var(--danger)">(Congestion)</b>' : ''}
+             <span class="rate-label">${res.durationMin} min @ RM ${res.timeRate.toFixed(2)}/min</span></td>
+             <td class="amount">RM ${res.timeFare.toFixed(2)}</td></tr>`;
+
+    if (res.isInterstate) {
+        html += `<tr><td>Interstate Incentive<span class="rate-label">State cross-border fee</span></td><td class="amount">RM ${res.incentive.toFixed(2)}</td></tr>`;
+    }
+
+    if (res.multiplier > 1) {
+        html += `<tr style="color:var(--accent)"><td>${res.surgeLabel}<span class="rate-label">Peak multiplier</span></td><td class="amount">x${res.multiplier.toFixed(2)}</td></tr>`;
+    }
+
+    html += `</table><div class="invoice-total"><span>Total Payable</span><span>RM ${res.total.toFixed(2)}</span></div>`;
+    $("invoice-content").innerHTML = html;
+}
+
+function renderRoute(geometry) {
+    if (routeLayer) map.removeLayer(routeLayer);
+    routeLayer = L.polyline(decodePoly(geometry), {color: '#059669', weight: 5}).addTo(map);
+    map.fitBounds(routeLayer.getBounds(), {padding: [50,150]});
+}
+
+// --- UTILS & HANDLERS ---
 
 function decodePoly(str) {
     let index = 0, lat = 0, lng = 0, coordinates = [];
@@ -300,62 +272,84 @@ function decodePoly(str) {
     return coordinates;
 }
 
-const formatDateTime = (val) => {
-    if (!val) return "Not set";
-    const d = new Date(val);
-    return d.toLocaleDateString('en-MY', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-};
+function debounceSearch(input, resultsId, type) {
+    const query = input.value;
+    $(type === 'pickup' ? 'clear-p' : 'clear-d').style.display = query ? 'block' : 'none';
+    clearTimeout(searchTimer);
+    if (query.length < 2) { $(resultsId).style.display = 'none'; return; }
+    searchTimer = setTimeout(async () => {
+        try {
+            const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lat=3.14&lon=101.69&countrycode=MY&limit=10`);
+            const data = await res.json();
+            renderResults(data.features, resultsId, type);
+        } catch (e) { console.error(e); }
+    }, 300);
+}
 
-$("departure-time").addEventListener('change', () => { if (pickupCoord && dropoffCoord) calculate(); });
+function renderResults(features, resultsId, type) {
+    const list = $(resultsId);
+    if (!features.length) { list.style.display = 'none'; return; }
+    list.innerHTML = features.map(f => {
+        const p = f.properties;
+        const [lon, lat] = f.geometry.coordinates;
+        const main = p.name || p.street || "Location";
+        const sub = [p.district, p.city, p.state].filter(x => x && x !== main).join(', ');
+        return `<div class="autocomplete-item" onclick="selectLoc('${type}', [${lat}, ${lon}], '${main}', '${p.state || ''}')">
+            <div class="loc-icon">📍</div>
+            <div class="loc-details">
+                <div class="loc-name">${main}</div>
+                <div class="loc-address">${sub || 'Malaysia'}</div>
+            </div>
+        </div>`;
+    }).join('');
+    list.style.display = 'block';
+}
+
+function selectLoc(type, coord, label, state) {
+    if (type === 'pickup') { pickupCoord = coord; pickupState = state; $("pickup").value = label; $("p-results").style.display = 'none'; } 
+    else { dropoffCoord = coord; dropoffState = state; $("dropoff").value = label; $("d-results").style.display = 'none'; }
+    getRoute();
+}
+
+$("pickup").oninput = e => debounceSearch(e.target, "p-results", "pickup");
+$("dropoff").oninput = e => debounceSearch(e.target, "d-results", "dropoff");
+$("departure-time").addEventListener('change', () => getRoute());
+
+$("swap-btn").onclick = () => {
+    [pickupCoord, dropoffCoord] = [dropoffCoord, pickupCoord];
+    [pickupState, dropoffState] = [dropoffState, pickupState];
+    let v1 = $("pickup").value; $("pickup").value = $("dropoff").value; $("dropoff").value = v1;
+    getRoute();
+};
 
 $("gps-btn").onclick = () => {
     $("pickup").placeholder = "Locating...";
     navigator.geolocation.getCurrentPosition(async pos => {
         const lat = pos.coords.latitude, lon = pos.coords.longitude;
-        try {
-            const res = await fetch(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lon}`);
-            const data = await res.json();
-            if (data.features && data.features.length > 0) {
-                const p = data.features[0].properties;
-                const addr = `${p.name || p.street || 'Current Location'}, ${p.city || p.state || ''}`;
-                selectLoc('pickup', [lat, lon], addr);
-            } else { selectLoc('pickup', [lat, lon], "Current Location"); }
-        } catch(e) { selectLoc('pickup', [lat, lon], "Current Location"); }
-    }, () => { alert("GPS access denied."); $("pickup").placeholder = "Set pickup..."; });
+        const res = await fetch(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lon}`);
+        const data = await res.json();
+        const p = data.features[0].properties;
+        selectLoc('pickup', [lat, lon], p.name || "Current Location", p.state || "");
+    }, () => alert("GPS denied"));
 };
 
 $("btn-whatsapp").onclick = () => {
-    const pickup = $("pickup").value;
-    const dropoff = $("dropoff").value;
-    const schedule = formatDateTime($("departure-time").value);
-    const distance = $("summary").innerText.split('•')[0].trim();
-    const msg = encodeURIComponent(`*Booking Inquiry*\n\n*Pickup:* ${pickup}\n*Destination:* ${dropoff}\n*Schedule:* ${schedule}\n*Distance:* ${distance}\n*Fare:* RM ${currentFare}`);
+    if(!lastResult) return;
+    const msg = encodeURIComponent(`*Booking Inquiry*\n\n*Pickup:* ${$("pickup").value}\n*Destination:* ${$("dropoff").value}\n*Fare:* RM ${lastResult.total}\n*Distance:* ${lastResult.km.toFixed(1)}km`);
     window.open(`https://wa.me/60108988182?text=${msg}`, '_blank');
 };
 
 $("btn-copy").onclick = () => {
-    const textToCopy = `Booking Inquiry\n\nPickup: ${$("pickup").value}\nDestination: ${$("dropoff").value}\nSchedule: ${formatDateTime($("departure-time").value)}\nDistance: ${$("summary").innerText.split('•')[0].trim()}\nFare: RM ${currentFare}\nRate: ${currentSurgeLabel}`;
-    navigator.clipboard.writeText(textToCopy).then(() => { alert("Details copied to clipboard!"); });
+    if(!lastResult) return;
+    const text = `Booking Inquiry\nPickup: ${$("pickup").value}\nDest: ${$("dropoff").value}\nFare: RM ${lastResult.total}`;
+    navigator.clipboard.writeText(text).then(() => alert("Copied!"));
 };
 
-// FIX B: Fixed Google Maps Deep Link syntax
 $("btn-maps").onclick = () => { 
     if(pickupCoord && dropoffCoord) {
-        const url = `https://www.google.com/maps/dir/?api=1&origin=${pickupCoord[0]},${pickupCoord[1]}&destination=${dropoffCoord[0]},${dropoffCoord[1]}&travelmode=driving`;
-        window.open(url, '_blank'); 
+        window.open(`https://www.google.com/maps/dir/?api=1&origin=${pickupCoord[0]},${pickupCoord[1]}&destination=${dropoffCoord[0]},${dropoffCoord[1]}`, '_blank'); 
     }
 };
-
-$("pickup").oninput = e => debounceSearch(e.target, "p-results", "pickup");
-$("dropoff").oninput = e => debounceSearch(e.target, "d-results", "dropoff");
-$("swap-btn").onclick = () => {
-    let pV = $("pickup").value, dV = $("dropoff").value;
-    $("pickup").value = dV; $("dropoff").value = pV;
-    let tC = pickupCoord; pickupCoord = dropoffCoord; dropoffCoord = tC;
-    calculate();
-};
-$("clear-p").onclick = () => { $("pickup").value = ''; pickupCoord = null; $("clear-p").style.display='none'; $("p-results").style.display='none'; $("results").classList.remove('visible'); };
-$("clear-d").onclick = () => { $("dropoff").value = ''; dropoffCoord = null; $("clear-d").style.display='none'; $("d-results").style.display='none'; $("results").classList.remove('visible'); };
 </script>
 </body>
 </html>
