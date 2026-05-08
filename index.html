@@ -26,7 +26,7 @@
         .autocomplete-item { display: flex; align-items: center; padding: 12px 16px; gap: 12px; cursor: pointer; border-bottom: 1px solid #f9fafb; }
         .loc-icon { background: #f3f4f6; color: #6b7280; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .loc-name { font-weight: 600; font-size: 14px; color: var(--text); }
-        .loc-address { font-size: 12px; color: var(--gray-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .loc-address { font-size: 11px; color: var(--gray-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
 
         #map { flex-grow: 1; width: 100%; z-index: 1; }
 
@@ -202,10 +202,8 @@ function calculateFare(km, durationMin) {
     let timeFare = 0, timeRate = 0, total = 0, isCongested = false;
 
     if (multiplier === 1.0) {
-        // NON-PEAK: Base + Distance only (Duration ignored)
         total = Math.round(base + distFare);
     } else {
-        // PEAK: (Base + Distance + Time) * Multiplier
         const avgSpeed = km / (durationMin / 60);
         isCongested = avgSpeed < CONFIG.RATES.CONGESTION_SPEED;
         timeRate = isCongested ? (CONFIG.RATES.TIME_RATE + CONFIG.RATES.CONGESTION_FEE) : CONFIG.RATES.TIME_RATE;
@@ -282,9 +280,19 @@ function debounceSearch(input, resultsId, type) {
     if (query.length < 2) { $(resultsId).style.display = 'none'; return; }
     searchTimer = setTimeout(async () => {
         try {
-            const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lat=3.14&lon=101.69&countrycode=MY&limit=10`);
+            const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lat=3.14&lon=101.69&countrycode=MY&limit=15`);
             const data = await res.json();
-            renderResults(data.features, resultsId, type);
+            
+            // --- DEDUPLICATION LOGIC ---
+            const seen = new Set();
+            const uniqueFeatures = data.features.filter(f => {
+                const coordKey = `${f.geometry.coordinates[0].toFixed(4)},${f.geometry.coordinates[1].toFixed(4)}`;
+                if (seen.has(coordKey)) return false;
+                seen.add(coordKey);
+                return true;
+            });
+
+            renderResults(uniqueFeatures, resultsId, type);
         } catch (e) { console.error(e); }
     }, 300);
 }
@@ -296,12 +304,16 @@ function renderResults(features, resultsId, type) {
         const p = f.properties;
         const [lon, lat] = f.geometry.coordinates;
         const main = p.name || p.street || "Location";
-        const sub = [p.district, p.city, p.state].filter(x => x && x !== main).join(', ');
+        
+        // Expanded context: District, City, State
+        const subParts = [p.district, p.city, p.state].filter(x => x && x.toLowerCase() !== main.toLowerCase());
+        const sub = subParts.length > 0 ? subParts.join(', ') : 'Malaysia';
+
         return `<div class="autocomplete-item" onclick="selectLoc('${type}', [${lat}, ${lon}], '${main}', '${p.state || ''}')">
             <div class="loc-icon">📍</div>
-            <div class="loc-details">
+            <div style="overflow: hidden;">
                 <div class="loc-name">${main}</div>
-                <div class="loc-address">${sub || 'Malaysia'}</div>
+                <div class="loc-address">${sub}</div>
             </div>
         </div>`;
     }).join('');
@@ -351,7 +363,7 @@ $("btn-copy").onclick = () => {
 $("btn-maps").onclick = () => { 
     if(pickupCoord && dropoffCoord) {
         const url = `https://www.google.com/maps/dir/?api=1&origin=${pickupCoord[0]},${pickupCoord[1]}&destination=${dropoffCoord[0]},${dropoffCoord[1]}&travelmode=driving`;
-        window.open(url, '_system'); // '_system' helps trigger the app handler on many mobile browsers
+        window.open(url, '_system');
     }
 };
 </script>
