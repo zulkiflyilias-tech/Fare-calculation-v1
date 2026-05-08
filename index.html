@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - v5.9.0 PRO</title>
+    <title>Rideshare MY - v5.9.5 PRO</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <style>
         :root { --primary: #059669; --bg: #f3f4f6; --card-bg: #ffffff; --text: #1f2937; --gray-text: #6b7280; --accent: #f59e0b; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background: var(--bg); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; background: var(--bg); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
         .search-panel { background: var(--card-bg); padding: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); z-index: 1005; }
         .inputs-container { display: flex; align-items: center; gap: 12px; }
@@ -18,7 +18,6 @@
         input:focus { border-color: var(--primary); outline: none; background: #fff; }
         
         #pickup, #dropoff { padding-right: 85px; }
-
         .swap-btn { background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; color: var(--primary); display: flex; align-items: center; justify-content: center; }
         .btn-container { position: absolute; right: 8px; top: 24px; display: flex; gap: 4px; }
         .icon-btn { background: transparent; border: none; cursor: pointer; padding: 6px; color: #9ca3af; font-size: 18px; }
@@ -32,11 +31,7 @@
         #map { flex-grow: 1; width: 100%; z-index: 1; }
 
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 9998; }
-        .fare-breakdown { 
-            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-            width: 85%; max-width: 340px; background: white; padding: 24px; border-radius: 28px; 
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3); z-index: 9999; flex-direction: column; 
-        }
+        .fare-breakdown { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; max-width: 340px; background: white; padding: 24px; border-radius: 28px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); z-index: 9999; flex-direction: column; }
         .invoice-table { width: 100%; border-collapse: collapse; font-size: 13px; color: var(--text); }
         .invoice-table td { padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
         .invoice-table .rate-label { font-size: 10px; color: var(--gray-text); display: block; margin-top: 2px; font-weight: normal; }
@@ -143,15 +138,18 @@ function toggleBreakdown() {
     $("modal-overlay").style.display = isVisible ? "none" : "block";
 }
 
-// Forward Geocoding using Nominatim
+// Nominatim Search (Forward Geocoding)
 function debounceSearch(input, resultsId, type) {
     const query = input.value;
     $(type === 'pickup' ? 'clear-p' : 'clear-d').style.display = query ? 'block' : 'none';
     clearTimeout(searchTimer);
+    
     if (query.length < 3) { $(resultsId).style.display = 'none'; return; }
+
     searchTimer = setTimeout(async () => {
         try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=my&limit=8&addressdetails=1`);
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=my&limit=10&addressdetails=1&extratags=1`;
+            const res = await fetch(url, { headers: { 'Accept-Language': 'en-US' } });
             const data = await res.json();
             renderResults(data, resultsId, type);
         } catch (e) { console.error(e); }
@@ -160,40 +158,27 @@ function debounceSearch(input, resultsId, type) {
 
 function renderResults(data, resultsId, type) {
     const list = $(resultsId);
-    if (!data.length) { list.style.display = 'none'; return; }
+    if (!data || !data.length) { list.style.display = 'none'; return; }
     list.innerHTML = data.map(item => {
-        const name = item.display_name.split(',')[0];
+        const name = item.address.amenity || item.address.mall || item.address.shop || item.display_name.split(',')[0];
         const state = item.address.state || "";
-        const address = item.display_name.split(',').slice(1, 4).join(',');
+        const city = item.address.city || item.address.town || "";
+        const subAddress = `${city}${city && state ? ', ' : ''}${state}`;
+
         return `<div class="autocomplete-item" onclick="selectLoc('${type}', [${item.lat}, ${item.lon}], '${item.display_name.replace(/'/g, "\\'")}', '${state}')">
             <div class="loc-icon">📍</div>
             <div class="loc-details">
                 <div class="loc-name">${name}</div>
-                <div class="loc-address">${address}</div>
+                <div class="loc-address">${subAddress}</div>
             </div>
         </div>`;
     }).join('');
     list.style.display = 'block';
 }
 
-// Reverse Geocoding using Overpass API (State verification)
-async function getStateFromCoords(lat, lon) {
-    const query = `[out:json];is_in(${lat},${lon});area._[admin_level=4];out;`;
-    try {
-        const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
-        const data = await res.json();
-        return data.elements[0]?.tags?.name || "Unknown";
-    } catch (e) { return null; }
-}
-
 async function selectLoc(type, coord, label, state) {
-    if (type === 'pickup') { 
-        pickupCoord = coord; pickupState = state; 
-        $("pickup").value = label; $("p-results").style.display = 'none'; 
-    } else { 
-        dropoffCoord = coord; dropoffState = state; 
-        $("dropoff").value = label; $("d-results").style.display = 'none'; 
-    }
+    if (type === 'pickup') { pickupCoord = coord; pickupState = state; $("pickup").value = label; $("p-results").style.display = 'none'; } 
+    else { dropoffCoord = coord; dropoffState = state; $("dropoff").value = label; $("d-results").style.display = 'none'; }
     calculate();
 }
 
@@ -212,8 +197,7 @@ async function calculate() {
         
         const dt = new Date($("departure-time").value);
         const hour = dt.getHours() + (dt.getMinutes() / 60);
-        let activeMult = 1.0; 
-        currentSurgeLabel = "Standard";
+        let activeMult = 1.0; currentSurgeLabel = "Standard";
 
         if (hour >= 0 && hour < 6) { activeMult = CONFIG.RATES.MIDNIGHT; currentSurgeLabel = "Midnight Surcharge (10%)"; }
         else if (hour >= 7 && hour < 9) { activeMult = CONFIG.RATES.MORNING_PEAK; currentSurgeLabel = "Morning Peak (30%)"; }
@@ -228,26 +212,23 @@ async function calculate() {
             const t1 = 50 * CONFIG.RATES.KM_TIER_1;
             const t2 = (km - 50) * CONFIG.RATES.KM_TIER_2;
             distFare = t1 + t2; 
-            tierHtml = `<tr><td>Distance (T1)<span class="rate-label">50.0 km @ RM ${CONFIG.RATES.KM_TIER_1.toFixed(2)}/km</span></td><td class="amount">RM ${t1.toFixed(2)}</td></tr>
-                        <tr><td>Distance (T2)<span class="rate-label">${(km-50).toFixed(1)} km @ RM ${CONFIG.RATES.KM_TIER_2.toFixed(2)}/km</span></td><td class="amount">RM ${t2.toFixed(2)}</td></tr>`; 
+            tierHtml = `<tr><td>Distance (T1)<span class="rate-label">50.0 km</span></td><td class="amount">RM ${t1.toFixed(2)}</td></tr>
+                        <tr><td>Distance (T2)<span class="rate-label">${(km-50).toFixed(1)} km</span></td><td class="amount">RM ${t2.toFixed(2)}</td></tr>`; 
         } else { 
             const t1 = 50 * CONFIG.RATES.KM_TIER_1;
             const t2 = 100 * CONFIG.RATES.KM_TIER_2;
             const t3 = (km - 150) * CONFIG.RATES.KM_TIER_3;
             distFare = t1 + t2 + t3; 
-            tierHtml = `<tr><td>Distance (T1)<span class="rate-label">50.0 km @ RM ${CONFIG.RATES.KM_TIER_1.toFixed(2)}/km</span></td><td class="amount">RM ${t1.toFixed(2)}</td></tr>
-                        <tr><td>Distance (T2)<span class="rate-label">100.0 km @ RM ${CONFIG.RATES.KM_TIER_2.toFixed(2)}/km</span></td><td class="amount">RM ${t2.toFixed(2)}</td></tr>
-                        <tr><td>Distance (T3)<span class="rate-label">${(km-150).toFixed(1)} km @ RM ${CONFIG.RATES.KM_TIER_3.toFixed(2)}/km</span></td><td class="amount">RM ${t3.toFixed(2)}</td></tr>`; 
+            tierHtml = `<tr><td>Distance (T1)<span class="rate-label">50.0 km</span></td><td class="amount">RM ${t1.toFixed(2)}</td></tr>
+                        <tr><td>Distance (T2)<span class="rate-label">100.0 km</span></td><td class="amount">RM ${t2.toFixed(2)}</td></tr>
+                        <tr><td>Distance (T3)<span class="rate-label">${(km-150).toFixed(1)} km</span></td><td class="amount">RM ${t3.toFixed(2)}</td></tr>`; 
         }
 
         const timeFare = durationMin * CONFIG.RATES.TIME_RATE;
-        let subtotal = CONFIG.RATES.BASE + distFare + timeFare;
-        
-        // Interstate logic (Empty Return Incentive)
         const isInterstate = (pickupState && dropoffState && pickupState !== dropoffState);
         const emptyReturnIncentive = isInterstate ? (km * CONFIG.RATES.EMPTY_RETURN_KM) : 0;
-        subtotal += emptyReturnIncentive;
         
+        let subtotal = CONFIG.RATES.BASE + distFare + timeFare + emptyReturnIncentive;
         currentFare = Math.round(subtotal * activeMult);
 
         $("fare").innerText = `RM ${currentFare}`;
@@ -262,10 +243,7 @@ async function calculate() {
                 ${isInterstate ? `<tr><td>Empty Return Incentive<span class="rate-label">${km.toFixed(1)} km @ RM ${CONFIG.RATES.EMPTY_RETURN_KM.toFixed(2)}/km</span></td><td class="amount">RM ${emptyReturnIncentive.toFixed(2)}</td></tr>` : ''}
                 ${activeMult > 1 ? `<tr style="color:var(--accent)"><td>${currentSurgeLabel}</td><td class="amount">x${activeMult.toFixed(2)}</td></tr>` : ''}
             </table>
-            <div class="invoice-total">
-                <span>Total Payable</span>
-                <span>RM ${currentFare.toFixed(2)}</span>
-            </div>`;
+            <div class="invoice-total"><span>Total</span><span>RM ${currentFare.toFixed(2)}</span></div>`;
         
         $("results").style.display = 'block';
         if (routeLayer) map.removeLayer(routeLayer);
@@ -295,15 +273,11 @@ $("gps-btn").onclick = () => {
     navigator.geolocation.getCurrentPosition(async pos => {
         const lat = pos.coords.latitude, lon = pos.coords.longitude;
         try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1`);
             const data = await res.json();
-            const state = data.address.state || "";
-            selectLoc('pickup', [lat, lon], data.display_name, state);
+            selectLoc('pickup', [lat, lon], data.display_name, data.address.state || "");
         } catch(e) { selectLoc('pickup', [lat, lon], "Current Location", ""); }
-    }, () => {
-        alert("GPS access denied.");
-        $("pickup").placeholder = "Set pickup...";
-    });
+    }, () => { alert("GPS denied."); $("pickup").placeholder = "Set pickup..."; });
 };
 
 $("btn-whatsapp").onclick = () => {
@@ -313,11 +287,12 @@ $("btn-whatsapp").onclick = () => {
 $("btn-copy").onclick = () => { navigator.clipboard.writeText(`From: ${$("pickup").value}\nTo: ${$("dropoff").value}\nFare: RM ${currentFare}`); alert("Copied!"); };
 $("btn-maps").onclick = () => { window.open(`https://www.google.com/maps/dir/?api=1&origin=${pickupCoord[0]},${pickupCoord[1]}&destination=${dropoffCoord[0]},${dropoffCoord[1]}&travelmode=driving`, '_blank'); };
 $("pickup").oninput = e => debounceSearch(e.target, "p-results", "pickup");
+$("dropoff").oninput = e => debounceSearch(e.target, "dropoff", "dropoff");
 $("dropoff").oninput = e => debounceSearch(e.target, "d-results", "dropoff");
 $("swap-btn").onclick = () => {
-    let pV = $("pickup").value, dV = $("dropoff").value, pS = pickupState, dS = dropoffState;
+    let pV = $("pickup").value, dV = $("dropoff").value, pS = pickupState, dS = dropoffState, tC = pickupCoord;
     $("pickup").value = dV; $("dropoff").value = pV;
-    let tC = pickupCoord; pickupCoord = dropoffCoord; dropoffCoord = tC;
+    pickupCoord = dropoffCoord; dropoffCoord = tC;
     pickupState = dS; dropoffState = pS;
     calculate();
 };
