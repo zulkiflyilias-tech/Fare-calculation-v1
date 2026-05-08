@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - v5.9.5 PRO</title>
+    <title>Rideshare MY - v5.9.8 PRO</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <style>
         :root { --primary: #059669; --bg: #f3f4f6; --card-bg: #ffffff; --text: #1f2937; --gray-text: #6b7280; --accent: #f59e0b; }
@@ -138,7 +138,6 @@ function toggleBreakdown() {
     $("modal-overlay").style.display = isVisible ? "none" : "block";
 }
 
-// Nominatim Search (Forward Geocoding)
 function debounceSearch(input, resultsId, type) {
     const query = input.value;
     $(type === 'pickup' ? 'clear-p' : 'clear-d').style.display = query ? 'block' : 'none';
@@ -177,8 +176,13 @@ function renderResults(data, resultsId, type) {
 }
 
 async function selectLoc(type, coord, label, state) {
-    if (type === 'pickup') { pickupCoord = coord; pickupState = state; $("pickup").value = label; $("p-results").style.display = 'none'; } 
-    else { dropoffCoord = coord; dropoffState = state; $("dropoff").value = label; $("d-results").style.display = 'none'; }
+    if (type === 'pickup') { 
+        pickupCoord = coord; pickupState = state; 
+        $("pickup").value = label; $("p-results").style.display = 'none'; 
+    } else { 
+        dropoffCoord = coord; dropoffState = state; 
+        $("dropoff").value = label; $("d-results").style.display = 'none'; 
+    }
     calculate();
 }
 
@@ -284,11 +288,24 @@ $("btn-whatsapp").onclick = () => {
     const msg = encodeURIComponent(`🚕 *Booking Inquiry*\n\n📍 From: ${$("pickup").value}\n🏁 To: ${$("dropoff").value}\n💰 Fare: RM ${currentFare}\n⚡ Rate: ${currentSurgeLabel}`);
     window.open(`https://wa.me/?text=${msg}`, '_blank');
 };
-$("btn-copy").onclick = () => { navigator.clipboard.writeText(`From: ${$("pickup").value}\nTo: ${$("dropoff").value}\nFare: RM ${currentFare}`); alert("Copied!"); };
-$("btn-maps").onclick = () => { window.open(`https://www.google.com/maps/dir/?api=1&origin=${pickupCoord[0]},${pickupCoord[1]}&destination=${dropoffCoord[0]},${dropoffCoord[1]}&travelmode=driving`, '_blank'); };
+
+$("btn-copy").onclick = () => { 
+    navigator.clipboard.writeText(`From: ${$("pickup").value}\nTo: ${$("dropoff").value}\nFare: RM ${currentFare}`); 
+    alert("Copied!"); 
+};
+
+$("btn-maps").onclick = () => { 
+    if (pickupCoord && dropoffCoord) {
+        const url = `https://www.google.com/maps/dir/?api=1&origin=${pickupCoord[0]},${pickupCoord[1]}&destination=${dropoffCoord[0]},${dropoffCoord[1]}&travelmode=driving`;
+        window.open(url, '_blank'); 
+    } else {
+        alert("Select locations first.");
+    }
+};
+
 $("pickup").oninput = e => debounceSearch(e.target, "p-results", "pickup");
-$("dropoff").oninput = e => debounceSearch(e.target, "dropoff", "dropoff");
 $("dropoff").oninput = e => debounceSearch(e.target, "d-results", "dropoff");
+
 $("swap-btn").onclick = () => {
     let pV = $("pickup").value, dV = $("dropoff").value, pS = pickupState, dS = dropoffState, tC = pickupCoord;
     $("pickup").value = dV; $("dropoff").value = pV;
@@ -296,6 +313,7 @@ $("swap-btn").onclick = () => {
     pickupState = dS; dropoffState = pS;
     calculate();
 };
+
 $("clear-p").onclick = () => { $("pickup").value = ''; pickupCoord = null; $("clear-p").style.display='none'; $("p-results").style.display='none'; };
 $("clear-d").onclick = () => { $("dropoff").value = ''; dropoffCoord = null; $("clear-d").style.display='none'; $("d-results").style.display='none'; };
 </script>
