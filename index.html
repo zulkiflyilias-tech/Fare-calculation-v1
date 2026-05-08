@@ -126,8 +126,8 @@ const CONFIG = {
         BASE: 5.00, 
         KM_TIER_1: 1.25, KM_TIER_2: 1.10, KM_TIER_3: 0.95,
         TIME_RATE: 0.30, 
-        CONGESTION_SPEED: 25, // km/h
-        CONGESTION_FEE: 0.20, // Add per minute if speed < 25
+        CONGESTION_SPEED: 25, 
+        CONGESTION_FEE: 0.20, 
         INTERSTATE_INCENTIVE: 50.00, 
         SURGE: { MIDNIGHT: 1.10, MORNING: 1.30, LUNCH: 1.10, EVENING: 1.35 }
     }
@@ -149,8 +149,6 @@ function toggleBreakdown() {
     $("modal-overlay").style.display = isVisible ? "none" : "block";
 }
 
-// --- LOGIC REFACTORED INTO MODULES ---
-
 async function getRoute() {
     if (!pickupCoord || !dropoffCoord) return;
     try {
@@ -171,7 +169,6 @@ async function getRoute() {
 }
 
 function calculateFare(km, durationMin) {
-    // 1. Time & Surge
     const dt = new Date($("departure-time").value);
     const hour = dt.getHours() + (dt.getMinutes() / 60);
     let multiplier = 1.0, surgeLabel = "Standard";
@@ -181,7 +178,6 @@ function calculateFare(km, durationMin) {
     else if (hour >= 12.5 && hour < 14.5) { multiplier = CONFIG.RATES.SURGE.LUNCH; surgeLabel = "Lunch Surge"; }
     else if (hour >= 17 && hour < 20) { multiplier = CONFIG.RATES.SURGE.EVENING; surgeLabel = "Evening Peak"; }
 
-    // 2. Distance Tiers
     let distFare = 0, tiers = [];
     if (km <= 50) { 
         distFare = km * CONFIG.RATES.KM_TIER_1;
@@ -202,26 +198,33 @@ function calculateFare(km, durationMin) {
         }
     }
 
-    // 3. Congestion Logic
-    const avgSpeed = km / (durationMin / 60);
-    const isCongested = avgSpeed < CONFIG.RATES.CONGESTION_SPEED;
-    const timeRate = isCongested ? (CONFIG.RATES.TIME_RATE + CONFIG.RATES.CONGESTION_FEE) : CONFIG.RATES.TIME_RATE;
-    const timeFare = durationMin * timeRate;
+    let base = CONFIG.RATES.BASE;
+    let timeFare = 0, timeRate = 0, total = 0, isCongested = false;
 
-    // 4. Interstate Check
+    if (multiplier === 1.0) {
+        // NON-PEAK: Base + Distance only (Duration ignored)
+        total = Math.round(base + distFare);
+    } else {
+        // PEAK: (Base + Distance + Time) * Multiplier
+        const avgSpeed = km / (durationMin / 60);
+        isCongested = avgSpeed < CONFIG.RATES.CONGESTION_SPEED;
+        timeRate = isCongested ? (CONFIG.RATES.TIME_RATE + CONFIG.RATES.CONGESTION_FEE) : CONFIG.RATES.TIME_RATE;
+        timeFare = durationMin * timeRate;
+        total = Math.round((base + distFare + timeFare) * multiplier);
+    }
+
     const isInterstate = pickupState && dropoffState && (pickupState !== dropoffState);
     const incentive = isInterstate ? CONFIG.RATES.INTERSTATE_INCENTIVE : 0;
+    total += incentive;
 
-    const total = Math.round((CONFIG.RATES.BASE + distFare + timeFare + incentive) * multiplier);
-
-    return { total, km, durationMin, base: CONFIG.RATES.BASE, tiers, timeFare, timeRate, incentive, isInterstate, multiplier, surgeLabel, isCongested };
+    return { total, km, durationMin, base, tiers, timeFare, timeRate, incentive, isInterstate, multiplier, surgeLabel, isCongested };
 }
 
 function renderFare(res) {
     $("fare").innerText = `RM ${res.total}`;
-    $("badge").innerText = res.isInterstate ? "INTERSTATE" : "STANDARD";
-    $("badge").style.background = res.isInterstate ? "#dcfce7" : "#f1f5f9";
-    $("badge").style.color = res.isInterstate ? "#166534" : "#1f2937";
+    $("badge").innerText = res.isInterstate ? "INTERSTATE" : (res.multiplier > 1 ? "PEAK" : "OFF-PEAK");
+    $("badge").style.background = res.isInterstate ? "#dcfce7" : (res.multiplier > 1 ? "#fef3c7" : "#f1f5f9");
+    $("badge").style.color = res.isInterstate ? "#166534" : (res.multiplier > 1 ? "#92400e" : "#1f2937");
     $("summary").innerHTML = `<b>${res.km.toFixed(1)} km</b> • <b>${res.durationMin} min</b>`;
     $("results").classList.add('visible');
 }
@@ -234,9 +237,11 @@ function renderInvoice(res) {
         html += `<tr><td>${t.label}<span class="rate-label">${t.sub}</span></td><td class="amount">RM ${t.val.toFixed(2)}</td></tr>`;
     });
 
-    html += `<tr><td>Time ${res.isCongested ? '<b style="color:var(--danger)">(Congestion)</b>' : ''}
-             <span class="rate-label">${res.durationMin} min @ RM ${res.timeRate.toFixed(2)}/min</span></td>
-             <td class="amount">RM ${res.timeFare.toFixed(2)}</td></tr>`;
+    if(res.timeFare > 0) {
+        html += `<tr><td>Time ${res.isCongested ? '<b style="color:var(--danger)">(Congestion)</b>' : ''}
+                 <span class="rate-label">${res.durationMin} min @ RM ${res.timeRate.toFixed(2)}/min</span></td>
+                 <td class="amount">RM ${res.timeFare.toFixed(2)}</td></tr>`;
+    }
 
     if (res.isInterstate) {
         html += `<tr><td>Interstate Incentive<span class="rate-label">State cross-border fee</span></td><td class="amount">RM ${res.incentive.toFixed(2)}</td></tr>`;
@@ -255,8 +260,6 @@ function renderRoute(geometry) {
     routeLayer = L.polyline(decodePoly(geometry), {color: '#059669', weight: 5}).addTo(map);
     map.fitBounds(routeLayer.getBounds(), {padding: [50,150]});
 }
-
-// --- UTILS & HANDLERS ---
 
 function decodePoly(str) {
     let index = 0, lat = 0, lng = 0, coordinates = [];
@@ -313,7 +316,7 @@ function selectLoc(type, coord, label, state) {
 
 $("pickup").oninput = e => debounceSearch(e.target, "p-results", "pickup");
 $("dropoff").oninput = e => debounceSearch(e.target, "d-results", "dropoff");
-$("departure-time").addEventListener('change', () => getRoute());
+$("departure-time").onchange = () => getRoute();
 
 $("swap-btn").onclick = () => {
     [pickupCoord, dropoffCoord] = [dropoffCoord, pickupCoord];
@@ -347,7 +350,7 @@ $("btn-copy").onclick = () => {
 
 $("btn-maps").onclick = () => { 
     if(pickupCoord && dropoffCoord) {
-        window.open(`https://www.google.com/maps/dir/?api=1&origin=${pickupCoord[0]},${pickupCoord[1]}&destination=${dropoffCoord[0]},${dropoffCoord[1]}`, '_blank'); 
+        window.open(`https://www.google.com/maps/dir/?api=1&origin=${pickupCoord[0]},${pickupCoord[1]}&destination=${dropoffCoord[0]},${dropoffCoord[1]}&travelmode=driving`, '_blank'); 
     }
 };
 </script>
