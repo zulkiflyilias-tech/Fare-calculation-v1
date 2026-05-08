@@ -39,7 +39,6 @@
         }
         .invoice-table { width: 100%; border-collapse: collapse; font-size: 13px; color: var(--text); }
         .invoice-table td { padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
-        .invoice-table .rate-label { font-size: 10px; color: var(--gray-text); display: block; margin-top: 2px; font-weight: normal; }
         .invoice-table .amount { text-align: right; font-family: monospace; font-weight: 600; font-size: 14px; }
         .invoice-total { margin-top: 15px; padding-top: 15px; border-top: 2px solid var(--primary); display: flex; justify-content: space-between; font-weight: 800; font-size: 20px; }
         .close-modal-btn { margin-top: 20px; width: 100%; padding: 14px; border: none; border-radius: 14px; background: #f3f4f6; font-weight: 700; cursor: pointer; color: var(--text); }
@@ -54,8 +53,7 @@
         }
         .results-card.visible { transform: translateY(0); opacity: 1; pointer-events: auto; }
         #fare { margin:0; color:var(--primary); font-size:32px; }
-        .tap-hint { font-size: 9px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; }
-
+        
         .action-bar { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 15px; }
         .action-btn { border: none; border-radius: 12px; padding: 10px; font-size: 10px; font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; text-transform: uppercase; }
         .btn-whatsapp { background: #25D366; color: white; }
@@ -107,7 +105,7 @@
     <div class="fare-header" onclick="toggleBreakdown()" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
         <div>
             <h2 id="fare">RM 0</h2>
-            <div class="tap-hint">Tap for details ▾</div>
+            <div style="font-size: 9px; color: #9ca3af; text-transform: uppercase;">Tap for details ▾</div>
         </div>
         <span id="badge" style="font-size:10px; font-weight:800; padding:4px 10px; background:#f1f5f9; border-radius:20px;">STANDARD</span>
     </div>
@@ -124,12 +122,8 @@
 const CONFIG = {
     ORS_KEY: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0=",
     RATES: { 
-        BASE: 5.00, 
-        KM_TIER_1: 1.25, KM_TIER_2: 1.10, KM_TIER_3: 0.95,
-        TIME_RATE: 0.30, 
-        CONGESTION_SPEED: 25, 
-        CONGESTION_FEE: 0.20, 
-        INTERSTATE_INCENTIVE: 50.00, 
+        BASE: 5.00, KM_TIER_1: 1.25, KM_TIER_2: 1.10, KM_TIER_3: 0.95,
+        TIME_RATE: 0.30, CONGESTION_SPEED: 25, CONGESTION_FEE: 0.20, INTERSTATE_INCENTIVE: 50.00, 
         SURGE: { MIDNIGHT: 1.10, MORNING: 1.30, LUNCH: 1.10, EVENING: 1.35 }
     }
 };
@@ -161,12 +155,11 @@ async function getRoute() {
         const data = await res.json();
         const route = data.routes[0];
         const result = calculateFare(route.summary.distance / 1000, Math.ceil(route.summary.duration / 60));
-        
         renderRoute(route.geometry);
         renderFare(result);
         renderInvoice(result);
         lastResult = result;
-    } catch (err) { console.error("Route calculation failed", err); }
+    } catch (err) { console.error(err); }
 }
 
 function calculateFare(km, durationMin) {
@@ -180,24 +173,9 @@ function calculateFare(km, durationMin) {
     else if (hour >= 17 && hour < 20) { multiplier = CONFIG.RATES.SURGE.EVENING; surgeLabel = "Evening Peak"; }
 
     let distFare = 0, tiers = [];
-    if (km <= 50) { 
-        distFare = km * CONFIG.RATES.KM_TIER_1;
-        tiers.push({ label: `Distance (T1)`, sub: `${km.toFixed(1)} km @ RM ${CONFIG.RATES.KM_TIER_1.toFixed(2)}`, val: distFare });
-    } else {
-        const t1 = 50 * CONFIG.RATES.KM_TIER_1;
-        tiers.push({ label: `Distance (T1)`, sub: `50.0 km @ RM ${CONFIG.RATES.KM_TIER_1.toFixed(2)}`, val: t1 });
-        if (km <= 150) {
-            const t2 = (km - 50) * CONFIG.RATES.KM_TIER_2;
-            distFare = t1 + t2;
-            tiers.push({ label: `Distance (T2)`, sub: `${(km-50).toFixed(1)} km @ RM ${CONFIG.RATES.KM_TIER_2.toFixed(2)}`, val: t2 });
-        } else {
-            const t2 = 100 * CONFIG.RATES.KM_TIER_2;
-            const t3 = (km - 150) * CONFIG.RATES.KM_TIER_3;
-            distFare = t1 + t2 + t3;
-            tiers.push({ label: `Distance (T2)`, sub: `100.0 km @ RM ${CONFIG.RATES.KM_TIER_2.toFixed(2)}`, val: t2 });
-            tiers.push({ label: `Distance (T3)`, sub: `${(km-150).toFixed(1)} km @ RM ${CONFIG.RATES.KM_TIER_3.toFixed(2)}`, val: t3 });
-        }
-    }
+    if (km <= 50) distFare = km * CONFIG.RATES.KM_TIER_1;
+    else if (km <= 150) distFare = (50 * CONFIG.RATES.KM_TIER_1) + ((km - 50) * CONFIG.RATES.KM_TIER_2);
+    else distFare = (50 * CONFIG.RATES.KM_TIER_1) + (100 * CONFIG.RATES.KM_TIER_2) + ((km - 150) * CONFIG.RATES.KM_TIER_3);
 
     let base = CONFIG.RATES.BASE;
     let total = 0;
@@ -205,33 +183,26 @@ function calculateFare(km, durationMin) {
     if (multiplier === 1.0) {
         total = Math.round(base + distFare);
     } else {
-        const avgSpeed = km / (durationMin / 60);
-        const isCongested = avgSpeed < CONFIG.RATES.CONGESTION_SPEED;
-        const timeRate = isCongested ? (CONFIG.RATES.TIME_RATE + CONFIG.RATES.CONGESTION_FEE) : CONFIG.RATES.TIME_RATE;
-        const timeFare = durationMin * timeRate;
-        total = Math.round((base + distFare + timeFare) * multiplier);
+        const timeRate = (km / (durationMin / 60) < CONFIG.RATES.CONGESTION_SPEED) ? (CONFIG.RATES.TIME_RATE + CONFIG.RATES.CONGESTION_FEE) : CONFIG.RATES.TIME_RATE;
+        total = Math.round((base + distFare + (durationMin * timeRate)) * multiplier);
     }
 
     const isInterstate = pickupState && dropoffState && (pickupState !== dropoffState);
     total += isInterstate ? CONFIG.RATES.INTERSTATE_INCENTIVE : 0;
 
-    return { total, km, durationMin, base, tiers, isInterstate, multiplier, surgeLabel };
+    return { total, km, durationMin, isInterstate, multiplier, surgeLabel };
 }
 
 function renderFare(res) {
     $("fare").innerText = `RM ${res.total}`;
     $("badge").innerText = res.isInterstate ? "INTERSTATE" : (res.multiplier > 1 ? "PEAK" : "OFF-PEAK");
     $("badge").style.background = res.isInterstate ? "#dcfce7" : (res.multiplier > 1 ? "#fef3c7" : "#f1f5f9");
-    $("badge").style.color = res.isInterstate ? "#166534" : (res.multiplier > 1 ? "#92400e" : "#1f2937");
     $("summary").innerHTML = `<b>${res.km.toFixed(1)} km</b> • <b>${res.durationMin} min</b>`;
     $("results").classList.add('visible');
 }
 
 function renderInvoice(res) {
-    let html = `<table class="invoice-table"><tr><td>Base Fare</td><td class="amount">RM ${res.base.toFixed(2)}</td></tr>`;
-    res.tiers.forEach(t => { html += `<tr><td>${t.label}</td><td class="amount">RM ${t.val.toFixed(2)}</td></tr>`; });
-    if (res.multiplier > 1) html += `<tr><td>Surge Rate</td><td class="amount">x${res.multiplier}</td></tr>`;
-    html += `</table><div class="invoice-total"><span>Total</span><span>RM ${res.total.toFixed(2)}</span></div>`;
+    let html = `<table class="invoice-table"><tr><td>Standard Fare</td><td class="amount">RM ${res.total.toFixed(2)}</td></tr></table>`;
     $("invoice-content").innerHTML = html;
 }
 
@@ -261,17 +232,14 @@ function debounceSearch(input, resultsId, type) {
     clearTimeout(searchTimer);
     if (query.length < 2) { $(resultsId).style.display = 'none'; return; }
     searchTimer = setTimeout(async () => {
-        try {
-            const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lat=3.14&lon=101.69&countrycode=MY&limit=15`);
-            const data = await res.json();
-            const unique = [];
-            const seen = new Set();
-            data.features.forEach(f => {
-                const key = `${f.geometry.coordinates[0].toFixed(4)},${f.geometry.coordinates[1].toFixed(4)}`;
-                if (!seen.has(key)) { seen.add(key); unique.push(f); }
-            });
-            renderResults(unique, resultsId, type);
-        } catch (e) { console.error(e); }
+        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lat=3.14&lon=101.69&countrycode=MY&limit=15`);
+        const data = await res.json();
+        const unique = []; const seen = new Set();
+        data.features.forEach(f => {
+            const key = `${f.geometry.coordinates[0].toFixed(4)},${f.geometry.coordinates[1].toFixed(4)}`;
+            if (!seen.has(key)) { seen.add(key); unique.push(f); }
+        });
+        renderResults(unique, resultsId, type);
     }, 300);
 }
 
@@ -283,14 +251,10 @@ function renderResults(features, resultsId, type) {
         const [lon, lat] = f.geometry.coordinates;
         const main = p.name || p.street || "Location";
         const sub = [p.district, p.city, p.state].filter(x => x && x !== main).join(', ');
-        const osmType = p.osm_value || p.osm_key || "Place";
         return `<div class="autocomplete-item" onclick="selectLoc('${type}', [${lat}, ${lon}], '${main}', '${p.state || ''}')">
             <div class="loc-icon">📍</div>
             <div style="flex:1; overflow:hidden;">
-                <div style="display:flex; align-items:center;">
-                    <span class="loc-name">${main}</span>
-                    <span class="loc-type">${osmType}</span>
-                </div>
+                <div class="loc-name">${main}<span class="loc-type">${p.osm_value || 'Place'}</span></div>
                 <div class="loc-address">${sub || 'Malaysia'}</div>
             </div>
         </div>`;
@@ -304,38 +268,32 @@ function selectLoc(type, coord, label, state) {
     getRoute();
 }
 
-$("pickup").oninput = e => debounceSearch(e.target, "p-results", "pickup");
-$("dropoff").oninput = e => debounceSearch(e.target, "d-results", "dropoff");
-$("swap-btn").onclick = () => {
-    [pickupCoord, dropoffCoord] = [dropoffCoord, pickupCoord];
-    let v1 = $("pickup").value; $("pickup").value = $("dropoff").value; $("dropoff").value = v1;
-    getRoute();
-};
-
-$("gps-btn").onclick = () => {
-    navigator.geolocation.getCurrentPosition(async pos => {
-        const lat = pos.coords.latitude, lon = pos.coords.longitude;
-        const res = await fetch(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lon}`);
-        const data = await res.json();
-        const p = data.features[0].properties;
-        selectLoc('pickup', [lat, lon], p.name || "Current Location", p.state || "");
-    }, () => alert("GPS denied"));
-};
+function getBookingInfoText() {
+    if(!lastResult) return "";
+    return `*Booking Inquiry*\n\n*Pickup:* ${$("pickup").value}\n*Destination:* ${$("dropoff").value}\n*Fare:* RM ${lastResult.total}\n*Distance:* ${lastResult.km.toFixed(1)}km\n*Time:* ${lastResult.durationMin} mins`;
+}
 
 $("btn-whatsapp").onclick = () => {
-    if(!lastResult) return;
-    const msg = encodeURIComponent(`Booking: ${$("pickup").value} to ${$("dropoff").value} (RM ${lastResult.total})`);
+    const msg = encodeURIComponent(getBookingInfoText());
     window.open(`https://wa.me/60108988182?text=${msg}`, '_blank');
 };
 
 $("btn-copy").onclick = () => {
-    navigator.clipboard.writeText(`Booking: ${$("pickup").value} to ${$("dropoff").value} (RM ${lastResult.total})`).then(() => alert("Copied!"));
+    navigator.clipboard.writeText(getBookingInfoText()).then(() => alert("Booking info copied!"));
 };
 
 $("btn-maps").onclick = () => { 
     if(pickupCoord && dropoffCoord) {
         window.open(`https://www.google.com/maps/dir/?api=1&origin=${pickupCoord[0]},${pickupCoord[1]}&destination=${dropoffCoord[0]},${dropoffCoord[1]}&travelmode=driving`, '_blank'); 
     }
+};
+
+$("pickup").oninput = e => debounceSearch(e.target, "p-results", "pickup");
+$("dropoff").oninput = e => debounceSearch(e.target, "d-results", "dropoff");
+$("swap-btn").onclick = () => {
+    [pickupCoord, dropoffCoord] = [dropoffCoord, pickupCoord];
+    let v1 = $("pickup").value; $("pickup").value = $("dropoff").value; $("dropoff").value = v1;
+    getRoute();
 };
 </script>
 </body>
