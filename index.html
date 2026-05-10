@@ -3,68 +3,86 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rideshare MY | Pro Engine</title>
+    <title>Rideshare MY | Ultimate Edition</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
 
     <style>
-        :root { --primary: #059669; --dark: #111827; --wa: #25D366; --gold: #b45309; }
+        :root { --primary: #059669; --dark: #111827; --wa: #25D366; --danger: #ef4444; --gold: #b45309; }
         body { font-family: 'Inter', system-ui, sans-serif; margin: 0; background: #f3f4f6; }
-        #map { height: 420px; width: 100%; z-index: 1; }
+        #map { height: 420px; width: 100%; z-index: 1; border-bottom: 3px solid var(--primary); }
 
-        /* Custom Search Styling */
-        .leaflet-control-geocoder { border-radius: 12px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; border: none !important; margin-top: 15px !important; }
-        .leaflet-control-geocoder-icon { width: 36px !important; height: 36px !important; }
-
-        /* GPS Button Styling */
-        .gps-btn {
-            position: absolute; bottom: 100px; right: 20px; z-index: 1000;
-            background: white; border: none; width: 45px; height: 45px;
-            border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-            cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px;
+        /* SEARCHBAR & SUGGESTIONS FIX */
+        .leaflet-control-geocoder { 
+            border-radius: 12px !important; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; 
+            border: none !important; 
+            margin-top: 15px !important;
+            width: 280px !important;
+        }
+        .leaflet-control-geocoder-suggestions {
+            background: white !important;
+            border-radius: 0 0 12px 12px;
+            box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+            max-height: 250px;
+            overflow-y: auto;
+            z-index: 2000 !important;
+        }
+        .leaflet-control-geocoder-suggestion {
+            padding: 12px 15px;
+            font-size: 13px;
+            border-bottom: 1px solid #f1f5f9;
+            cursor: pointer;
         }
 
+        /* UI OVERLAY */
         .app-container { max-width: 500px; margin: -60px auto 40px; position: relative; z-index: 1100; padding: 0 15px; }
         .card { background: white; border-radius: 24px; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
         
-        .price-main { font-size: 2.8rem; font-weight: 900; color: var(--dark); margin: 10px 0; }
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0; border-top: 1px solid #f1f5f9; padding-top: 15px; }
-        .stat-item b { display: block; font-size: 16px; }
-        .stat-item span { font-size: 11px; color: #9ca3af; text-transform: uppercase; font-weight: 700; }
+        .badge { padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 800; text-transform: uppercase; margin-bottom: 8px; display: inline-block; }
+        .urban { background: #dcfce7; color: #15803d; }
+        .interstate { background: #dbeafe; color: #1e40af; }
+        .long-dist { background: #fef3c7; color: var(--gold); }
+        .rural { background: #f3f4f6; color: #374151; }
 
-        .btn-wa { background: var(--wa); color: white; border: none; width: 100%; padding: 18px; border-radius: 16px; font-weight: 800; font-size: 16px; cursor: pointer; }
-        
-        /* State Override Grid */
-        .override-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-        select { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #e5e7eb; font-size: 12px; background: #f9fafb; }
+        .price-main { font-size: 3rem; font-weight: 900; color: var(--dark); margin: 5px 0; }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0; border-top: 1px solid #f1f5f9; padding-top: 15px; }
+        .stat-item span { font-size: 11px; color: #9ca3af; text-transform: uppercase; font-weight: 700; display: block; }
+        .stat-item b { font-size: 16px; }
+
+        .gps-btn { position: absolute; bottom: 120px; right: 20px; z-index: 1000; background: white; border: none; width: 45px; height: 45px; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+        .btn-wa { background: var(--wa); color: white; border: none; width: 100%; padding: 18px; border-radius: 16px; font-weight: 800; font-size: 16px; cursor: pointer; margin-top: 10px; }
+        .surcharge-item { display: flex; justify-content: space-between; font-size: 13px; color: var(--danger); font-weight: 600; padding: 4px 0; }
     </style>
 </head>
 <body>
 
 <div id="map"></div>
-<button class="gps-btn" onclick="locateUser()" title="Find my location">🎯</button>
+<button class="gps-btn" onclick="map.locate({setView: true, maxZoom: 16})">🎯</button>
 
 <div class="app-container">
     <div class="card" id="ui-main" style="display: none;">
-        <div id="badge-type" class="price-main">RM 0.00</div>
+        <div style="display:flex; justify-content: space-between; align-items:center;">
+            <span id="badge-type" class="badge urban">Urban</span>
+            <span id="txt-status" style="font-size: 11px; font-weight: 600; color: var(--primary);"></span>
+        </div>
+        <div class="price-main" id="total-fare">RM 0.00</div>
+        
         <div class="stats-grid">
             <div class="stat-item"><span>Distance</span><b id="txt-dist">0 km</b></div>
-            <div class="stat-item"><span>Time</span><b id="txt-time">0 min</b></div>
+            <div class="stat-item"><span>Est. Time</span><b id="txt-time">0 min</b></div>
         </div>
+
         <div id="surcharge-list"></div>
-        
-        <div class="override-grid">
-            <select id="p-select" onchange="calculateFare()"><option value="AUTO">Pickup State</option></select>
-            <select id="d-select" onchange="calculateFare()"><option value="AUTO">Dropoff State</option></select>
-        </div>
+
         <button class="btn-wa" onclick="sendWhatsApp()">Confirm Booking</button>
     </div>
 
     <div class="card" id="ui-empty" style="text-align:center;">
-        <h3 style="margin-top:0;">Where to?</h3>
-        <p style="color: #6b7280; font-size: 14px;">Search above or tap the map to set locations.</p>
+        <h3>Set your route</h3>
+        <p style="color: #6b7280; font-size: 14px;">Use the search bar above or tap the map.</p>
     </div>
 </div>
 
@@ -73,40 +91,47 @@
 <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
 
 <script>
-// Same logic core from before, but added Search and GPS
+// --- CONFIG & CONSTANTS ---
 const STATES = {"selangor":"MY-10","kuala lumpur":"MY-14","putrajaya":"MY-16","johor":"MY-01","kedah":"MY-02","kelantan":"MY-03","melaka":"MY-04","negeri sembilan":"MY-05","pahang":"MY-06","perak":"MY-08","perlis":"MY-09","pulau pinang":"MY-07","terengganu":"MY-11"};
+const URBAN_CODES = ["MY-10", "MY-14", "MY-16"];
+const ZONES = [
+    { name: "KLCC Premium", fee: 5.0, coords: [[3.155, 101.700], [3.160, 101.715], [3.145, 101.720], [3.135, 101.705]] },
+    { name: "Airport Surcharge", fee: 12.0, coords: [[2.760, 101.690], [2.760, 101.720], [2.730, 101.720], [2.730, 101.690]] }
+];
 
 let map = L.map('map', { zoomControl: false }).setView([3.1319, 101.6841], 10);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-// 1. ADD SEARCHBAR
-const geocoder = L.Control.geocoder({
-    defaultMarkGeocode: false,
-    placeholder: "Search for a location...",
-    collapsed: false
-}).on('markgeocode', function(e) {
-    const center = e.geocode.center;
-    handleMapAction(center);
-    map.setView(center, 15);
-}).addTo(map);
-
 let routingControl = L.Routing.control({ waypoints: [], show: false }).addTo(map);
 let tripData = null;
 
-// 2. GPS TOGGLE FUNCTION
-function locateUser() {
-    map.locate({setView: true, maxZoom: 16});
-}
-map.on('locationfound', (e) => handleMapAction(e.latlng));
+// --- SMART GEOCODER (FIXED) ---
+const geocoder = L.Control.geocoder({
+    defaultMarkGeocode: false,
+    placeholder: "Search Pickup...",
+    collapsed: false,
+    geocoder: L.Control.geocoder.nominatim({ geocodingQueryParams: { countrycodes: 'my' } })
+}).on('markgeocode', function(e) {
+    handlePointInput(e.geocode.center);
+}).addTo(map);
 
-function handleMapAction(latlng) {
+function handlePointInput(latlng) {
     let wps = routingControl.getWaypoints();
-    if (!wps[0].latLng) routingControl.spliceWaypoints(0, 1, latlng);
-    else routingControl.spliceWaypoints(1, 1, latlng);
+    if (!wps[0].latLng) {
+        routingControl.spliceWaypoints(0, 1, latlng);
+        // Step 1 Complete -> Ready for Step 2
+        geocoder.setQuery(""); 
+        document.querySelector('.leaflet-control-geocoder-form input').placeholder = "Now Search Drop-off...";
+    } else {
+        routingControl.spliceWaypoints(1, 1, latlng);
+    }
+    map.setView(latlng, 14);
 }
 
-map.on('click', (e) => handleMapAction(e.latlng));
+map.on('click', (e) => handlePointInput(e.latlng));
+map.on('locationfound', (e) => handlePointInput(e.latlng));
 
+// --- CORE CALCULATION ENGINE ---
 routingControl.on('routesfound', async (e) => {
     document.getElementById('ui-empty').style.display = 'none';
     document.getElementById('ui-main').style.display = 'block';
@@ -114,15 +139,19 @@ routingControl.on('routesfound', async (e) => {
     const route = e.routes[0];
     const wps = routingControl.getWaypoints();
     
-    // Auto-detect states via reverse geocoding
-    const pRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${wps[0].latLng.lat}&lon=${wps[0].latLng.lng}`).then(r => r.json());
-    const dRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${wps[1].latLng.lat}&lon=${wps[1].latLng.lng}`).then(r => r.json());
+    // Reverse Geocode to identify States
+    const [pRes, dRes] = await Promise.all([
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${wps[0].latLng.lat}&lon=${wps[0].latLng.lng}`).then(r => r.json()),
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${wps[1].latLng.lat}&lon=${wps[1].latLng.lng}`).then(r => r.json())
+    ]);
 
     tripData = {
         km: route.summary.totalDistance / 1000,
         mins: route.summary.totalTime / 60,
-        pAuto: detectState(pRes.address.state),
-        dAuto: detectState(dRes.address.state)
+        pState: detectState(pRes.address.state),
+        dState: detectState(dRes.address.state),
+        pLatLng: wps[0].latLng,
+        dLatLng: wps[1].latLng
     };
     calculateFare();
 });
@@ -133,29 +162,64 @@ function detectState(name) {
     return "UNKNOWN";
 }
 
-function calculateFare() {
-    if (!tripData) return;
-    const pState = document.getElementById('p-select').value === "AUTO" ? tripData.pAuto : document.getElementById('p-select').value;
-    
-    // Standard Urban/Rural logic
-    let rate = STATES.selangor === pState || STATES["kuala lumpur"] === pState ? 1.25 : 1.10;
-    let fare = 5.0 + (tripData.km * rate);
-    
-    document.getElementById('total-fare').innerText = `RM ${Math.max(fare, 8).toFixed(2)}`;
-    document.getElementById('txt-dist').innerText = `${tripData.km.toFixed(2)} km`;
-    document.getElementById('txt-time').innerText = `${Math.round(tripData.mins)} min`;
+function isInside(pt, poly) {
+    let x = pt.lat, y = pt.lng, inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        let xi = poly[i][0], yi = poly[i][1], xj = poly[j][0], yj = poly[j][1];
+        if (((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) inside = !inside;
+    }
+    return inside;
 }
 
-// Populate dropdowns
-const pSel = document.getElementById('p-select');
-const dSel = document.getElementById('d-select');
-Object.entries(STATES).forEach(([name, code]) => {
-    let opt = `<option value="${code}">${name.toUpperCase()}</option>`;
-    pSel.innerHTML += opt; dSel.innerHTML += opt;
-});
+function calculateFare() {
+    if (!tripData) return;
+    const { km, mins, pState, dState, pLatLng, dLatLng } = tripData;
+    const isUrban = URBAN_CODES.includes(pState);
+
+    let fare = 0, type = "rural", status = "";
+    let zoneSurcharge = 0, activeZones = [];
+
+    // Geofence Logic
+    ZONES.forEach(z => {
+        if (isInside(pLatLng, z.coords) || isInside(dLatLng, z.coords)) {
+            zoneSurcharge += z.fee;
+            activeZones.push(z);
+        }
+    });
+
+    // Tiered Logic
+    if (pState !== dState && pState !== "UNKNOWN") {
+        type = "interstate";
+        let factor = Math.min(Math.max((km - 40) / 20, 0), 1); // 40-60km scale
+        let iRate = 5.0 + (km * 2.05); // Interstate Base
+        let lRate = 5.0 + (km * (isUrban ? 1.25 : 1.15)) + (isUrban ? mins * 0.20 : 0);
+        fare = (lRate * (1 - factor)) + (iRate * factor);
+    } else if (km > 100) {
+        type = "long-dist";
+        fare = 5.0 + (km * 1.40) + (isUrban ? mins * 0.20 : 0);
+    } else {
+        type = isUrban ? "urban" : "rural";
+        fare = 5.0 + (km * (isUrban ? 1.25 : 1.15)) + (isUrban ? mins * 0.20 : 0);
+    }
+
+    const total = Math.max(fare + zoneSurcharge, 8.0);
+
+    // UI Sync
+    document.getElementById('total-fare').innerText = `RM ${total.toFixed(2)}`;
+    document.getElementById('txt-dist').innerText = `${km.toFixed(2)} km`;
+    document.getElementById('txt-time').innerText = `${Math.round(mins)} min`;
+    document.getElementById('badge-type').innerText = type.replace("-", " ");
+    document.getElementById('badge-type').className = `badge ${type}`;
+    
+    const list = document.getElementById('surcharge-list');
+    list.innerHTML = "";
+    activeZones.forEach(z => {
+        list.innerHTML += `<div class="surcharge-item"><span>🚀 ${z.name}</span><span>+RM ${z.fee.toFixed(2)}</span></div>`;
+    });
+}
 
 function sendWhatsApp() {
-    window.open(`https://wa.me/?text=Booking: ${document.getElementById('total-fare').innerText}`);
+    window.open(`https://wa.me/?text=${encodeURIComponent("Booking: " + document.getElementById('total-fare').innerText)}`);
 }
 </script>
 </body>
