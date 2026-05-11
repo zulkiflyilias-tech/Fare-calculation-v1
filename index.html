@@ -4,238 +4,91 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fare Estimator - Rideshare MY</title>
-    
-    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        :root {
-            --primary-blue: #4285F4;
-            --success-green: #34A853;
-            --bg-gray: #f1f3f4;
-        }
-
-        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
-        
+        :root { --blue: #4285F4; --green: #34A853; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; }
         #map { height: 100vh; width: 100%; z-index: 1; }
-
         .search-box {
-            position: absolute;
-            top: 15px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1000;
-            background: white;
-            padding: 20px;
-            border-radius: 16px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-            width: 90%;
-            max-width: 420px;
+            position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
+            z-index: 1000; background: white; padding: 20px; border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2); width: 90%; max-width: 400px;
         }
-
-        .input-group {
-            display: flex;
-            align-items: center;
-            background: var(--bg-gray);
-            margin-bottom: 12px;
-            border-radius: 8px;
-            padding: 4px 12px;
-        }
-
-        .input-group input {
-            flex: 1;
-            border: none;
-            background: transparent;
-            padding: 12px 8px;
-            outline: none;
-            font-size: 14px;
-        }
-
-        .gps-btn {
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 18px;
-            color: var(--primary-blue);
-        }
-
-        .btn-calculate {
-            width: 100%;
-            background: var(--primary-blue);
-            color: white;
-            border: none;
-            padding: 14px;
-            border-radius: 8px;
-            font-weight: bold;
-            font-size: 16px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .btn-calculate:disabled { background: #ccc; cursor: not-allowed; }
-
-        #result {
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px dashed #ccc;
-            text-align: center;
-        }
-
-        .fare-price {
-            font-size: 26px;
-            font-weight: 800;
-            color: var(--success-green);
-            display: block;
-        }
-
+        .input-group { background: #f1f3f4; margin-bottom: 10px; border-radius: 8px; display: flex; padding: 5px 10px; }
+        .input-group input { border: none; background: transparent; flex: 1; padding: 10px; outline: none; }
+        .btn-calculate { width: 100%; background: var(--blue); color: white; border: none; padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        #result { margin-top: 15px; text-align: center; border-top: 1px dashed #ccc; padding-top: 15px; }
+        .fare-price { font-size: 28px; font-weight: bold; color: var(--green); display: block; }
         .fare-details { font-size: 13px; color: #666; }
     </style>
 </head>
 <body>
 
 <div class="search-box">
-    <div class="input-group">
-        <input type="text" id="pickup" placeholder="Enter Pickup Location (e.g. KLCC)">
-        <button class="gps-btn" onclick="useGPS('pickup')" title="Use my location">📍</button>
-    </div>
-    
-    <div class="input-group">
-        <input type="text" id="dropoff" placeholder="Enter Destination">
-        <button class="gps-btn" onclick="useGPS('dropoff')" title="Use my location">📍</button>
-    </div>
-
-    <div class="input-group">
-        <input type="datetime-local" id="travel-schedule">
-    </div>
-
+    <div class="input-group"><input type="text" id="pickup" placeholder="Pickup Location"></div>
+    <div class="input-group"><input type="text" id="dropoff" placeholder="Destination"></div>
+    <div class="input-group"><input type="datetime-local" id="travel-schedule"></div>
     <button class="btn-calculate" id="calc-btn" onclick="estimateFare()">Calculate Fare</button>
-
     <div id="result" style="display:none;">
-        <span class="fare-details" id="surge-label">Standard Rate</span>
-        <span class="fare-price" id="fare-output">RM 0.00</span>
-        <span class="fare-details" id="dist-time-output">0 km | 0 min</span>
+        <span id="surge-label" class="fare-details"></span>
+        <span id="fare-output" class="fare-price"></span>
+        <span id="dist-time-output" class="fare-details"></span>
     </div>
 </div>
-
 <div id="map"></div>
 
-<!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
 <script>
-    // Initialize Map centered on Malaysia
-    const map = L.map('map').setView([3.1390, 101.6869], 11);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap'
-    }).addTo(map);
-
+    const map = L.map('map').setView([3.139, 101.686], 11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     let routeLayer;
 
-    // Set default time to current local time
+    // Default time
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
     document.getElementById('travel-schedule').value = now.toISOString().slice(0, 16);
 
-    // 1. Geocoding helper (Address -> Coordinates)
     async function getCoords(address) {
-        try {
-            const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(address)}&limit=1`);
-            const data = await res.json();
-            return data.features.length > 0 ? data.features[0].geometry.coordinates : null;
-        } catch (e) {
-            console.error("Geocoding error:", e);
-            return null;
-        }
+        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(address)}&limit=1`);
+        const data = await res.json();
+        return data.features.length > 0 ? data.features[0].geometry.coordinates : null;
     }
 
-    // 2. GPS Helper
-    async function useGPS(targetId) {
-        if (!navigator.geolocation) return alert("GPS not supported");
-        navigator.geolocation.getCurrentPosition(async (pos) => {
-            const { latitude, longitude } = pos.coords;
-            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
-            const data = await res.json();
-            document.getElementById(targetId).value = data.display_name;
-        });
-    }
-
-    // 3. Main Logic
     async function estimateFare() {
-        const btn = document.getElementById('calc-btn');
         const pickup = document.getElementById('pickup').value;
         const dropoff = document.getElementById('dropoff').value;
-
-        if (!pickup || !dropoff) return alert("Please fill in both locations.");
-
-        btn.disabled = true;
-        btn.innerText = "Calculating...";
+        if (!pickup || !dropoff) return alert("Enter both locations");
 
         const start = await getCoords(pickup);
         const end = await getCoords(dropoff);
+        if (!start || !end) return alert("Location not found");
 
-        if (!start || !end) {
-            alert("Could not find locations. Try being more specific (e.g., adding 'Kuala Lumpur').");
-            btn.disabled = false;
-            btn.innerText = "Calculate Fare";
-            return;
-        }
+        const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${start[0]},${start[1]};${end[0]},${end[1]}?overview=full&geometries=geojson`;
+        const response = await fetch(osrmUrl);
+        const data = await response.json();
+        
+        const route = data.routes[0];
+        const distKm = (route.distance / 1000).toFixed(2);
+        const timeMin = (route.duration / 60).toFixed(0);
 
-        // Fetch Road Route from OSRM
-        try {
-            const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${start[0]},${start[1]};${end[0]},${end[1]}?overview=full&geometries=geojson`;
-            const response = await fetch(osrmUrl);
-            const data = await response.json();
+        if (routeLayer) map.removeLayer(routeLayer);
+        routeLayer = L.geoJSON(route.geometry, { color: '#4285F4', weight: 5 }).addTo(map);
+        map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
 
-            if (data.code !== "Ok") throw new Error("Routing failed");
-
-            const route = data.routes[0];
-            const distKm = (route.distance / 1000).toFixed(2);
-            const timeMin = (route.duration / 60).toFixed(0);
-
-            // Update Map View
-            if (routeLayer) map.removeLayer(routeLayer);
-            routeLayer = L.geoJSON(route.geometry, { color: '#4285F4', weight: 5 }).addTo(map);
-            map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
-
-            // Fare Calculation
-            calculatePrice(distKm, timeMin);
-
-        } catch (err) {
-            alert("Error connecting to routing service.");
-        } finally {
-            btn.disabled = false;
-            btn.innerText = "Calculate Fare";
-        }
-    }
-
-    function calculatePrice(distKm, timeMin) {
-        const baseFare = 5.00;
-        const distRate = 1.25;
-        const timeRate = 0.30;
-        const minFare = 8.00;
-
+        // PRICING LOGIC
+        const baseFare = 5.00, distRate = 1.25, timeRate = 0.30, minFare = 8.00;
         const hour = new Date(document.getElementById('travel-schedule').value).getHours();
-        let surge = 1.0;
-        let label = "Standard Rate";
+        let surge = 1.0, label = "Standard Rate";
 
-        if ((hour >= 7 && hour < 9) || (hour >= 17 && hour < 20)) {
-            surge = 1.3;
-            label = "Peak Hour (1.3x)";
-        } else if (hour >= 0 && hour < 6) {
-            surge = 1.1;
-            label = "Midnight (1.1x)";
-        }
-
-        let distanceCost = distKm * distRate;
-        // Minimum fare check: Base + Distance must be at least minFare
-        if ((baseFare + distanceCost) < minFare) {
-            distanceCost = minFare - baseFare;
-        }
-
-        const total = baseFare + ((distanceCost + (timeMin * timeRate)) * surge);
+        if ((hour >= 7 && hour < 9) || (hour >= 17 && hour < 20)) { surge = 1.3; label = "Peak Hour (1.3x)"; }
+        
+        // Calculate: Base + (Variable * Surge)
+        let total = baseFare + (((distKm * distRate) + (timeMin * timeRate)) * surge);
+        if (total < minFare) total = minFare;
 
         document.getElementById('result').style.display = 'block';
-        document.getElementById('fare-output').innerText = `RM ${total.toFixed(2)}`;
         document.getElementById('surge-label').innerText = label;
+        document.getElementById('fare-output').innerText = `RM ${total.toFixed(2)}`;
         document.getElementById('dist-time-output').innerText = `${distKm} km | ${timeMin} min`;
     }
 </script>
