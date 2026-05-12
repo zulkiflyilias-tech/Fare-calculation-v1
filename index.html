@@ -10,14 +10,15 @@
         body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Roboto, sans-serif; background: #f8f9fa; overflow: hidden; }
         #map { height: 100vh; width: 100%; z-index: 1; }
         
-        /* Search UI */
+        /* Search Interface */
         .search-box {
             position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
             z-index: 1000; background: white; padding: 15px; border-radius: 16px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.15); width: 90%; max-width: 420px;
         }
         .input-wrapper { position: relative; margin-bottom: 10px; }
-        .input-group { background: #f1f3f4; border-radius: 12px; display: flex; align-items: center; padding: 5px 12px; }
+        .input-group { background: #f1f3f4; border-radius: 12px; display: flex; align-items: center; padding: 5px 12px; border: 1px solid transparent; }
+        .input-group:focus-within { border-color: var(--blue); background: white; }
         .input-group input { border: none; background: transparent; flex: 1; padding: 12px 5px; outline: none; font-size: 14px; }
         
         /* Table-Powered Autocomplete UI */
@@ -33,7 +34,8 @@
         .sugg-main { font-weight: 600; color: #333; font-size: 14px; }
         .sugg-sub { font-size: 11px; color: var(--gray); line-height: 1.3; margin-top: 2px; }
 
-        .btn-calculate { width: 100%; background: var(--blue); color: white; border: none; padding: 15px; border-radius: 12px; font-weight: bold; cursor: pointer; }
+        .icon-btn { background: none; border: none; cursor: pointer; font-size: 18px; padding: 5px; color: #5f6368; }
+        .btn-calculate { width: 100%; background: var(--blue); color: white; border: none; padding: 15px; border-radius: 12px; font-weight: bold; cursor: pointer; margin-top: 5px; }
         
         /* Receipt Card */
         .invoice-card {
@@ -44,7 +46,7 @@
         }
         .invoice-row { display: flex; justify-content: space-between; margin: 8px 0; font-size: 14px; }
         .invoice-total { border-top: 2px dashed #eee; margin-top: 10px; padding-top: 10px; font-weight: bold; font-size: 22px; display: flex; justify-content: space-between; }
-        .surge-badge { background: #fff3e0; color: #ef6c00; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; }
+        .surge-badge { background: #fff3e0; color: #ef6c00; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; text-align: center; display: inline-block; }
     </style>
 </head>
 <body>
@@ -52,16 +54,18 @@
 <div class="search-box">
     <div class="input-wrapper">
         <div class="input-group">
-            <span style="padding: 0 10px;">📍</span>
+            <button class="icon-btn" onclick="useGPS('pickup')">📍</button>
             <input type="text" id="pickup" placeholder="Pickup location..." autocomplete="off" oninput="handleSearch(this)">
+            <button class="icon-btn" onclick="resetField('pickup')">✕</button>
         </div>
         <div id="pickup-suggestions" class="suggestions"></div>
     </div>
 
     <div class="input-wrapper">
         <div class="input-group">
-            <span style="padding: 0 10px;">🏁</span>
-            <input type="text" id="dropoff" placeholder="Where to?" autocomplete="off" oninput="handleSearch(this)">
+            <span style="padding: 0 10px; color: #999;">🏁</span>
+            <input type="text" id="dropoff" placeholder="Destination..." autocomplete="off" oninput="handleSearch(this)">
+            <button class="icon-btn" onclick="resetField('dropoff')">✕</button>
         </div>
         <div id="dropoff-suggestions" class="suggestions"></div>
     </div>
@@ -86,37 +90,64 @@
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     let routeLayer, userCoords = [101.686, 3.139], searchTimer;
 
+    // Initial GPS Lock
     navigator.geolocation.getCurrentPosition(pos => {
         userCoords = [pos.coords.longitude, pos.coords.latitude];
+        map.setView([pos.coords.latitude, pos.coords.longitude], 13);
     });
 
-    // Default time to now
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
     document.getElementById('travel-schedule').value = now.toISOString().slice(0, 16);
 
+    function resetField(id) {
+        document.getElementById(id).value = '';
+        document.getElementById(`${id}-suggestions`).style.display = 'none';
+        document.getElementById('invoice').style.display = 'none';
+        if(routeLayer) map.removeLayer(routeLayer);
+    }
+
+    async function useGPS(id) {
+        const input = document.getElementById(id);
+        if (!navigator.geolocation) return alert("GPS not supported");
+
+        input.placeholder = "Locating...";
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            userCoords = [lon, lat]; // Sync global state
+
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`, {
+                    headers: { 'User-Agent': 'RideshareMY_App' }
+                });
+                const data = await res.json();
+                input.value = data.display_name;
+                map.flyTo([lat, lon], 15);
+            } catch (e) { alert("Geocoding failed"); }
+            input.placeholder = id === 'pickup' ? "Pickup location..." : "Destination...";
+        }, (err) => alert(`GPS Error: ${err.message}`), { enableHighAccuracy: true });
+    }
+
     async function handleSearch(input) {
         clearTimeout(searchTimer);
         const query = input.value;
-        const suggestionBox = document.getElementById(`${input.id}-suggestions`);
-        if (query.length < 3) { suggestionBox.style.display = 'none'; return; }
+        const box = document.getElementById(`${input.id}-suggestions`);
+        if (query.length < 3) { box.style.display = 'none'; return; }
 
         searchTimer = setTimeout(async () => {
             try {
-                // 1. Get 5 suggestions from Photon
                 const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5&lat=${userCoords[1]}&lon=${userCoords[0]}`);
                 const data = await res.json();
                 const feats = data.features;
                 if (!feats.length) return;
 
-                // 2. Batch Road Distance Request (Table API)
                 const dests = feats.map(f => f.geometry.coordinates.join(',')).join(';');
                 const tableUrl = `https://router.project-osrm.org/table/v1/driving/${userCoords[0]},${userCoords[1]};${dests}?sources=0&annotations=distance`;
                 const tableRes = await fetch(tableUrl);
                 const tableData = await tableRes.json();
 
-                // 3. Render
-                suggestionBox.innerHTML = ''; suggestionBox.style.display = 'block';
+                box.innerHTML = ''; box.style.display = 'block';
                 feats.forEach((feat, i) => {
                     const p = feat.properties;
                     const roadDist = tableData.distances[0][i+1] ? (tableData.distances[0][i+1] / 1000).toFixed(2) : "N/A";
@@ -125,14 +156,14 @@
                     const item = document.createElement('div');
                     item.className = 'suggestion-item';
                     item.innerHTML = `
-                        <div class="sugg-icon">🚗</div>
+                        <div class="sugg-icon">📍</div>
                         <div class="sugg-content">
                             <span class="sugg-main">${p.name || p.street || "Location"}</span>
                             <span class="sugg-sub"><strong>${roadDist} km</strong> • ${sub}</span>
                         </div>
                     `;
-                    item.onclick = () => { input.value = `${p.name || p.street}, ${sub}`; suggestionBox.style.display = 'none'; };
-                    suggestionBox.appendChild(item);
+                    item.onclick = () => { input.value = `${p.name || p.street}, ${sub}`; box.style.display = 'none'; };
+                    box.appendChild(item);
                 });
             } catch (e) { console.error(e); }
         }, 300);
@@ -141,22 +172,24 @@
     async function estimateFare() {
         const p1 = document.getElementById('pickup').value;
         const p2 = document.getElementById('dropoff').value;
-        if (!p1 || !p2) return alert("Enter locations");
+        if (!p1 || !p2) return alert("Please fill both fields");
 
-        const s = await (await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(p1)}&limit=1`)).json();
-        const e = await (await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(p2)}&limit=1`)).json();
-        
-        const routeRes = await fetch(`https://router.project-osrm.org/route/v1/driving/${s.features[0].geometry.coordinates.join(',')};${e.features[0].geometry.coordinates.join(',')}?overview=full&geometries=geojson`);
-        const routeData = await routeRes.json();
-        
-        const dist = (routeData.routes[0].distance / 1000).toFixed(2);
-        const time = (routeData.routes[0].duration / 60).toFixed(0);
+        try {
+            const s = await (await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(p1)}&limit=1`)).json();
+            const e = await (await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(p2)}&limit=1`)).json();
+            
+            const routeRes = await fetch(`https://router.project-osrm.org/route/v1/driving/${s.features[0].geometry.coordinates.join(',')};${e.features[0].geometry.coordinates.join(',')}?overview=full&geometries=geojson`);
+            const routeData = await routeRes.json();
+            
+            const dist = (routeData.routes[0].distance / 1000).toFixed(2);
+            const time = (routeData.routes[0].duration / 60).toFixed(0);
 
-        if (routeLayer) map.removeLayer(routeLayer);
-        routeLayer = L.geoJSON(routeData.routes[0].geometry, { color: '#4285F4', weight: 6 }).addTo(map);
-        map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
+            if (routeLayer) map.removeLayer(routeLayer);
+            routeLayer = L.geoJSON(routeData.routes[0].geometry, { color: '#4285F4', weight: 6 }).addTo(map);
+            map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
 
-        showInvoice(dist, time);
+            showInvoice(dist, time);
+        } catch (err) { alert("Routing error. Please check your addresses."); }
     }
 
     function showInvoice(dist, time) {
@@ -166,10 +199,14 @@
 
         if ((hour >= 7 && hour < 9) || (hour >= 17 && hour < 20)) { surge = 1.3; label = "Peak Hour Surge (1.3x)"; }
         
-        const total = base + (((dist * dRate) + (time * tRate)) * surge);
+        const dCost = dist * dRate;
+        const tCost = time * tRate;
+        const total = base + ((dCost + tCost) * surge);
+
         document.getElementById('inv-dist').innerText = dist;
-        document.getElementById('inv-dist-cost').innerText = `RM ${(dist * dRate).toFixed(2)}`;
+        document.getElementById('inv-dist-cost').innerText = `RM ${dCost.toFixed(2)}`;
         document.getElementById('inv-time').innerText = time;
+        document.getElementById('inv-time-cost').innerText = `RM ${tCost.toFixed(2)}`;
         document.getElementById('inv-total').innerText = `RM ${total.toFixed(2)}`;
         document.getElementById('surge-tag').innerText = label;
         document.getElementById('invoice').style.display = 'block';
