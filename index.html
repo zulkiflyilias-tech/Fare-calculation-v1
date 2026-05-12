@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rideshare MY - Official Recovery Build</title>
+    <title>Rideshare MY - Official Build</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -29,30 +29,33 @@
     <div class="p-3"><div id="map"></div></div>
 
     <div class="px-4 space-y-2 pb-32">
-        <!-- Pickup with Restored GPS Icon -->
+        <!-- Pickup with GPS Toggle -->
         <div class="relative">
             <label class="text-[10px] font-bold text-gray-400 ml-1 uppercase">Pickup</label>
             <div class="relative">
                 <input id="pickup" type="text" autocomplete="off" oninput="handleAutocomplete(this)" placeholder="Search pickup..." class="w-full border-2 border-gray-100 p-2.5 rounded-xl text-sm focus:border-blue-500 outline-none pr-10">
-                <button onclick="useCurrentLocation()" class="absolute right-2 top-2.5 text-blue-600 p-1 bg-blue-50 rounded-lg">
+                <button onclick="useCurrentLocation()" class="absolute right-2 top-2 text-blue-600 p-1 bg-blue-50 rounded-lg">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                 </button>
             </div>
             <div id="pickup-suggestions" class="suggestions hidden"></div>
         </div>
 
+        <!-- Swap Button -->
         <div class="flex justify-center -my-3 relative z-10">
-            <button onclick="swapLocations()" class="bg-white border border-gray-200 p-1.5 rounded-full shadow-md">
+            <button onclick="swapLocations()" class="bg-white border border-gray-200 p-1.5 rounded-full shadow-md hover:bg-gray-50">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
             </button>
         </div>
 
+        <!-- Destination -->
         <div class="relative">
             <label class="text-[10px] font-bold text-gray-400 ml-1 uppercase">Destination</label>
             <input id="destination" type="text" autocomplete="off" oninput="handleAutocomplete(this)" placeholder="Where to?" class="w-full border-2 border-gray-100 p-2.5 rounded-xl text-sm focus:border-blue-500 outline-none">
             <div id="destination-suggestions" class="suggestions hidden"></div>
         </div>
 
+        <!-- Schedule -->
         <div class="flex flex-col pt-1">
             <label class="text-[10px] font-bold text-gray-400 ml-1 uppercase">Schedule</label>
             <input id="travel-dt" type="datetime-local" class="w-full border-2 border-gray-100 p-2.5 rounded-xl text-sm outline-none bg-gray-50 focus:bg-white transition-colors">
@@ -61,11 +64,11 @@
         <button onclick="calculateFare()" id="calc-btn" class="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl shadow-lg mt-2 uppercase tracking-wide">Get Estimate</button>
     </div>
 
-    <!-- Invoice with Interstate Logic Fix -->
+    <!-- Invoice Area -->
     <div id="invoice" class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white p-6 floating-invoice border-t-4 border-blue-600 rounded-t-3xl shadow-2xl">
         <div class="flex justify-between items-center mb-5">
             <div>
-                <h2 class="text-lg font-black text-gray-800 leading-none uppercase">Estimated Fare</h2>
+                <h2 class="text-lg font-black text-gray-800 leading-none">ESTIMATED FARE</h2>
                 <p class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">Arrival: <span id="inv-eta" class="text-blue-600 font-bold">--</span></p>
             </div>
             <button onclick="closeInvoice()" class="text-2xl text-gray-300">&times;</button>
@@ -85,7 +88,7 @@
                 <span id="inv-time-price" class="font-bold text-gray-800 text-sm">RM 0.00</span>
             </div>
             <div id="interstate-tag" class="hidden text-white bg-blue-600 p-2.5 rounded-lg font-black text-[10px] uppercase text-center">
-                Interstate Rate Applied: RM 0.90/KM
+                Interstate Rate Applied: RM 0.90
             </div>
         </div>
 
@@ -107,6 +110,7 @@
     let pickupPoint = null, destPoint = null;
     const dtInput = document.getElementById('travel-dt');
 
+    // Default time to now
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
     dtInput.value = now.toISOString().slice(0,16);
@@ -148,38 +152,43 @@
             document.getElementById('pickup').value = data.display_name;
             pickupPoint = data;
             map.setView([lat, lon], 15);
+            L.marker([lat, lon]).addTo(map);
         });
     }
 
     async function calculateFare() {
         const btn = document.getElementById('calc-btn');
-        if(!pickupPoint || !destPoint) { alert("Please select locations from suggestions."); return; }
+        const pInput = document.getElementById('pickup').value;
+        const dInput = document.getElementById('destination').value;
 
+        if(!pInput || !dInput) { alert("Please enter both locations."); return; }
         btn.innerHTML = '<span class="custom-loader"></span>';
 
         try {
-            const routeRes = await fetch(`https://router.project-osrm.org/route/v1/driving/${pickupPoint.lon},${pickupPoint.lat};${destPoint.lon},${destPoint.lat}?overview=false`);
+            // Helper to get coords if not selected from suggestions
+            const getCoords = async (val, stored) => {
+                if(stored) return stored;
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(val.split(',')[0])}, Malaysia&limit=1`);
+                const d = await res.json();
+                return d[0];
+            };
+
+            const p = await getCoords(pInput, pickupPoint);
+            const d = await getCoords(dInput, destPoint);
+
+            const routeRes = await fetch(`https://router.project-osrm.org/route/v1/driving/${p.lon},${p.lat};${d.lon},${d.lat}?overview=false`);
             const routeData = await routeRes.json();
             const route = routeData.routes[0];
 
             const km = route.distance / 1000;
             const mins = route.duration / 60;
 
+            // Interstate Logic
             const kv = ["selangor", "kuala lumpur", "putrajaya"];
-            const pAddr = (pickupPoint.display_name || "").toLowerCase();
-            const dAddr = (destPoint.display_name || "").toLowerCase();
-            
-            const pInKV = kv.some(s => pAddr.includes(s));
-            const dInKV = kv.some(s => dAddr.includes(s));
-            
-            // Interstate Logic: If one is in KV and other is not, OR if different states entirely
-            let isInterstate = !(pInKV && dInKV);
-            if (!isInterstate) {
-                // Double check if same state outside KV
-                const pState = pAddr.split(',').pop();
-                const dState = dAddr.split(',').pop();
-                if(pState === dState) isInterstate = false;
-            }
+            const pAddr = (p.display_name || "").toLowerCase();
+            const dAddr = (d.display_name || "").toLowerCase();
+            const isInterstate = !(kv.some(s => pAddr.includes(s)) && kv.some(s => dAddr.includes(s))) && 
+                                 (pAddr.split(',').pop() !== dAddr.split(',').pop());
 
             const timeRate = isInterstate ? 0.90 : 0.45;
             const distCharge = km * 1.25;
@@ -190,27 +199,44 @@
             document.getElementById('inv-dist-price').innerText = "RM " + distCharge.toFixed(2);
             document.getElementById('inv-time-price').innerText = "RM " + timeCharge.toFixed(2);
             document.getElementById('inv-total').innerText = Math.round(5 + distCharge + timeCharge);
+            
             document.getElementById('interstate-tag').classList.toggle('hidden', !isInterstate);
             document.getElementById('invoice').classList.add('active');
-            
-            map.eachLayer(l => { if(l instanceof L.Marker) map.removeLayer(l); });
-            L.marker([pickupPoint.lat, pickupPoint.lon]).addTo(map);
-            L.marker([destPoint.lat, destPoint.lon]).addTo(map);
-            map.fitBounds([[pickupPoint.lat, pickupPoint.lon], [destPoint.lat, destPoint.lon]], {padding: [50,50]});
 
-        } catch (e) { alert("Route error. Please try another search."); }
+            map.eachLayer(l => { if(l instanceof L.Marker) map.removeLayer(l); });
+            L.marker([p.lat, p.lon]).addTo(map);
+            L.marker([d.lat, d.lon]).addTo(map);
+            map.fitBounds([[p.lat, p.lon], [d.lat, d.lon]], {padding: [50,50]});
+
+        } catch (e) { alert("Error finding route. Please try a simpler address."); }
         btn.innerHTML = 'Get Estimate';
     }
 
     function closeInvoice() { document.getElementById('invoice').classList.remove('active'); }
+    
     function swapLocations() {
-        const p = document.getElementById('pickup'), d = document.getElementById('destination');
-        [p.value, d.value] = [d.value, p.value];
+        const pInput = document.getElementById('pickup'), dInput = document.getElementById('destination');
+        [pInput.value, dInput.value] = [dInput.value, pInput.value];
         [pickupPoint, destPoint] = [destPoint, pickupPoint];
     }
+
     function sendWhatsApp() {
-        const msg = `*RIDE REQUEST*%0APickup: ${document.getElementById('pickup').value}%0ADest: ${document.getElementById('destination').value}%0AFare: RM ${document.getElementById('inv-total').innerText}`;
-        window.open(`https://wa.me/60108988182?text=${msg}`);
+        const p = document.getElementById('pickup').value;
+        const d = document.getElementById('destination').value;
+        const schedRaw = new Date(dtInput.value);
+        const sched = schedRaw.toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'}) + ', ' + 
+                      schedRaw.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', hour12:true});
+        const dist = document.getElementById('inv-dist-val').innerText;
+        const total = document.getElementById('inv-total').innerText;
+
+        const msg = `📋 *Booking Inquiry*%0A%0A` +
+                    `📍 *Pickup:* ${p}%0A` +
+                    `🏁 *Destination:* ${d}%0A` +
+                    `🕒 *Schedule:* ${sched}%0A` +
+                    `🛣️ *Distance:* ${dist} km%0A` +
+                    `💰 *Fare:* RM ${total}`;
+        
+        window.open(`https://wa.me/60123456789?text=${msg}`);
     }
 </script>
 </body>
