@@ -6,40 +6,37 @@
     <title>Fare Estimator Pro - Rideshare MY</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        :root { --blue: #4285F4; --green: #34A853; --dark: #202124; }
+        :root { --blue: #4285F4; --green: #34A853; --dark: #202124; --gray: #70757a; }
         body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Roboto, sans-serif; background: #f8f9fa; overflow: hidden; }
         #map { height: 100vh; width: 100%; z-index: 1; }
         
-        /* Search Box UI */
+        /* Search Interface */
         .search-box {
             position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
             z-index: 1000; background: white; padding: 15px; border-radius: 16px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.15); width: 90%; max-width: 420px;
         }
         .input-wrapper { position: relative; margin-bottom: 10px; }
-        .input-group { background: #f1f3f4; border-radius: 12px; display: flex; align-items: center; padding: 5px 12px; border: 1px solid transparent; }
-        .input-group:focus-within { border-color: var(--blue); background: white; }
+        .input-group { background: #f1f3f4; border-radius: 12px; display: flex; align-items: center; padding: 5px 12px; }
         .input-group input { border: none; background: transparent; flex: 1; padding: 12px 5px; outline: none; font-size: 14px; }
         
-        /* High-Detail Autocomplete */
+        /* Detailed Autocomplete (Matches 252544.jpg) */
         .suggestions {
             position: absolute; top: 100%; left: 0; right: 0; background: white;
             border-radius: 0 0 12px 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-            max-height: 280px; overflow-y: auto; display: none; z-index: 1100;
-            border: 1px solid #eee;
+            max-height: 280px; overflow-y: auto; display: none; z-index: 1100; border: 1px solid #eee;
         }
-        .suggestion-item { 
-            padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #f1f1f1; 
-            display: flex; flex-direction: column; gap: 2px;
-        }
+        .suggestion-item { padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #f1f1f1; display: flex; gap: 12px; }
         .suggestion-item:hover { background: #e8f0fe; }
+        .sugg-icon { font-size: 18px; color: var(--gray); }
+        .sugg-content { flex: 1; display: flex; flex-direction: column; }
         .sugg-main { font-weight: 600; color: #333; font-size: 14px; }
-        .sugg-sub { font-size: 11px; color: #777; line-height: 1.3; }
+        .sugg-sub { font-size: 11px; color: var(--gray); line-height: 1.3; margin-top: 2px; }
 
         .icon-btn { background: none; border: none; cursor: pointer; font-size: 18px; padding: 5px; color: #5f6368; }
-        .btn-calculate { width: 100%; background: var(--blue); color: white; border: none; padding: 15px; border-radius: 12px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .btn-calculate { width: 100%; background: var(--blue); color: white; border: none; padding: 15px; border-radius: 12px; font-weight: bold; cursor: pointer; margin-top: 5px; }
         
-        /* Floating Invoice */
+        /* Floating Invoice Breakdown */
         .invoice-card {
             position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
             background: white; width: 90%; max-width: 380px; padding: 20px;
@@ -47,8 +44,8 @@
             z-index: 1000; display: none; border-top: 5px solid var(--green);
         }
         .invoice-row { display: flex; justify-content: space-between; margin: 8px 0; font-size: 14px; color: #555; }
-        .invoice-total { border-top: 2px dashed #eee; margin-top: 10px; padding-top: 10px; font-weight: bold; font-size: 22px; color: var(--dark); display: flex; justify-content: space-between; }
-        .surge-badge { background: #fff3e0; color: #ef6c00; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; text-align: center; }
+        .invoice-total { border-top: 2px dashed #eee; margin-top: 10px; padding-top: 10px; font-weight: bold; font-size: 22px; display: flex; justify-content: space-between; }
+        .surge-badge { background: #fff3e0; color: #ef6c00; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; text-align: center; display: inline-block; }
     </style>
 </head>
 <body>
@@ -66,21 +63,18 @@
     <div class="input-wrapper">
         <div class="input-group">
             <span style="padding: 0 10px; color: #999;">🏁</span>
-            <input type="text" id="dropoff" placeholder="Where to?" autocomplete="off" oninput="handleSearch(this)">
+            <input type="text" id="dropoff" placeholder="Destination..." autocomplete="off" oninput="handleSearch(this)">
             <button class="icon-btn" onclick="resetField('dropoff')">✕</button>
         </div>
         <div id="dropoff-suggestions" class="suggestions"></div>
     </div>
 
     <input type="datetime-local" id="travel-schedule" style="width: 100%; border: 1px solid #ddd; padding: 10px; border-radius: 10px; margin-bottom: 10px; box-sizing: border-box;">
-    
     <button class="btn-calculate" id="calc-btn" onclick="estimateFare()">Get Estimate</button>
 </div>
 
 <div id="invoice" class="invoice-card">
-    <div style="text-align: center; margin-bottom: 15px;">
-        <div id="surge-tag" class="surge-badge">Standard Rate</div>
-    </div>
+    <div style="text-align: center; margin-bottom: 10px;"><div id="surge-tag" class="surge-badge">Standard Rate</div></div>
     <div class="invoice-row"><span>Base Fare</span><span>RM 5.00</span></div>
     <div class="invoice-row"><span>Distance (<span id="inv-dist">0</span> km)</span><span id="inv-dist-cost">RM 0.00</span></div>
     <div class="invoice-row"><span>Time (<span id="inv-time">0</span> min)</span><span id="inv-time-cost">RM 0.00</span></div>
@@ -93,7 +87,12 @@
 <script>
     const map = L.map('map', {zoomControl: false}).setView([3.139, 101.686], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-    let routeLayer;
+    let routeLayer, userCoords = [101.686, 3.139];
+
+    // Get current GPS for distance bias
+    navigator.geolocation.getCurrentPosition(pos => {
+        userCoords = [pos.coords.longitude, pos.coords.latitude];
+    });
 
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
@@ -106,53 +105,45 @@
         if(routeLayer) map.removeLayer(routeLayer);
     }
 
+    function calculateStraightDist(lon1, lat1, lon2, lat2) {
+        const R = 6371; 
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+        return (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))).toFixed(2);
+    }
+
     async function handleSearch(input) {
         const query = input.value;
         const suggestionBox = document.getElementById(`${input.id}-suggestions`);
         if (query.length < 3) { suggestionBox.style.display = 'none'; return; }
 
-        try {
-            // Bias to Malaysia coords
-            const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=6&lat=3.139&lon=101.686`);
-            const data = await res.json();
+        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=6&lat=${userCoords[1]}&lon=${userCoords[0]}`);
+        const data = await res.json();
+        suggestionBox.innerHTML = ''; suggestionBox.style.display = 'block';
 
-            suggestionBox.innerHTML = '';
-            suggestionBox.style.display = 'block';
-
-            data.features.forEach(feat => {
-                const p = feat.properties;
-                
-                // Detailed breakdown
-                const name = p.name || "";
-                const street = p.street || "";
-                const district = p.district || p.city || "";
-                const postcode = p.postcode || "";
-                const state = p.state || "";
-
-                const mainText = name || street;
-                const subText = [street, district, postcode, state].filter(x => x && x !== name).join(", ");
-
-                const item = document.createElement('div');
-                item.className = 'suggestion-item';
-                item.innerHTML = `
-                    <span class="sugg-main">${mainText}</span>
-                    <span class="sugg-sub">${subText}</span>
-                `;
-                
-                item.onclick = () => {
-                    input.value = `${mainText}, ${subText}`;
-                    suggestionBox.style.display = 'none';
-                };
-                suggestionBox.appendChild(item);
-            });
-        } catch (e) { console.error("Search error", e); }
+        data.features.forEach(feat => {
+            const p = feat.properties;
+            const dist = calculateStraightDist(userCoords[0], userCoords[1], feat.geometry.coordinates[0], feat.geometry.coordinates[1]);
+            const sub = [p.street, p.district || p.city, p.postcode, p.state].filter(x => x && x !== p.name).join(", ");
+            
+            const item = document.createElement('div');
+            item.className = 'suggestion-item';
+            item.innerHTML = `
+                <div class="sugg-icon">📍</div>
+                <div class="sugg-content">
+                    <span class="sugg-main">${p.name || p.street}</span>
+                    <span class="sugg-sub"><strong>${dist}km</strong> • ${sub}</span>
+                </div>
+            `;
+            item.onclick = () => { input.value = `${p.name || p.street}, ${sub}`; suggestionBox.style.display = 'none'; };
+            suggestionBox.appendChild(item);
+        });
     }
 
     async function useGPS(id) {
-        if (!navigator.geolocation) return alert("GPS not available");
         navigator.geolocation.getCurrentPosition(async (pos) => {
-            const { latitude, longitude } = pos.coords;
-            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`);
             const data = await res.json();
             document.getElementById(id).value = data.display_name;
         });
@@ -161,59 +152,36 @@
     async function estimateFare() {
         const pickup = document.getElementById('pickup').value;
         const dropoff = document.getElementById('dropoff').value;
-        if (!pickup || !dropoff) return alert("Please enter both locations");
+        if (!pickup || !dropoff) return alert("Please fill both fields");
 
-        document.getElementById('calc-btn').innerText = "Calculating...";
+        const start = await (await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(pickup)}&limit=1`)).json();
+        const end = await (await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(dropoff)}&limit=1`)).json();
         
-        try {
-            const start = await getCoords(pickup);
-            const end = await getCoords(dropoff);
-            
-            const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${start[0]},${start[1]};${end[0]},${end[1]}?overview=full&geometries=geojson`;
-            const response = await fetch(osrmUrl);
-            const data = await response.json();
-            
-            const route = data.routes[0];
-            const distKm = (route.distance / 1000).toFixed(2);
-            const timeMin = (route.duration / 60).toFixed(0);
-
-            if (routeLayer) map.removeLayer(routeLayer);
-            routeLayer = L.geoJSON(route.geometry, { color: '#4285F4', weight: 6 }).addTo(map);
-            map.fitBounds(routeLayer.getBounds(), { padding: [100, 100] });
-
-            showInvoice(distKm, timeMin);
-        } catch (e) { alert("Routing error. Try a different address."); }
+        const osrm = await (await fetch(`https://router.project-osrm.org/route/v1/driving/${start.features[0].geometry.coordinates.join(',')};${end.features[0].geometry.coordinates.join(',')}?overview=full&geometries=geojson`)).json();
         
-        document.getElementById('calc-btn').innerText = "Get Estimate";
-    }
+        const distKm = (osrm.routes[0].distance / 1000).toFixed(2);
+        const timeMin = (osrm.routes[0].duration / 60).toFixed(0);
 
-    async function getCoords(addr) {
-        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(addr)}&limit=1`);
-        const data = await res.json();
-        return data.features[0].geometry.coordinates;
+        if (routeLayer) map.removeLayer(routeLayer);
+        routeLayer = L.geoJSON(osrm.routes[0].geometry, { color: '#4285F4', weight: 6 }).addTo(map);
+        map.fitBounds(routeLayer.getBounds(), { padding: [100, 100] });
+
+        showInvoice(distKm, timeMin);
     }
 
     function showInvoice(dist, time) {
         const base = 5.00, dRate = 1.25, tRate = 0.30;
         const hour = new Date(document.getElementById('travel-schedule').value).getHours();
-        let surge = 1.0;
+        let surge = 1.0, label = "Standard Rate";
 
-        if ((hour >= 7 && hour < 9) || (hour >= 17 && hour < 20)) {
-            surge = 1.3;
-            document.getElementById('surge-tag').innerText = "Peak Hour Surge (1.3x)";
-        } else {
-            document.getElementById('surge-tag').innerText = "Standard Rate";
-        }
-
-        const dCost = dist * dRate;
-        const tCost = time * tRate;
-        const total = base + ((dCost + tCost) * surge);
-
+        if ((hour >= 7 && hour < 9) || (hour >= 17 && hour < 20)) { surge = 1.3; label = "Peak Hour Surge (1.3x)"; }
+        
+        const total = base + (((dist * dRate) + (time * tRate)) * surge);
         document.getElementById('inv-dist').innerText = dist;
-        document.getElementById('inv-dist-cost').innerText = `RM ${dCost.toFixed(2)}`;
+        document.getElementById('inv-dist-cost').innerText = `RM ${(dist * dRate).toFixed(2)}`;
         document.getElementById('inv-time').innerText = time;
-        document.getElementById('inv-time-cost').innerText = `RM ${tCost.toFixed(2)}`;
         document.getElementById('inv-total').innerText = `RM ${total.toFixed(2)}`;
+        document.getElementById('surge-tag').innerText = label;
         document.getElementById('invoice').style.display = 'block';
     }
 </script>
