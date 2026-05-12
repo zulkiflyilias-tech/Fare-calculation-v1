@@ -3,214 +3,208 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fare Estimator Pro - Rideshare MY</title>
+    <title>Rideshare MY - Smart Fare Estimator</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        :root { --blue: #4285F4; --green: #34A853; --dark: #202124; --gray: #70757a; }
-        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Roboto, sans-serif; background: #f8f9fa; overflow: hidden; }
-        #map { height: 100vh; width: 100%; z-index: 1; }
-        
-        /* Search Interface */
-        .search-box {
-            position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
-            z-index: 1000; background: white; padding: 15px; border-radius: 16px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15); width: 90%; max-width: 420px;
+        #map { height: 350px; width: 100%; border-radius: 15px; z-index: 1; }
+        .floating-invoice {
+            box-shadow: 0 -10px 25px rgba(0,0,0,0.15);
+            transition: transform 0.3s ease-out;
+            transform: translateY(100%);
         }
-        .input-wrapper { position: relative; margin-bottom: 10px; }
-        .input-group { background: #f1f3f4; border-radius: 12px; display: flex; align-items: center; padding: 5px 12px; border: 1px solid transparent; }
-        .input-group:focus-within { border-color: var(--blue); background: white; }
-        .input-group input { border: none; background: transparent; flex: 1; padding: 12px 5px; outline: none; font-size: 14px; }
-        
-        /* Table-Powered Autocomplete UI */
-        .suggestions {
-            position: absolute; top: 100%; left: 0; right: 0; background: white;
-            border-radius: 0 0 12px 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-            max-height: 280px; overflow-y: auto; display: none; z-index: 1100; border: 1px solid #eee;
+        .floating-invoice.active { transform: translateY(0); }
+        .custom-loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
         }
-        .suggestion-item { padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #f1f1f1; display: flex; gap: 12px; }
-        .suggestion-item:hover { background: #e8f0fe; }
-        .sugg-icon { font-size: 18px; color: var(--gray); }
-        .sugg-content { flex: 1; display: flex; flex-direction: column; }
-        .sugg-main { font-weight: 600; color: #333; font-size: 14px; }
-        .sugg-sub { font-size: 11px; color: var(--gray); line-height: 1.3; margin-top: 2px; }
-
-        .icon-btn { background: none; border: none; cursor: pointer; font-size: 18px; padding: 5px; color: #5f6368; }
-        .btn-calculate { width: 100%; background: var(--blue); color: white; border: none; padding: 15px; border-radius: 12px; font-weight: bold; cursor: pointer; margin-top: 5px; }
-        
-        /* Receipt Card */
-        .invoice-card {
-            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            background: white; width: 90%; max-width: 380px; padding: 20px;
-            border-radius: 20px; box-shadow: 0 -5px 25px rgba(0,0,0,0.1);
-            z-index: 1000; display: none; border-top: 5px solid var(--green);
-        }
-        .invoice-row { display: flex; justify-content: space-between; margin: 8px 0; font-size: 14px; }
-        .invoice-total { border-top: 2px dashed #eee; margin-top: 10px; padding-top: 10px; font-weight: bold; font-size: 22px; display: flex; justify-content: space-between; }
-        .surge-badge { background: #fff3e0; color: #ef6c00; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; text-align: center; display: inline-block; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
-<body>
+<body class="bg-gray-50 font-sans">
 
-<div class="search-box">
-    <div class="input-wrapper">
-        <div class="input-group">
-            <button class="icon-btn" onclick="useGPS('pickup')">📍</button>
-            <input type="text" id="pickup" placeholder="Pickup location..." autocomplete="off" oninput="handleSearch(this)">
-            <button class="icon-btn" onclick="resetField('pickup')">✕</button>
-        </div>
-        <div id="pickup-suggestions" class="suggestions"></div>
+<div class="max-w-md mx-auto bg-white min-h-screen relative flex flex-col">
+    <div class="p-5 bg-blue-700 text-white shadow-lg">
+        <h1 class="text-2xl font-black tracking-tight">Rideshare MY</h1>
+        <p class="text-xs font-light opacity-90">Klang Valley & Interstate Calculator</p>
     </div>
 
-    <div class="input-wrapper">
-        <div class="input-group">
-            <span style="padding: 0 10px; color: #999;">🏁</span>
-            <input type="text" id="dropoff" placeholder="Destination..." autocomplete="off" oninput="handleSearch(this)">
-            <button class="icon-btn" onclick="resetField('dropoff')">✕</button>
-        </div>
-        <div id="dropoff-suggestions" class="suggestions"></div>
+    <div class="p-4">
+        <div id="map" class="shadow-inner border border-gray-200"></div>
     </div>
 
-    <input type="datetime-local" id="travel-schedule" style="width: 100%; border: 1px solid #ddd; padding: 10px; border-radius: 10px; margin-bottom: 10px; box-sizing: border-box;">
-    <button class="btn-calculate" onclick="estimateFare()">Get Estimate</button>
-</div>
+    <div class="px-4 pb-24 space-y-4">
+        <div class="relative">
+            <label class="text-[10px] uppercase font-bold text-gray-400 ml-1">Pickup Location</label>
+            <div class="relative">
+                <input id="pickup" type="text" placeholder="Search pickup..." class="w-full border-2 border-gray-100 p-3 rounded-xl text-sm focus:border-blue-500 outline-none pr-12">
+                <button onclick="useCurrentLocation()" class="absolute right-2 top-2 text-blue-600 p-1 hover:bg-blue-50 rounded-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                </button>
+            </div>
+        </div>
 
-<div id="invoice" class="invoice-card">
-    <div style="text-align: center; margin-bottom: 10px;"><div id="surge-tag" class="surge-badge">Standard Rate</div></div>
-    <div class="invoice-row"><span>Base Fare</span><span>RM 5.00</span></div>
-    <div class="invoice-row"><span>Distance (<span id="inv-dist">0</span> km)</span><span id="inv-dist-cost">RM 0.00</span></div>
-    <div class="invoice-row"><span>Time (<span id="inv-time">0</span> min)</span><span id="inv-time-cost">RM 0.00</span></div>
-    <div class="invoice-total"><span>Total</span><span id="inv-total">RM 0.00</span></div>
-</div>
+        <div class="relative">
+            <label class="text-[10px] uppercase font-bold text-gray-400 ml-1">Drop-off Point</label>
+            <input id="destination" type="text" placeholder="Search destination..." class="w-full border-2 border-gray-100 p-3 rounded-xl text-sm focus:border-blue-500 outline-none">
+        </div>
 
-<div id="map"></div>
+        <div class="flex items-end space-x-2">
+            <div class="flex-1">
+                <label class="text-[10px] uppercase font-bold text-gray-400 ml-1">Travel Time</label>
+                <input id="travel-time" type="time" class="w-full border-2 border-gray-100 p-3 rounded-xl text-sm outline-none">
+            </div>
+            <button onclick="calculateFare()" id="calc-btn" class="flex-1 bg-blue-600 text-white font-bold py-3.5 rounded-xl hover:bg-blue-700 shadow-md">Get Estimate</button>
+        </div>
+    </div>
+
+    <div id="invoice" class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white p-6 floating-invoice z-[2000] border-t-2 border-blue-50">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-extrabold text-gray-800">Fare Breakdown</h2>
+            <button onclick="closeInvoice()" class="text-gray-400 text-2xl">&times;</button>
+        </div>
+        
+        <div class="space-y-2 text-sm text-gray-600 border-b pb-4">
+            <div class="flex justify-between"><span>Base Fare</span><span>RM 5.00</span></div>
+            <div class="flex justify-between"><span>Distance (<span id="inv-dist">0</span> km)</span><span id="inv-dist-price">RM 0.00</span></div>
+            <div class="flex justify-between"><span>Time & Surge (<span id="inv-time">0</span> min)</span><span id="inv-time-price">RM 0.00</span></div>
+            <div id="interstate-row" class="hidden flex justify-between text-blue-600 font-bold bg-blue-50 p-2 rounded">
+                <span>Interstate Incentive</span><span>+ RM 0.45/min</span>
+            </div>
+        </div>
+        
+        <div class="flex justify-between items-center mt-4">
+            <div class="flex flex-col">
+                <span class="text-[10px] text-gray-400 uppercase font-bold">Total Fare</span>
+                <span class="text-4xl font-black text-blue-800">RM <span id="inv-total">0</span></span>
+            </div>
+            <button onclick="sendToWhatsApp()" class="bg-green-500 text-white px-6 py-4 rounded-xl font-bold shadow-lg">Book Now</button>
+        </div>
+    </div>
+</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    const map = L.map('map', {zoomControl: false}).setView([3.139, 101.686], 11);
+    let map = L.map('map', { zoomControl: false }).setView([3.139, 101.686], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-    let routeLayer, userCoords = [101.686, 3.139], searchTimer;
-
-    // Initial GPS Lock
-    navigator.geolocation.getCurrentPosition(pos => {
-        userCoords = [pos.coords.longitude, pos.coords.latitude];
-        map.setView([pos.coords.latitude, pos.coords.longitude], 13);
-    });
 
     const now = new Date();
-    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-    document.getElementById('travel-schedule').value = now.toISOString().slice(0, 16);
+    document.getElementById('travel-time').value = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
 
-    function resetField(id) {
-        document.getElementById(id).value = '';
-        document.getElementById(`${id}-suggestions`).style.display = 'none';
-        document.getElementById('invoice').style.display = 'none';
-        if(routeLayer) map.removeLayer(routeLayer);
+    function getTimeMultiplier(time) {
+        const [h, m] = time.split(':').map(Number);
+        const total = h * 60 + m;
+        if (total >= 390 && total <= 579) return 3.0;   // 06:30-09:39
+        if (total >= 750 && total <= 870) return 1.5;   // 12:30-14:30
+        if (total >= 990 && total <= 1230) return 3.0;  // 16:30-20:30
+        if (total >= 0 && total <= 389) return 1.8;     // 00:00-06:29
+        return 1.0;
     }
 
-    async function useGPS(id) {
-        const input = document.getElementById(id);
-        if (!navigator.geolocation) return alert("GPS not supported");
-
-        input.placeholder = "Locating...";
-        navigator.geolocation.getCurrentPosition(async (pos) => {
-            const lat = pos.coords.latitude;
-            const lon = pos.coords.longitude;
-            userCoords = [lon, lat]; // Sync global state
-
-            try {
-                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`, {
-                    headers: { 'User-Agent': 'RideshareMY_App' }
-                });
-                const data = await res.json();
-                input.value = data.display_name;
-                map.flyTo([lat, lon], 15);
-            } catch (e) { alert("Geocoding failed"); }
-            input.placeholder = id === 'pickup' ? "Pickup location..." : "Destination...";
-        }, (err) => alert(`GPS Error: ${err.message}`), { enableHighAccuracy: true });
+    // New Helper: Check if location is Klang Valley
+    function isKlangValley(stateName) {
+        const kv = ["selangor", "kuala lumpur", "putrajaya"];
+        return kv.some(s => stateName.toLowerCase().includes(s));
     }
 
-    async function handleSearch(input) {
-        clearTimeout(searchTimer);
-        const query = input.value;
-        const box = document.getElementById(`${input.id}-suggestions`);
-        if (query.length < 3) { box.style.display = 'none'; return; }
+    async function calculateFare() {
+        const btn = document.getElementById('calc-btn');
+        const pInput = document.getElementById('pickup').value;
+        const dInput = document.getElementById('destination').value;
+        const tInput = document.getElementById('travel-time').value;
 
-        searchTimer = setTimeout(async () => {
-            try {
-                const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5&lat=${userCoords[1]}&lon=${userCoords[0]}`);
-                const data = await res.json();
-                const feats = data.features;
-                if (!feats.length) return;
+        if(!pInput || !dInput) return alert("Fill locations");
 
-                const dests = feats.map(f => f.geometry.coordinates.join(',')).join(';');
-                const tableUrl = `https://router.project-osrm.org/table/v1/driving/${userCoords[0]},${userCoords[1]};${dests}?sources=0&annotations=distance`;
-                const tableRes = await fetch(tableUrl);
-                const tableData = await tableRes.json();
-
-                box.innerHTML = ''; box.style.display = 'block';
-                feats.forEach((feat, i) => {
-                    const p = feat.properties;
-                    const roadDist = tableData.distances[0][i+1] ? (tableData.distances[0][i+1] / 1000).toFixed(2) : "N/A";
-                    const sub = [p.street, p.district, p.state].filter(x => x && x !== p.name).join(", ");
-                    
-                    const item = document.createElement('div');
-                    item.className = 'suggestion-item';
-                    item.innerHTML = `
-                        <div class="sugg-icon">📍</div>
-                        <div class="sugg-content">
-                            <span class="sugg-main">${p.name || p.street || "Location"}</span>
-                            <span class="sugg-sub"><strong>${roadDist} km</strong> • ${sub}</span>
-                        </div>
-                    `;
-                    item.onclick = () => { input.value = `${p.name || p.street}, ${sub}`; box.style.display = 'none'; };
-                    box.appendChild(item);
-                });
-            } catch (e) { console.error(e); }
-        }, 300);
-    }
-
-    async function estimateFare() {
-        const p1 = document.getElementById('pickup').value;
-        const p2 = document.getElementById('dropoff').value;
-        if (!p1 || !p2) return alert("Please fill both fields");
+        btn.disabled = true;
+        btn.innerHTML = '<span class="custom-loader"></span>';
 
         try {
-            const s = await (await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(p1)}&limit=1`)).json();
-            const e = await (await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(p2)}&limit=1`)).json();
-            
-            const routeRes = await fetch(`https://router.project-osrm.org/route/v1/driving/${s.features[0].geometry.coordinates.join(',')};${e.features[0].geometry.coordinates.join(',')}?overview=full&geometries=geojson`);
-            const routeData = await routeRes.json();
-            
-            const dist = (routeData.routes[0].distance / 1000).toFixed(2);
-            const time = (routeData.routes[0].duration / 60).toFixed(0);
+            const pData = await getCoords(pInput);
+            const dData = await getCoords(dInput);
+            const route = await getRoute(pData, dData);
 
-            if (routeLayer) map.removeLayer(routeLayer);
-            routeLayer = L.geoJSON(routeData.routes[0].geometry, { color: '#4285F4', weight: 6 }).addTo(map);
-            map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
+            const km = route.distance / 1000;
+            const mins = route.duration / 60;
+            const tMult = getTimeMultiplier(tInput);
 
-            showInvoice(dist, time);
-        } catch (err) { alert("Routing error. Please check your addresses."); }
+            // AUTO INTERSTATE DETECTION
+            const pIsKV = isKlangValley(pData.address);
+            const dIsKV = isKlangValley(dData.address);
+            
+            let isInterstate = false;
+            // Trigger if moving between different states, unless both are in KV
+            if (pIsKV && dIsKV) {
+                isInterstate = false;
+            } else if (pData.state !== dData.state) {
+                isInterstate = true;
+            }
+
+            const base = 5.00;
+            const dCharge = km * 1.25;
+            let tCharge = mins * 0.45 * tMult;
+            
+            if(isInterstate) tCharge += (mins * 0.45);
+
+            const total = Math.round(base + dCharge + tCharge);
+
+            document.getElementById('inv-dist').innerText = km.toFixed(1);
+            document.getElementById('inv-dist-price').innerText = "RM " + dCharge.toFixed(2);
+            document.getElementById('inv-time').innerText = Math.round(mins);
+            document.getElementById('inv-time-price').innerText = "RM " + tCharge.toFixed(2);
+            document.getElementById('inv-total').innerText = total;
+            
+            document.getElementById('interstate-row').style.display = isInterstate ? 'flex' : 'none';
+            document.getElementById('invoice').classList.add('active');
+
+            map.eachLayer(l => { if(l instanceof L.Marker) map.removeLayer(l); });
+            L.marker([pData.lat, pData.lon]).addTo(map);
+            L.marker([dData.lat, dData.lon]).addTo(map);
+            map.fitBounds([[pData.lat, pData.lon], [dData.lat, dData.lon]]);
+
+        } catch (e) {
+            alert("Location error. Try adding town name.");
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = 'Get Estimate';
+        }
     }
 
-    function showInvoice(dist, time) {
-        const base = 5.00, dRate = 1.25, tRate = 0.30;
-        const hour = new Date(document.getElementById('travel-schedule').value).getHours();
-        let surge = 1.0, label = "Standard Rate";
-
-        if ((hour >= 7 && hour < 9) || (hour >= 17 && hour < 20)) { surge = 1.3; label = "Peak Hour Surge (1.3x)"; }
-        
-        const dCost = dist * dRate;
-        const tCost = time * tRate;
-        const total = base + ((dCost + tCost) * surge);
-
-        document.getElementById('inv-dist').innerText = dist;
-        document.getElementById('inv-dist-cost').innerText = `RM ${dCost.toFixed(2)}`;
-        document.getElementById('inv-time').innerText = time;
-        document.getElementById('inv-time-cost').innerText = `RM ${tCost.toFixed(2)}`;
-        document.getElementById('inv-total').innerText = `RM ${total.toFixed(2)}`;
-        document.getElementById('surge-tag').innerText = label;
-        document.getElementById('invoice').style.display = 'block';
+    async function getCoords(addr) {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(addr)}, Malaysia`);
+        const data = await res.json();
+        if (!data[0]) throw new Error();
+        // Extract state from address details
+        const state = data[0].address.state || data[0].address.city || "";
+        return { lat: data[0].lat, lon: data[0].lon, address: data[0].display_name, state: state };
     }
+
+    async function getRoute(s, e) {
+        const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${s.lon},${s.lat};${e.lon},${e.lat}?overview=false`);
+        const data = await res.json();
+        return data.routes[0];
+    }
+
+    function useCurrentLocation() {
+        navigator.geolocation.getCurrentPosition(pos => {
+            document.getElementById('pickup').value = `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
+        });
+    }
+
+    function sendToWhatsApp() {
+        const p = document.getElementById('pickup').value;
+        const d = document.getElementById('destination').value;
+        const total = document.getElementById('inv-total').innerText;
+        const msg = `*RIDE REQUEST*%0AFrom: ${p}%0ATo: ${d}%0AFare: RM ${total}`;
+        window.open(`https://wa.me/60123456789?text=${msg}`, '_blank');
+    }
+
+    function closeInvoice() { document.getElementById('invoice').classList.remove('active'); }
 </script>
 </body>
 </html>
