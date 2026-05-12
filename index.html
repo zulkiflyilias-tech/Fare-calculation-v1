@@ -3,88 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rideshare MY - Smart Fare Estimator</title>
+    <title>Rideshare MY - Expert Version</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        #map { height: 350px; width: 100%; border-radius: 15px; z-index: 1; }
-        .floating-invoice {
-            box-shadow: 0 -10px 25px rgba(0,0,0,0.15);
-            transition: transform 0.3s ease-out;
-            transform: translateY(100%);
-        }
+        #map { height: 300px; width: 100%; border-radius: 15px; z-index: 1; }
+        .floating-invoice { transition: transform 0.3s ease-out; transform: translateY(100%); }
         .floating-invoice.active { transform: translateY(0); }
-        .custom-loader {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #3498db;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            animation: spin 1s linear infinite;
-            display: inline-block;
-            vertical-align: middle;
-        }
+        .custom-loader { border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        /* Simple autocomplete styling */
+        .suggestions { position: absolute; background: white; width: 100%; z-index: 3000; border: 1px solid #ddd; max-height: 200px; overflow-y: auto; border-radius: 8px; margin-top: 2px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .suggestion-item { padding: 10px; cursor: pointer; font-size: 13px; border-bottom: 1px solid #eee; }
+        .suggestion-item:hover { background-color: #f8f9fa; }
     </style>
 </head>
-<body class="bg-gray-50 font-sans">
+<body class="bg-gray-100 font-sans">
 
-<div class="max-w-md mx-auto bg-white min-h-screen relative flex flex-col">
-    <div class="p-5 bg-blue-700 text-white shadow-lg">
-        <h1 class="text-2xl font-black tracking-tight">Rideshare MY</h1>
-        <p class="text-xs font-light opacity-90">Klang Valley & Interstate Calculator</p>
+<div class="max-w-md mx-auto bg-white min-h-screen relative flex flex-col shadow-xl">
+    <div class="p-5 bg-blue-700 text-white flex justify-between items-center">
+        <div>
+            <h1 class="text-xl font-black">Rideshare MY</h1>
+            <p class="text-[10px] opacity-80 uppercase tracking-widest">Premium Fare Calculation</p>
+        </div>
+        <div id="status-tag" class="bg-blue-800 px-2 py-1 rounded text-[10px]">READY</div>
     </div>
 
-    <div class="p-4">
-        <div id="map" class="shadow-inner border border-gray-200"></div>
-    </div>
+    <div class="p-4"><div id="map"></div></div>
 
-    <div class="px-4 pb-24 space-y-4">
+    <div class="px-4 space-y-4 pb-32">
+        <!-- Pickup -->
         <div class="relative">
-            <label class="text-[10px] uppercase font-bold text-gray-400 ml-1">Pickup Location</label>
+            <label class="text-[10px] font-bold text-gray-400 ml-1">PICKUP LOCATION</label>
             <div class="relative">
-                <input id="pickup" type="text" placeholder="Search pickup..." class="w-full border-2 border-gray-100 p-3 rounded-xl text-sm focus:border-blue-500 outline-none pr-12">
-                <button onclick="useCurrentLocation()" class="absolute right-2 top-2 text-blue-600 p-1 hover:bg-blue-50 rounded-lg">
+                <input id="pickup" type="text" oninput="handleAutocomplete(this)" placeholder="Search or use GPS..." class="w-full border-2 border-gray-100 p-3 rounded-xl text-sm focus:border-blue-500 outline-none pr-12">
+                <button onclick="useCurrentLocation()" class="absolute right-2 top-2 text-blue-600 p-1 bg-blue-50 rounded-lg">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                 </button>
             </div>
+            <div id="pickup-suggestions" class="suggestions hidden"></div>
         </div>
 
+        <!-- Destination -->
         <div class="relative">
-            <label class="text-[10px] uppercase font-bold text-gray-400 ml-1">Drop-off Point</label>
-            <input id="destination" type="text" placeholder="Search destination..." class="w-full border-2 border-gray-100 p-3 rounded-xl text-sm focus:border-blue-500 outline-none">
+            <label class="text-[10px] font-bold text-gray-400 ml-1">DROP-OFF POINT</label>
+            <input id="destination" type="text" oninput="handleAutocomplete(this)" placeholder="Where to?" class="w-full border-2 border-gray-100 p-3 rounded-xl text-sm focus:border-blue-500 outline-none">
+            <div id="destination-suggestions" class="suggestions hidden"></div>
         </div>
 
-        <div class="flex items-end space-x-2">
-            <div class="flex-1">
-                <label class="text-[10px] uppercase font-bold text-gray-400 ml-1">Travel Time</label>
-                <input id="travel-time" type="time" class="w-full border-2 border-gray-100 p-3 rounded-xl text-sm outline-none">
-            </div>
-            <button onclick="calculateFare()" id="calc-btn" class="flex-1 bg-blue-600 text-white font-bold py-3.5 rounded-xl hover:bg-blue-700 shadow-md">Get Estimate</button>
+        <!-- Date and Time -->
+        <div class="flex flex-col">
+            <label class="text-[10px] font-bold text-gray-400 ml-1">TRAVEL SCHEDULE</label>
+            <input id="travel-dt" type="datetime-local" class="w-full border-2 border-gray-100 p-3 rounded-xl text-sm outline-none">
         </div>
+
+        <button onclick="calculateFare()" id="calc-btn" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-all">GET ESTIMATE</button>
     </div>
 
-    <div id="invoice" class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white p-6 floating-invoice z-[2000] border-t-2 border-blue-50">
+    <!-- Invoice Overlay -->
+    <div id="invoice" class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white p-6 floating-invoice z-[2000] border-t-4 border-blue-600 rounded-t-3xl">
         <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-extrabold text-gray-800">Fare Breakdown</h2>
-            <button onclick="closeInvoice()" class="text-gray-400 text-2xl">&times;</button>
+            <h2 class="text-lg font-black text-gray-800">ESTIMATED FARE</h2>
+            <button onclick="closeInvoice()" class="text-2xl text-gray-300">&times;</button>
         </div>
-        
-        <div class="space-y-2 text-sm text-gray-600 border-b pb-4">
-            <div class="flex justify-between"><span>Base Fare</span><span>RM 5.00</span></div>
-            <div class="flex justify-between"><span>Distance (<span id="inv-dist">0</span> km)</span><span id="inv-dist-price">RM 0.00</span></div>
-            <div class="flex justify-between"><span>Time & Surge (<span id="inv-time">0</span> min)</span><span id="inv-time-price">RM 0.00</span></div>
-            <div id="interstate-row" class="hidden flex justify-between text-blue-600 font-bold bg-blue-50 p-2 rounded">
-                <span>Interstate Incentive</span><span>+ RM 0.45/min</span>
+        <div class="space-y-3 text-sm border-b pb-4">
+            <div class="flex justify-between text-gray-500"><span>Distance (<span id="inv-dist">0</span> km)</span><span id="inv-dist-price" class="font-bold">RM 0.00</span></div>
+            <div class="flex justify-between text-gray-500"><span>Time & Surge</span><span id="inv-time-price" class="font-bold">RM 0.00</span></div>
+            <div id="interstate-row" class="hidden flex justify-between text-blue-600 bg-blue-50 p-2 rounded-lg font-bold italic text-xs border border-blue-200">
+                <span>INTERSTATE INCENTIVE ADDED</span><span>+RM 0.45/min</span>
             </div>
         </div>
-        
-        <div class="flex justify-between items-center mt-4">
-            <div class="flex flex-col">
-                <span class="text-[10px] text-gray-400 uppercase font-bold">Total Fare</span>
-                <span class="text-4xl font-black text-blue-800">RM <span id="inv-total">0</span></span>
-            </div>
-            <button onclick="sendToWhatsApp()" class="bg-green-500 text-white px-6 py-4 rounded-xl font-bold shadow-lg">Book Now</button>
+        <div class="mt-4 flex justify-between items-center">
+            <span class="text-4xl font-black text-blue-700">RM <span id="inv-total">0</span></span>
+            <button onclick="sendWhatsApp()" class="bg-green-500 text-white px-6 py-3 rounded-xl font-bold flex items-center shadow-md">CONFIRM</button>
         </div>
     </div>
 </div>
@@ -94,12 +85,59 @@
     let map = L.map('map', { zoomControl: false }).setView([3.139, 101.686], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
+    // Set current local time
     const now = new Date();
-    document.getElementById('travel-time').value = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    document.getElementById('travel-dt').value = now.toISOString().slice(0,16);
 
-    function getTimeMultiplier(time) {
-        const [h, m] = time.split(':').map(Number);
+    // AUTOCOMPLETE LOGIC
+    let timeout = null;
+    function handleAutocomplete(input) {
+        clearTimeout(timeout);
+        const container = document.getElementById(input.id + '-suggestions');
+        if (input.value.length < 3) { container.classList.add('hidden'); return; }
+
+        timeout = setTimeout(async () => {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${input.value}, Malaysia&limit=5`);
+            const data = await res.json();
+            container.innerHTML = '';
+            container.classList.remove('hidden');
+            data.forEach(place => {
+                const div = document.createElement('div');
+                div.className = 'suggestion-item';
+                div.innerText = place.display_name;
+                div.onclick = () => {
+                    input.value = place.display_name;
+                    container.classList.add('hidden');
+                };
+                container.appendChild(div);
+            });
+        }, 500);
+    }
+
+    // REVERSE GEOLOCATION (GPS to Address)
+    function useCurrentLocation() {
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            document.getElementById('status-tag').innerText = "LOCATING...";
+            
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+            const data = await res.json();
+            
+            document.getElementById('pickup').value = data.display_name || `${lat}, ${lon}`;
+            document.getElementById('status-tag').innerText = "READY";
+            map.setView([lat, lon], 16);
+            L.marker([lat, lon]).addTo(map);
+        });
+    }
+
+    function getTimeMultiplier(dtString) {
+        const date = new Date(dtString);
+        const h = date.getHours();
+        const m = date.getMinutes();
         const total = h * 60 + m;
+
         if (total >= 390 && total <= 579) return 3.0;   // 06:30-09:39
         if (total >= 750 && total <= 870) return 1.5;   // 12:30-14:30
         if (total >= 990 && total <= 1230) return 3.0;  // 16:30-20:30
@@ -107,101 +145,61 @@
         return 1.0;
     }
 
-    // New Helper: Check if location is Klang Valley
-    function isKlangValley(stateName) {
-        const kv = ["selangor", "kuala lumpur", "putrajaya"];
-        return kv.some(s => stateName.toLowerCase().includes(s));
-    }
-
     async function calculateFare() {
         const btn = document.getElementById('calc-btn');
-        const pInput = document.getElementById('pickup').value;
-        const dInput = document.getElementById('destination').value;
-        const tInput = document.getElementById('travel-time').value;
+        const pVal = document.getElementById('pickup').value;
+        const dVal = document.getElementById('destination').value;
+        const dtVal = document.getElementById('travel-dt').value;
 
-        if(!pInput || !dInput) return alert("Fill locations");
-
-        btn.disabled = true;
         btn.innerHTML = '<span class="custom-loader"></span>';
-
+        
         try {
-            const pData = await getCoords(pInput);
-            const dData = await getCoords(dInput);
-            const route = await getRoute(pData, dData);
+            const pRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${pVal}, Malaysia&limit=1`);
+            const pData = (await pRes.json())[0];
+            const dRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${dVal}, Malaysia&limit=1`);
+            const dData = (await dRes.json())[0];
+
+            const routeRes = await fetch(`https://router.project-osrm.org/route/v1/driving/${pData.lon},${pData.lat};${dData.lon},${dData.lat}?overview=false`);
+            const route = (await routeRes.json()).routes[0];
 
             const km = route.distance / 1000;
             const mins = route.duration / 60;
-            const tMult = getTimeMultiplier(tInput);
+            const tMult = getTimeMultiplier(dtVal);
 
-            // AUTO INTERSTATE DETECTION
-            const pIsKV = isKlangValley(pData.address);
-            const dIsKV = isKlangValley(dData.address);
+            // Interstate Logic
+            const kv = ["selangor", "kuala lumpur", "putrajaya"];
+            const pState = (pData.address.state || pData.address.city || "").toLowerCase();
+            const dState = (dData.address.state || dData.address.city || "").toLowerCase();
             
-            let isInterstate = false;
-            // Trigger if moving between different states, unless both are in KV
-            if (pIsKV && dIsKV) {
-                isInterstate = false;
-            } else if (pData.state !== dData.state) {
-                isInterstate = true;
+            let isInter = false;
+            if (!(kv.some(s => pState.includes(s)) && kv.some(s => dState.includes(s)))) {
+                if (pState !== dState) isInter = true;
             }
 
-            const base = 5.00;
-            const dCharge = km * 1.25;
-            let tCharge = mins * 0.45 * tMult;
-            
-            if(isInterstate) tCharge += (mins * 0.45);
+            const distCharge = km * 1.25;
+            let timeCharge = mins * 0.45 * tMult;
+            if(isInter) timeCharge += (mins * 0.45);
 
-            const total = Math.round(base + dCharge + tCharge);
+            const total = Math.round(5.00 + distCharge + timeCharge);
 
             document.getElementById('inv-dist').innerText = km.toFixed(1);
-            document.getElementById('inv-dist-price').innerText = "RM " + dCharge.toFixed(2);
-            document.getElementById('inv-time').innerText = Math.round(mins);
-            document.getElementById('inv-time-price').innerText = "RM " + tCharge.toFixed(2);
+            document.getElementById('inv-dist-price').innerText = "RM " + distCharge.toFixed(2);
+            document.getElementById('inv-time-price').innerText = "RM " + timeCharge.toFixed(2);
             document.getElementById('inv-total').innerText = total;
-            
-            document.getElementById('interstate-row').style.display = isInterstate ? 'flex' : 'none';
+            document.getElementById('interstate-row').style.display = isInter ? 'flex' : 'none';
             document.getElementById('invoice').classList.add('active');
 
-            map.eachLayer(l => { if(l instanceof L.Marker) map.removeLayer(l); });
-            L.marker([pData.lat, pData.lon]).addTo(map);
-            L.marker([dData.lat, dData.lon]).addTo(map);
-            map.fitBounds([[pData.lat, pData.lon], [dData.lat, dData.lon]]);
-
-        } catch (e) {
-            alert("Location error. Try adding town name.");
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = 'Get Estimate';
-        }
+        } catch (e) { alert("Check location spellings."); }
+        btn.innerHTML = 'GET ESTIMATE';
     }
 
-    async function getCoords(addr) {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(addr)}, Malaysia`);
-        const data = await res.json();
-        if (!data[0]) throw new Error();
-        // Extract state from address details
-        const state = data[0].address.state || data[0].address.city || "";
-        return { lat: data[0].lat, lon: data[0].lon, address: data[0].display_name, state: state };
-    }
-
-    async function getRoute(s, e) {
-        const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${s.lon},${s.lat};${e.lon},${e.lat}?overview=false`);
-        const data = await res.json();
-        return data.routes[0];
-    }
-
-    function useCurrentLocation() {
-        navigator.geolocation.getCurrentPosition(pos => {
-            document.getElementById('pickup').value = `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
-        });
-    }
-
-    function sendToWhatsApp() {
+    function sendWhatsApp() {
         const p = document.getElementById('pickup').value;
         const d = document.getElementById('destination').value;
-        const total = document.getElementById('inv-total').innerText;
-        const msg = `*RIDE REQUEST*%0AFrom: ${p}%0ATo: ${d}%0AFare: RM ${total}`;
-        window.open(`https://wa.me/60123456789?text=${msg}`, '_blank');
+        const f = document.getElementById('inv-total').innerText;
+        const dt = document.getElementById('travel-dt').value.replace('T', ' ');
+        const msg = `*RIDE REQUEST*%0A*Time:* ${dt}%0A*From:* ${p}%0A*To:* ${d}%0A*Fare:* RM ${f}`;
+        window.open(`https://wa.me/60123456789?text=${msg}`);
     }
 
     function closeInvoice() { document.getElementById('invoice').classList.remove('active'); }
