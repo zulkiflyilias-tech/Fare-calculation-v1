@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rideshare MY - Final Fixed</title>
+    <title>Rideshare MY - Final Build</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -17,21 +17,23 @@
         .suggestion-item:hover { background-color: #f8f9fa; }
     </style>
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-100 font-sans">
 
 <div class="max-w-md mx-auto bg-white min-h-screen relative flex flex-col shadow-xl">
     <div class="p-5 bg-blue-700 text-white flex justify-between items-center">
         <h1 class="text-xl font-black">Rideshare MY</h1>
-        <div id="status-tag" class="bg-blue-800 px-2 py-1 rounded text-[10px]">READY</div>
+        <button onclick="resetApp()" class="text-xs bg-blue-800 px-3 py-1 rounded-full uppercase font-bold">Reset All</button>
     </div>
 
     <div class="p-4"><div id="map"></div></div>
 
     <div class="px-4 space-y-4 pb-32">
+        <!-- Pickup with Clear/Reset -->
         <div class="relative">
-            <label class="text-[10px] font-bold text-gray-400">PICKUP</label>
+            <label class="text-[10px] font-bold text-gray-400 ml-1 uppercase">Pickup</label>
             <div class="relative">
-                <input id="pickup" type="text" oninput="handleAutocomplete(this)" placeholder="Search pickup..." class="w-full border-2 border-gray-100 p-3 rounded-xl text-sm outline-none">
+                <input id="pickup" type="text" autocomplete="off" oninput="handleAutocomplete(this)" placeholder="Search pickup..." class="w-full border-2 border-gray-100 p-3 rounded-xl text-sm focus:border-blue-500 outline-none pr-10">
+                <button onclick="document.getElementById('pickup').value=''; pickupCoords=null;" class="absolute right-10 top-3 text-gray-300">&times;</button>
                 <button onclick="useCurrentLocation()" class="absolute right-2 top-2 text-blue-600 p-1 bg-blue-50 rounded-lg">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                 </button>
@@ -39,13 +41,26 @@
             <div id="pickup-suggestions" class="suggestions hidden"></div>
         </div>
 
+        <!-- Swap Button -->
+        <div class="flex justify-center -my-2">
+            <button onclick="swapLocations()" class="bg-white border-2 border-gray-100 p-2 rounded-full shadow-sm hover:bg-gray-50 z-10">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
+            </button>
+        </div>
+
+        <!-- Destination -->
         <div class="relative">
-            <label class="text-[10px] font-bold text-gray-400">DESTINATION</label>
-            <input id="destination" type="text" oninput="handleAutocomplete(this)" placeholder="Where to?" class="w-full border-2 border-gray-100 p-3 rounded-xl text-sm outline-none">
+            <label class="text-[10px] font-bold text-gray-400 ml-1 uppercase">Destination</label>
+            <input id="destination" type="text" autocomplete="off" oninput="handleAutocomplete(this)" placeholder="Where to?" class="w-full border-2 border-gray-100 p-3 rounded-xl text-sm focus:border-blue-500 outline-none pr-10">
+            <button onclick="document.getElementById('destination').value=''; destCoords=null;" class="absolute right-3 top-9 text-gray-300">&times;</button>
             <div id="destination-suggestions" class="suggestions hidden"></div>
         </div>
 
-        <input id="travel-dt" type="datetime-local" class="w-full border-2 border-gray-100 p-3 rounded-xl text-sm outline-none">
+        <!-- Travel Time (Auto-recalculate on change) -->
+        <div class="flex flex-col">
+            <label class="text-[10px] font-bold text-gray-400 ml-1 uppercase">Schedule (Auto-Update)</label>
+            <input id="travel-dt" type="datetime-local" onchange="autoRecalculate()" class="w-full border-2 border-gray-100 p-3 rounded-xl text-sm outline-none bg-blue-50 focus:bg-white transition-colors">
+        </div>
 
         <button onclick="calculateFare()" id="calc-btn" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-all">GET ESTIMATE</button>
     </div>
@@ -53,19 +68,19 @@
     <!-- Invoice -->
     <div id="invoice" class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white p-6 floating-invoice z-[2000] border-t-4 border-blue-600 rounded-t-3xl">
         <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-black text-gray-800">ESTIMATED FARE</h2>
+            <h2 class="text-lg font-black text-gray-800 tracking-tight">TOTAL ESTIMATE</h2>
             <button onclick="closeInvoice()" class="text-2xl text-gray-300">&times;</button>
         </div>
         <div class="space-y-2 text-sm border-b pb-4">
-            <div class="flex justify-between"><span>Distance (<span id="inv-dist">0</span> km)</span><span id="inv-dist-price" class="font-bold">RM 0.00</span></div>
-            <div class="flex justify-between"><span>Time & Surge</span><span id="inv-time-price" class="font-bold">RM 0.00</span></div>
+            <div class="flex justify-between text-gray-500"><span>Distance (<span id="inv-dist">0</span> km)</span><span id="inv-dist-price" class="font-bold text-gray-800">RM 0.00</span></div>
+            <div class="flex justify-between text-gray-500"><span>Time & Surge</span><span id="inv-time-price" class="font-bold text-gray-800">RM 0.00</span></div>
             <div id="interstate-row" class="hidden text-blue-600 bg-blue-50 p-2 rounded-lg font-bold text-xs border border-blue-200 flex justify-between">
                 <span>INTERSTATE INCENTIVE</span><span>+RM 0.45/min</span>
             </div>
         </div>
         <div class="mt-4 flex justify-between items-center">
-            <span class="text-4xl font-black text-blue-700">RM <span id="inv-total">0</span></span>
-            <button onclick="sendWhatsApp()" class="bg-green-500 text-white px-6 py-3 rounded-xl font-bold shadow-md">CONFIRM</button>
+            <span class="text-4xl font-black text-blue-700 tracking-tighter">RM <span id="inv-total">0</span></span>
+            <button onclick="sendWhatsApp()" class="bg-green-500 text-white px-8 py-3 rounded-xl font-bold shadow-md hover:bg-green-600">BOOK</button>
         </div>
     </div>
 </div>
@@ -75,24 +90,54 @@
     let map = L.map('map', { zoomControl: false }).setView([3.139, 101.686], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-    // Initial DateTime
+    let pickupCoords = null, destCoords = null;
+    const dtInput = document.getElementById('travel-dt');
+
+    // Set initial date
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-    document.getElementById('travel-dt').value = now.toISOString().slice(0,16);
+    dtInput.value = now.toISOString().slice(0,16);
 
-    let pickupCoords = null;
-    let destCoords = null;
+    // SWAP & RESET
+    function swapLocations() {
+        const p = document.getElementById('pickup');
+        const d = document.getElementById('destination');
+        const tempVal = p.value; p.value = d.value; d.value = tempVal;
+        const tempCoord = pickupCoords; pickupCoords = destCoords; destCoords = tempCoord;
+        if(pickupCoords && destCoords) calculateFare();
+    }
 
-    // Fixed Autocomplete Helper
+    function resetApp() {
+        document.getElementById('pickup').value = '';
+        document.getElementById('destination').value = '';
+        pickupCoords = null; destCoords = null;
+        closeInvoice();
+        map.setView([3.139, 101.686], 11);
+        map.eachLayer(l => { if(l instanceof L.Marker) map.removeLayer(l); });
+    }
+
+    // AUTO-ESTIMATE ON TIME CHANGE
+    function autoRecalculate() {
+        const p = document.getElementById('pickup').value;
+        const d = document.getElementById('destination').value;
+        if(p && d) calculateFare();
+    }
+
+    // FIXED AUTOCOMPLETE
+    let debounceTimer;
     function handleAutocomplete(input) {
         const container = document.getElementById(input.id + '-suggestions');
-        if (input.value.length < 3) { container.classList.add('hidden'); return; }
+        const query = input.value.trim();
         
-        clearTimeout(input.t);
-        input.t = setTimeout(async () => {
+        if (query.length < 3) { container.classList.add('hidden'); return; }
+
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(async () => {
             try {
-                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(input.value)}, Malaysia&limit=5`);
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}, Malaysia&limit=5`);
                 const data = await res.json();
+                if(!data.length) return;
+                
                 container.innerHTML = '';
                 container.classList.remove('hidden');
                 data.forEach(item => {
@@ -102,8 +147,9 @@
                     div.onclick = () => {
                         input.value = item.display_name;
                         container.classList.add('hidden');
-                        if(input.id === 'pickup') pickupCoords = {lat: item.lat, lon: item.lon, addr: item.display_name};
-                        else destCoords = {lat: item.lat, lon: item.lon, addr: item.display_name};
+                        const coords = {lat: item.lat, lon: item.lon, addr: item.display_name};
+                        if(input.id === 'pickup') pickupCoords = coords; else destCoords = coords;
+                        if(pickupCoords && destCoords) calculateFare();
                     };
                     container.appendChild(div);
                 });
@@ -113,55 +159,50 @@
 
     async function useCurrentLocation() {
         navigator.geolocation.getCurrentPosition(async (pos) => {
-            const lat = pos.coords.latitude;
-            const lon = pos.coords.longitude;
-            document.getElementById('status-tag').innerText = "LOCATING...";
+            const lat = pos.coords.latitude, lon = pos.coords.longitude;
             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
             const data = await res.json();
             document.getElementById('pickup').value = data.display_name;
             pickupCoords = {lat, lon, addr: data.display_name};
-            document.getElementById('status-tag').innerText = "READY";
-            map.setView([lat, lon], 16);
+            if(destCoords) calculateFare();
+            map.setView([lat, lon], 15);
         });
     }
 
-    // Fixed Calculation with "Cleaning" for addresses
     async function calculateFare() {
         const btn = document.getElementById('calc-btn');
         const pVal = document.getElementById('pickup').value;
         const dVal = document.getElementById('destination').value;
-        const dtVal = document.getElementById('travel-dt').value;
+        if(!pVal || !dVal) return;
 
         btn.innerHTML = '<span class="custom-loader"></span>';
 
         try {
-            // Helper to get coords if user typed manually without clicking suggestion
-            const fetchPoint = async (val) => {
-                const query = val.split(',').slice(0,3).join(','); // Clean long address
-                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(query)}, Malaysia&limit=1`);
-                const data = await res.json();
-                return data[0];
+            const getPt = async (val, stored) => {
+                if(stored) return stored;
+                const search = val.split(',').slice(0,2).join(','); // Clean long addresses
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(search)}, Malaysia&limit=1`);
+                const d = await res.json(); return d[0];
             };
 
-            const pPoint = pickupCoords || await fetchPoint(pVal);
-            const dPoint = destCoords || await fetchPoint(dVal);
+            const pPoint = await getPt(pVal, pickupCoords);
+            const dPoint = await getPt(dVal, destCoords);
 
             const routeRes = await fetch(`https://router.project-osrm.org/route/v1/driving/${pPoint.lon},${pPoint.lat};${dPoint.lon},${dPoint.lat}?overview=false`);
             const route = (await routeRes.json()).routes[0];
 
-            const km = route.distance / 1000;
-            const mins = route.duration / 60;
+            const km = route.distance / 1000, mins = route.duration / 60;
 
             // Surge logic
-            const date = new Date(dtVal);
+            const date = new Date(dtInput.value);
             const totalMin = date.getHours() * 60 + date.getMinutes();
             let mult = 1.0;
-            if (totalMin >= 390 && totalMin <= 579) mult = 3.0;
-            else if (totalMin >= 750 && totalMin <= 870) mult = 1.5;
-            else if (totalMin >= 990 && totalMin <= 1230) mult = 3.0;
-            else if (totalMin >= 0 && totalMin <= 389) mult = 1.8;
+            if (totalMin >= 390 && totalMin <= 579) mult = 3.0; // 06:30-09:39
+            else if (totalMin >= 750 && totalMin <= 870) mult = 1.5; // 12:30-14:30
+            else if (totalMin >= 990 && totalMin <= 1230) mult = 3.0; // 16:30-20:30
+            else if (totalMin >= 0 && totalMin <= 389) mult = 1.8; // 00:00-06:29
 
-            // Interstate
+            // Interstate detection (State labels)
             const kv = ["selangor", "kuala lumpur", "putrajaya"];
             const pState = (pPoint.address?.state || pPoint.address?.city || "").toLowerCase();
             const dState = (dPoint.address?.state || dPoint.address?.city || "").toLowerCase();
@@ -177,12 +218,19 @@
             document.getElementById('inv-total').innerText = Math.round(5.00 + distCharge + timeCharge);
             document.getElementById('interstate-row').style.display = isInter ? 'flex' : 'none';
             document.getElementById('invoice').classList.add('active');
-        } catch (e) { alert("Route not found. Try shortening the address."); }
+            
+            // Markers
+            map.eachLayer(l => { if(l instanceof L.Marker) map.removeLayer(l); });
+            L.marker([pPoint.lat, pPoint.lon]).addTo(map);
+            L.marker([dPoint.lat, dPoint.lon]).addTo(map);
+            map.fitBounds([[pPoint.lat, pPoint.lon], [dPoint.lat, dPoint.lon]]);
+
+        } catch (e) { console.error(e); }
         btn.innerHTML = 'GET ESTIMATE';
     }
 
     function sendWhatsApp() {
-        const msg = `*RIDE REQUEST*%0ATime: ${document.getElementById('travel-dt').value.replace('T',' ')}%0AFrom: ${document.getElementById('pickup').value}%0ATo: ${document.getElementById('destination').value}%0AFare: RM ${document.getElementById('inv-total').innerText}`;
+        const msg = `*RIDE REQUEST*%0ATime: ${dtInput.value.replace('T',' ')}%0AFrom: ${document.getElementById('pickup').value}%0ATo: ${document.getElementById('destination').value}%0AFare: RM ${document.getElementById('inv-total').innerText}`;
         window.open(`https://wa.me/60123456789?text=${msg}`);
     }
     function closeInvoice() { document.getElementById('invoice').classList.remove('active'); }
