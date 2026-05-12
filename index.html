@@ -10,7 +10,7 @@
         body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Roboto, sans-serif; background: #f8f9fa; overflow: hidden; }
         #map { height: 100vh; width: 100%; z-index: 1; }
         
-        /* Search Interface */
+        /* Search UI */
         .search-box {
             position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
             z-index: 1000; background: white; padding: 15px; border-radius: 16px;
@@ -20,7 +20,7 @@
         .input-group { background: #f1f3f4; border-radius: 12px; display: flex; align-items: center; padding: 5px 12px; }
         .input-group input { border: none; background: transparent; flex: 1; padding: 12px 5px; outline: none; font-size: 14px; }
         
-        /* Detailed Autocomplete (Matches 252544.jpg) */
+        /* Table-Powered Autocomplete UI */
         .suggestions {
             position: absolute; top: 100%; left: 0; right: 0; background: white;
             border-radius: 0 0 12px 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.1);
@@ -33,19 +33,18 @@
         .sugg-main { font-weight: 600; color: #333; font-size: 14px; }
         .sugg-sub { font-size: 11px; color: var(--gray); line-height: 1.3; margin-top: 2px; }
 
-        .icon-btn { background: none; border: none; cursor: pointer; font-size: 18px; padding: 5px; color: #5f6368; }
-        .btn-calculate { width: 100%; background: var(--blue); color: white; border: none; padding: 15px; border-radius: 12px; font-weight: bold; cursor: pointer; margin-top: 5px; }
+        .btn-calculate { width: 100%; background: var(--blue); color: white; border: none; padding: 15px; border-radius: 12px; font-weight: bold; cursor: pointer; }
         
-        /* Floating Invoice Breakdown */
+        /* Receipt Card */
         .invoice-card {
             position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
             background: white; width: 90%; max-width: 380px; padding: 20px;
             border-radius: 20px; box-shadow: 0 -5px 25px rgba(0,0,0,0.1);
             z-index: 1000; display: none; border-top: 5px solid var(--green);
         }
-        .invoice-row { display: flex; justify-content: space-between; margin: 8px 0; font-size: 14px; color: #555; }
+        .invoice-row { display: flex; justify-content: space-between; margin: 8px 0; font-size: 14px; }
         .invoice-total { border-top: 2px dashed #eee; margin-top: 10px; padding-top: 10px; font-weight: bold; font-size: 22px; display: flex; justify-content: space-between; }
-        .surge-badge { background: #fff3e0; color: #ef6c00; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; text-align: center; display: inline-block; }
+        .surge-badge { background: #fff3e0; color: #ef6c00; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -53,24 +52,22 @@
 <div class="search-box">
     <div class="input-wrapper">
         <div class="input-group">
-            <button class="icon-btn" onclick="useGPS('pickup')">📍</button>
+            <span style="padding: 0 10px;">📍</span>
             <input type="text" id="pickup" placeholder="Pickup location..." autocomplete="off" oninput="handleSearch(this)">
-            <button class="icon-btn" onclick="resetField('pickup')">✕</button>
         </div>
         <div id="pickup-suggestions" class="suggestions"></div>
     </div>
 
     <div class="input-wrapper">
         <div class="input-group">
-            <span style="padding: 0 10px; color: #999;">🏁</span>
-            <input type="text" id="dropoff" placeholder="Destination..." autocomplete="off" oninput="handleSearch(this)">
-            <button class="icon-btn" onclick="resetField('dropoff')">✕</button>
+            <span style="padding: 0 10px;">🏁</span>
+            <input type="text" id="dropoff" placeholder="Where to?" autocomplete="off" oninput="handleSearch(this)">
         </div>
         <div id="dropoff-suggestions" class="suggestions"></div>
     </div>
 
     <input type="datetime-local" id="travel-schedule" style="width: 100%; border: 1px solid #ddd; padding: 10px; border-radius: 10px; margin-bottom: 10px; box-sizing: border-box;">
-    <button class="btn-calculate" id="calc-btn" onclick="estimateFare()">Get Estimate</button>
+    <button class="btn-calculate" onclick="estimateFare()">Get Estimate</button>
 </div>
 
 <div id="invoice" class="invoice-card">
@@ -87,86 +84,79 @@
 <script>
     const map = L.map('map', {zoomControl: false}).setView([3.139, 101.686], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-    let routeLayer, userCoords = [101.686, 3.139];
+    let routeLayer, userCoords = [101.686, 3.139], searchTimer;
 
-    // Get current GPS for distance bias
     navigator.geolocation.getCurrentPosition(pos => {
         userCoords = [pos.coords.longitude, pos.coords.latitude];
     });
 
+    // Default time to now
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
     document.getElementById('travel-schedule').value = now.toISOString().slice(0, 16);
 
-    function resetField(id) {
-        document.getElementById(id).value = '';
-        document.getElementById(`${id}-suggestions`).style.display = 'none';
-        document.getElementById('invoice').style.display = 'none';
-        if(routeLayer) map.removeLayer(routeLayer);
-    }
-
-    function calculateStraightDist(lon1, lat1, lon2, lat2) {
-        const R = 6371; 
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-        return (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))).toFixed(2);
-    }
-
     async function handleSearch(input) {
+        clearTimeout(searchTimer);
         const query = input.value;
         const suggestionBox = document.getElementById(`${input.id}-suggestions`);
         if (query.length < 3) { suggestionBox.style.display = 'none'; return; }
 
-        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=6&lat=${userCoords[1]}&lon=${userCoords[0]}`);
-        const data = await res.json();
-        suggestionBox.innerHTML = ''; suggestionBox.style.display = 'block';
+        searchTimer = setTimeout(async () => {
+            try {
+                // 1. Get 5 suggestions from Photon
+                const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5&lat=${userCoords[1]}&lon=${userCoords[0]}`);
+                const data = await res.json();
+                const feats = data.features;
+                if (!feats.length) return;
 
-        data.features.forEach(feat => {
-            const p = feat.properties;
-            const dist = calculateStraightDist(userCoords[0], userCoords[1], feat.geometry.coordinates[0], feat.geometry.coordinates[1]);
-            const sub = [p.street, p.district || p.city, p.postcode, p.state].filter(x => x && x !== p.name).join(", ");
-            
-            const item = document.createElement('div');
-            item.className = 'suggestion-item';
-            item.innerHTML = `
-                <div class="sugg-icon">📍</div>
-                <div class="sugg-content">
-                    <span class="sugg-main">${p.name || p.street}</span>
-                    <span class="sugg-sub"><strong>${dist}km</strong> • ${sub}</span>
-                </div>
-            `;
-            item.onclick = () => { input.value = `${p.name || p.street}, ${sub}`; suggestionBox.style.display = 'none'; };
-            suggestionBox.appendChild(item);
-        });
-    }
+                // 2. Batch Road Distance Request (Table API)
+                const dests = feats.map(f => f.geometry.coordinates.join(',')).join(';');
+                const tableUrl = `https://router.project-osrm.org/table/v1/driving/${userCoords[0]},${userCoords[1]};${dests}?sources=0&annotations=distance`;
+                const tableRes = await fetch(tableUrl);
+                const tableData = await tableRes.json();
 
-    async function useGPS(id) {
-        navigator.geolocation.getCurrentPosition(async (pos) => {
-            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`);
-            const data = await res.json();
-            document.getElementById(id).value = data.display_name;
-        });
+                // 3. Render
+                suggestionBox.innerHTML = ''; suggestionBox.style.display = 'block';
+                feats.forEach((feat, i) => {
+                    const p = feat.properties;
+                    const roadDist = tableData.distances[0][i+1] ? (tableData.distances[0][i+1] / 1000).toFixed(2) : "N/A";
+                    const sub = [p.street, p.district, p.state].filter(x => x && x !== p.name).join(", ");
+                    
+                    const item = document.createElement('div');
+                    item.className = 'suggestion-item';
+                    item.innerHTML = `
+                        <div class="sugg-icon">🚗</div>
+                        <div class="sugg-content">
+                            <span class="sugg-main">${p.name || p.street || "Location"}</span>
+                            <span class="sugg-sub"><strong>${roadDist} km</strong> • ${sub}</span>
+                        </div>
+                    `;
+                    item.onclick = () => { input.value = `${p.name || p.street}, ${sub}`; suggestionBox.style.display = 'none'; };
+                    suggestionBox.appendChild(item);
+                });
+            } catch (e) { console.error(e); }
+        }, 300);
     }
 
     async function estimateFare() {
-        const pickup = document.getElementById('pickup').value;
-        const dropoff = document.getElementById('dropoff').value;
-        if (!pickup || !dropoff) return alert("Please fill both fields");
+        const p1 = document.getElementById('pickup').value;
+        const p2 = document.getElementById('dropoff').value;
+        if (!p1 || !p2) return alert("Enter locations");
 
-        const start = await (await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(pickup)}&limit=1`)).json();
-        const end = await (await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(dropoff)}&limit=1`)).json();
+        const s = await (await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(p1)}&limit=1`)).json();
+        const e = await (await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(p2)}&limit=1`)).json();
         
-        const osrm = await (await fetch(`https://router.project-osrm.org/route/v1/driving/${start.features[0].geometry.coordinates.join(',')};${end.features[0].geometry.coordinates.join(',')}?overview=full&geometries=geojson`)).json();
+        const routeRes = await fetch(`https://router.project-osrm.org/route/v1/driving/${s.features[0].geometry.coordinates.join(',')};${e.features[0].geometry.coordinates.join(',')}?overview=full&geometries=geojson`);
+        const routeData = await routeRes.json();
         
-        const distKm = (osrm.routes[0].distance / 1000).toFixed(2);
-        const timeMin = (osrm.routes[0].duration / 60).toFixed(0);
+        const dist = (routeData.routes[0].distance / 1000).toFixed(2);
+        const time = (routeData.routes[0].duration / 60).toFixed(0);
 
         if (routeLayer) map.removeLayer(routeLayer);
-        routeLayer = L.geoJSON(osrm.routes[0].geometry, { color: '#4285F4', weight: 6 }).addTo(map);
-        map.fitBounds(routeLayer.getBounds(), { padding: [100, 100] });
+        routeLayer = L.geoJSON(routeData.routes[0].geometry, { color: '#4285F4', weight: 6 }).addTo(map);
+        map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
 
-        showInvoice(distKm, timeMin);
+        showInvoice(dist, time);
     }
 
     function showInvoice(dist, time) {
