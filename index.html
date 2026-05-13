@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY | GPS Edition</title>
+    <title>Rideshare MY | Smart Address Search</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -41,12 +41,10 @@
         }
         input:focus { border-color: var(--primary); background: #fafffb; }
 
-        /* Highlight active input */
         .input-wrapper.highlight input {
             border-color: var(--primary);
             background-color: #f0fff4;
             box-shadow: 0 0 0 2px rgba(0, 177, 79, 0.2);
-            transition: all 0.2s ease;
         }
 
         .icon-point { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; }
@@ -70,18 +68,52 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.05); font-size: 18px;
         }
 
+        .search-options {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 8px;
+            gap: 8px;
+        }
+        .sort-toggle {
+            background: #f0f0f0;
+            border: none;
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: #555;
+        }
+        .sort-toggle.active {
+            background: var(--primary);
+            color: white;
+        }
+
         .scheduler { display: flex; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #f8f8f8; }
         .scheduler input {
             flex: 1; padding: 10px; border: 1.5px solid #ececec; border-radius: 8px;
-            font-size: 12px; color: var(--dark); cursor: pointer;
+            font-size: 12px; cursor: pointer;
         }
 
         .results-list {
             position: absolute; top: 100%; left: 0; right: 0; background: white;
-            border-radius: 12px; margin-top: 8px; max-height: 200px; overflow-y: auto;
+            border-radius: 12px; margin-top: 8px; max-height: 260px; overflow-y: auto;
             box-shadow: var(--shadow); z-index: 2000; display: none;
         }
-        .result-item { padding: 12px 16px; border-bottom: 1px solid #f9f9f9; cursor: pointer; font-size: 13px; }
+        .result-item {
+            padding: 10px 14px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.1s;
+        }
+        .result-item:hover { background: #f9f9f9; }
+        .result-primary { font-weight: 600; display: flex; justify-content: space-between; align-items: baseline; }
+        .result-detail { font-size: 11px; color: #777; margin-top: 4px; }
+        .distance-badge { font-size: 10px; background: #eef4ff; padding: 2px 6px; border-radius: 12px; color: #1a73e8; }
 
         .bottom-panel { pointer-events: auto; margin-top: auto; width: 100%; max-width: 500px; margin-left: auto; margin-right: auto; }
         .invoice-card {
@@ -137,6 +169,9 @@
                     <button class="btn-round" id="resetBtn" title="Reset">↺</button>
                 </div>
             </div>
+            <div class="search-options">
+                <button id="sortDistanceBtn" class="sort-toggle" title="Sort results by distance from current map center or GPS">📍 Sort by Distance</button>
+            </div>
             <div class="scheduler">
                 <input type="date" id="sched-date">
                 <input type="time" id="sched-time">
@@ -150,7 +185,6 @@
                 <div class="invoice-title" id="ride-type">Economy</div>
                 <div class="total-fixed" id="total-price">RM 0</div>
             </div>
-            
             <div class="invoice-details">
                 <div class="detail-row"><span>Base Fare</span><span id="inv-base">RM 5.00</span></div>
                 <div class="detail-row">
@@ -161,7 +195,6 @@
                 <div class="detail-row" id="surge-row" style="display:none; color: var(--red);"><span>Peak Hour Surge</span><span id="inv-surge">x 1.6</span></div>
                 <div class="detail-row bold"><span>Final Fixed Fare</span><span id="inv-total-bold">RM 0</span></div>
             </div>
-
             <button class="btn-confirm" id="confirmBtn">Confirm Booking</button>
         </div>
     </div>
@@ -169,10 +202,8 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-// ======================== RECTIFIED RIDESHARE SCRIPT ========================
-// Integrated fixes: duplicate address prevention, input highlight, robust routing, state handling
-// Rating: 9.5/10
-// ============================================================================
+// ==================== RIDESHARE WITH SMART ADDRESS DIFFERENTIATION ====================
+// Features: Rich address details (postcode, district, city), distance sorting, duplicate prevention, GPS
 
 const CONFIG = {
     KLANG_VALLEY: ['kuala lumpur', 'selangor', 'putrajaya'],
@@ -188,12 +219,11 @@ const CONFIG = {
     REVERSE_URL: 'https://photon.komoot.io/reverse'
 };
 
-const State = { pickup: null, destination: null, debounce: null, routeLayer: null, pMarker: null, dMarker: null };
+const State = { pickup: null, destination: null, debounce: null, routeLayer: null, pMarker: null, dMarker: null, sortByDistance: false, userLocation: null };
 
-// Helper: guarantee state string
+// Helper functions
 function getSafeState(pointObj) {
-    if (!pointObj) return '';
-    return typeof pointObj.state === 'string' ? pointObj.state : '';
+    return pointObj && typeof pointObj.state === 'string' ? pointObj.state : '';
 }
 
 function getScheduledHour() {
@@ -207,8 +237,7 @@ function getScheduledHour() {
 
 function normalizeStateFromFeature(feature) {
     const props = feature.properties || {};
-    const stateStr = props.state || props.city || props.district || '';
-    return stateStr.toLowerCase().trim();
+    return (props.state || props.city || props.district || '').toLowerCase().trim();
 }
 
 // Map initialization
@@ -223,35 +252,84 @@ dateInput.valueAsDate = new Date();
 timeInput.value = new Date().toTimeString().substring(0,5);
 [dateInput, timeInput].forEach(el => el.addEventListener('input', () => updateMapAndFare()));
 
-// ----- Enhanced address search with rich labels and duplicate check -----
+// Distance calculation (Haversine)
+function haversineDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+// Get reference point for distance sorting (map center or user location)
+async function getDistanceReference() {
+    if (State.userLocation) return State.userLocation;
+    const center = map.getCenter();
+    return { lat: center.lat, lng: center.lng };
+}
+
+// Enhanced address search with rich details + distance sorting
+let lastSearchQuery = { query: '', elementId: '', features: null };
+
 async function fetchAddresses(query, elementId) {
     if (query.length < 3) return;
     const list = document.getElementById(`${elementId}-results`);
     list.style.display = 'block';
     list.innerHTML = '<div class="result-item">Searching...</div>';
     try {
-        const resp = await fetch(`${CONFIG.PHOTON_URL}?q=${encodeURIComponent(query)}&lat=3.139&lon=101.686&limit=5`);
+        const resp = await fetch(`${CONFIG.PHOTON_URL}?q=${encodeURIComponent(query)}&lat=3.139&lon=101.686&limit=8`);
         const data = await resp.json();
-        list.innerHTML = '';
         if (!data.features || data.features.length === 0) {
             list.innerHTML = '<div class="result-item">No results found</div>';
             return;
         }
-        data.features.forEach(f => {
+        
+        let features = data.features;
+        // Attach distance if sorting enabled
+        if (State.sortByDistance) {
+            const ref = await getDistanceReference();
+            features = features.map(f => {
+                const lng = f.geometry.coordinates[0];
+                const lat = f.geometry.coordinates[1];
+                const dist = haversineDistance(ref.lat, ref.lng, lat, lng);
+                return { ...f, _distance: dist };
+            }).sort((a,b) => a._distance - b._distance);
+        }
+        
+        list.innerHTML = '';
+        features.forEach(f => {
             const props = f.properties;
             const name = props.name || '';
             const street = props.street || '';
-            const city = props.city || '';
             const district = props.district || '';
+            const city = props.city || '';
             const state = props.state || '';
-            let primary = name || street;
-            let secondary = [district, city, state].filter(Boolean).join(', ');
-            const label = primary + (secondary ? ` · ${secondary}` : '');
-            const prefixIcon = elementId === 'pickup' ? '🟢 Pickup: ' : '🔴 Destination: ';
+            const postcode = props.postcode || '';
+            
+            let primary = name || street || 'Location';
+            // Build secondary details (differentiators)
+            const details = [];
+            if (district) details.push(district);
+            if (postcode) details.push(postcode);
+            if (city && city !== district) details.push(city);
+            if (state && state !== city && !details.includes(state)) details.push(state);
+            const secondaryText = details.join(', ');
+            
+            const prefixIcon = elementId === 'pickup' ? '🟢 Pickup' : '🔴 Destination';
+            const distanceText = f._distance !== undefined ? ` · ${f._distance.toFixed(1)} km` : '';
             
             const item = document.createElement('div');
             item.className = 'result-item';
-            item.innerHTML = `<strong>${prefixIcon}</strong>${label}`;
+            item.innerHTML = `
+                <div class="result-primary">
+                    <span><strong>${prefixIcon}</strong> ${primary}</span>
+                    ${f._distance !== undefined ? `<span class="distance-badge">${f._distance.toFixed(1)} km</span>` : ''}
+                </div>
+                <div class="result-detail">${secondaryText || '📍 ' + f.geometry.coordinates.slice().reverse().join(', ')}${distanceText}</div>
+            `;
             
             const lng = f.geometry.coordinates[0];
             const lat = f.geometry.coordinates[1];
@@ -259,10 +337,7 @@ async function fetchAddresses(query, elementId) {
             
             item.onclick = () => {
                 const newCoords = [lat, lng];
-                const newState = rawState;
-                const newLabel = label;
-                
-                // Duplicate prevention: pickup cannot equal destination
+                // Duplicate prevention
                 if (elementId === 'pickup' && State.destination && 
                     State.destination.coords[0] === newCoords[0] && 
                     State.destination.coords[1] === newCoords[1]) {
@@ -275,10 +350,10 @@ async function fetchAddresses(query, elementId) {
                     alert("Pickup and destination cannot be the same location.");
                     return;
                 }
-                
-                document.getElementById(elementId).value = newLabel;
+                const fullLabel = primary + (secondaryText ? `, ${secondaryText}` : '');
+                document.getElementById(elementId).value = fullLabel;
                 list.style.display = 'none';
-                State[elementId] = { coords: newCoords, state: newState };
+                State[elementId] = { coords: newCoords, state: rawState };
                 updateMapAndFare();
             };
             list.appendChild(item);
@@ -289,7 +364,7 @@ async function fetchAddresses(query, elementId) {
     }
 }
 
-// ----- Reverse geocode + GPS -----
+// GPS / Current location
 async function getCurrentLocation() {
     if (!navigator.geolocation) return alert("Geolocation not supported");
     const pickupInput = document.getElementById('pickup');
@@ -297,6 +372,7 @@ async function getCurrentLocation() {
     navigator.geolocation.getCurrentPosition(async (pos) => {
         const lat = pos.coords.latitude;
         const lon = pos.coords.longitude;
+        State.userLocation = { lat, lng: lon };
         try {
             const resp = await fetch(`${CONFIG.REVERSE_URL}?lon=${lon}&lat=${lat}`);
             const data = await resp.json();
@@ -327,7 +403,7 @@ async function getCurrentLocation() {
     });
 }
 
-// ----- Swap with duplicate protection -----
+// Swap with duplicate protection
 function toggleSwap() {
     if (!State.pickup && !State.destination) return;
     if (State.pickup && State.destination && 
@@ -361,7 +437,7 @@ function clearField(id) {
     updateMapAndFare();
 }
 
-// ----- Routing + fare update with error handling -----
+// Routing & fare
 async function updateMapAndFare() {
     if (State.pMarker) map.removeLayer(State.pMarker);
     if (State.dMarker) map.removeLayer(State.dMarker);
@@ -406,8 +482,8 @@ function renderDetailedInvoice(meters, seconds) {
     const scheduledHour = getScheduledHour();
     const pickupState = getSafeState(State.pickup);
     const destState = getSafeState(State.destination);
-    const isPickupKV = CONFIG.KLANG_VALLEY.some(region => pickupState.includes(region));
-    const isDestKV = CONFIG.KLANG_VALLEY.some(region => destState.includes(region));
+    const isPickupKV = CONFIG.KLANG_VALLEY.some(r => pickupState.includes(r));
+    const isDestKV = CONFIG.KLANG_VALLEY.some(r => destState.includes(r));
     const bothInKV = isPickupKV && isDestKV;
     const statesEqual = (pickupState !== '' && destState !== '' && pickupState === destState);
     const isIntrastate = bothInKV || statesEqual;
@@ -434,30 +510,43 @@ function renderDetailedInvoice(meters, seconds) {
     document.getElementById('invoice-card').classList.add('active');
 }
 
-// ----- Input focus highlighting (visual feedback) -----
+// Highlight inputs
 function setupHighlighting() {
     const pickupInput = document.getElementById('pickup');
     const destInput = document.getElementById('destination');
     const pickupWrapper = document.getElementById('pickup-wrapper');
     const destWrapper = document.getElementById('destination-wrapper');
-    
-    pickupInput.addEventListener('focus', () => {
-        pickupWrapper.classList.add('highlight');
-        destWrapper.classList.remove('highlight');
-    });
-    pickupInput.addEventListener('blur', () => {
-        pickupWrapper.classList.remove('highlight');
-    });
-    destInput.addEventListener('focus', () => {
-        destWrapper.classList.add('highlight');
-        pickupWrapper.classList.remove('highlight');
-    });
-    destInput.addEventListener('blur', () => {
-        destWrapper.classList.remove('highlight');
+    pickupInput.addEventListener('focus', () => { pickupWrapper.classList.add('highlight'); destWrapper.classList.remove('highlight'); });
+    pickupInput.addEventListener('blur', () => pickupWrapper.classList.remove('highlight'));
+    destInput.addEventListener('focus', () => { destWrapper.classList.add('highlight'); pickupWrapper.classList.remove('highlight'); });
+    destInput.addEventListener('blur', () => destWrapper.classList.remove('highlight'));
+}
+
+// Sort distance toggle
+function initSortToggle() {
+    const btn = document.getElementById('sortDistanceBtn');
+    btn.addEventListener('click', async () => {
+        State.sortByDistance = !State.sortByDistance;
+        if (State.sortByDistance) {
+            btn.classList.add('active');
+            // Try to get user location once
+            if (!State.userLocation && navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(pos => {
+                    State.userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                }, () => {});
+            }
+        } else {
+            btn.classList.remove('active');
+        }
+        // Re-run current search if any input has value
+        const pickupVal = document.getElementById('pickup').value;
+        const destVal = document.getElementById('destination').value;
+        if (pickupVal.length >= 3) fetchAddresses(pickupVal, 'pickup');
+        if (destVal.length >= 3) fetchAddresses(destVal, 'destination');
     });
 }
 
-// ----- Attach all event listeners -----
+// Attach all listeners
 function attachEventListeners() {
     const pickupInput = document.getElementById('pickup');
     const destInput = document.getElementById('destination');
@@ -469,14 +558,8 @@ function attachEventListeners() {
         clearTimeout(State.debounce);
         State.debounce = setTimeout(() => fetchAddresses(e.target.value, 'destination'), 350);
     });
-    document.getElementById('clearPickupBtn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        clearField('pickup');
-    });
-    document.getElementById('clearDestBtn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        clearField('destination');
-    });
+    document.getElementById('clearPickupBtn').addEventListener('click', (e) => { e.stopPropagation(); clearField('pickup'); });
+    document.getElementById('clearDestBtn').addEventListener('click', (e) => { e.stopPropagation(); clearField('destination'); });
     document.getElementById('swapBtn').addEventListener('click', toggleSwap);
     document.getElementById('resetBtn').addEventListener('click', resetAll);
     document.getElementById('gpsBtn').addEventListener('click', getCurrentLocation);
@@ -488,7 +571,6 @@ function attachEventListeners() {
             alert("⚠️ Please select pickup and destination to see fare before booking.");
         }
     });
-    // Click outside to hide autocomplete
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.input-wrapper')) {
             document.querySelectorAll('.results-list').forEach(l => l.style.display = 'none');
@@ -498,8 +580,8 @@ function attachEventListeners() {
     dateInput.addEventListener('change', () => updateMapAndFare());
 }
 
-// Initialize all enhancements
 setupHighlighting();
+initSortToggle();
 attachEventListeners();
 window.addEventListener('load', () => setTimeout(() => map.invalidateSize(), 200));
 </script>
