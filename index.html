@@ -71,7 +71,7 @@
     <div class="fare-row"><span>Distance (<span id="f-dist-km">0</span> km)</span><span id="f-dist-price">RM 0</span></div>
     <div class="fare-row"><span>Time (<span id="f-time-min">0</span> min)</span><span id="f-time-price">RM 0</span></div>
     <div class="fare-row" id="surge-row"><span>Surge Multiplier</span><span id="f-surge">1.0x</span></div>
-    <div class="fare-row" style="color: #3498db;"><span>Interstate</span><span id="f-inter">RM 0</span></div>
+    <div class="fare-row" style="color: #3498db;"><span>Route Type</span><span id="f-type">-</span></div>
     <div class="fare-row total-row"><span>Total Estimation</span><span id="f-total">RM 0</span></div>
     <button class="btn-main" style="background: #444; margin-top: 15px;" onclick="document.getElementById('fare-display').style.display='none'">CLOSE</button>
 </div>
@@ -146,26 +146,44 @@
         const data = await resp.json();
         const route = data.routes[0];
         
-        // Fare Engine
+        // Define Klang Valley states
+        const klangValley = ['Selangor', 'Kuala Lumpur', 'Putrajaya'];
+        
+        // Check if Intrastate (Both locations inside Klang Valley OR same state)
+        const isP_KV = klangValley.includes(pState);
+        const isD_KV = klangValley.includes(dState);
+        const isIntrastate = (isP_KV && isD_KV) || (pState === dState);
+
         const distKm = route.distance / 1000;
         const durMin = route.duration / 60;
-        const isInter = pState !== dState && !(['Selangor','Kuala Lumpur','Putrajaya'].includes(pState) && ['Selangor','Kuala Lumpur','Putrajaya'].includes(dState));
         
-        let surge = 1.0;
-        const hr = new Date().getHours();
-        if ((hr >= 6 && hr <= 9) || (hr >= 16 && hr <= 19)) surge = 1.8;
+        // Fare Rates
+        const baseFare = 5.00;
+        let distRate, timeRate, surge = 1.0;
 
-        const dPrice = distKm * (isInter ? 1.50 : 1.25);
-        const tPrice = durMin * 0.45 * surge;
-        const interComp = isInter ? (durMin * 0.90) : 0;
-        const total = Math.round(5 + dPrice + tPrice + interComp);
+        if (isIntrastate) {
+            distRate = 1.40;
+            timeRate = 0.45;
+            // Peak hour surge for Intrastate only
+            const hr = new Date().getHours();
+            if ((hr >= 6 && hr <= 9) || (hr >= 16 && hr <= 19)) surge = 1.4;
+        } else {
+            distRate = 1.20;
+            timeRate = 0.50;
+            surge = 1.0; // No surge for interstate
+        }
 
+        const dPrice = distKm * distRate;
+        const tPrice = (durMin * timeRate) * surge;
+        const total = Math.round(baseFare + dPrice + tPrice);
+
+        // Update UI
         document.getElementById('f-dist-km').innerText = distKm.toFixed(1);
         document.getElementById('f-dist-price').innerText = `RM ${dPrice.toFixed(2)}`;
         document.getElementById('f-time-min').innerText = Math.round(durMin);
         document.getElementById('f-time-price').innerText = `RM ${tPrice.toFixed(2)}`;
-        document.getElementById('f-surge').innerText = `${surge}x`;
-        document.getElementById('f-inter').innerText = `RM ${interComp.toFixed(2)}`;
+        document.getElementById('f-surge').innerText = `${surge.toFixed(1)}x`;
+        document.getElementById('f-type').innerText = isIntrastate ? "Intrastate" : "Interstate";
         document.getElementById('f-total').innerText = `RM ${total}`;
         document.getElementById('fare-display').style.display = 'block';
 
