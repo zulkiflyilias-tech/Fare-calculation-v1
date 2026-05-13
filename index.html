@@ -39,8 +39,32 @@
         .total-row { font-size: 22px; font-weight: bold; margin-top: 10px; border-top: 1px solid #444; padding-top: 10px; color: var(--primary); }
         
         .btn-main { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 700; margin-top: 10px; }
-        .suggestions { position: absolute; top: 100%; left: 0; right: 0; background: white; border-radius: 8px; max-height: 150px; overflow-y: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); z-index: 1100; display: none; }
-        .suggestion-item { padding: 10px; border-bottom: 1px solid #eee; font-size: 13px; color: #333; }
+        
+        /* Updated Suggestions Box for better visibility */
+        .suggestions { 
+            position: absolute; 
+            top: 100%; 
+            left: 0; 
+            right: 0; 
+            background: white; 
+            border-radius: 8px; 
+            max-height: 250px; 
+            overflow-y: auto; 
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2); 
+            z-index: 1100; 
+            display: none; 
+            border: 1px solid #eee;
+        }
+        .suggestion-item { 
+            padding: 12px 15px; 
+            border-bottom: 1px solid #f0f0f0; 
+            font-size: 14px; 
+            line-height: 1.4;
+            color: #2c3e50; 
+            cursor: pointer;
+        }
+        .suggestion-item:last-child { border-bottom: none; }
+        .suggestion-item:hover { background-color: #f8f9fa; }
     </style>
 </head>
 <body>
@@ -119,7 +143,8 @@
 
     async function search(query, type) {
         if (query.length < 3) return;
-        const res = await fetch(`${PHOTON_URL}${query}&lat=3.139&lon=101.686`);
+        // Search centered on KL for relevance
+        const res = await fetch(`${PHOTON_URL}${query}&lat=3.139&lon=101.686&limit=10`);
         const data = await res.json();
         const box = document.getElementById(`${type}-results`);
         box.innerHTML = '';
@@ -127,13 +152,25 @@
         
         data.features.forEach(f => {
             if (f.properties.country !== "Malaysia") return;
+            
+            const props = f.properties;
+            const mainName = props.name || '';
+            const street = props.street ? `${props.street}, ` : '';
+            const city = props.city || props.district || '';
+            const state = props.state || '';
+            
+            const fullAddress = `${mainName}, ${street}${city}, ${state}`.replace(/, ,/g, ',');
+
+            // Requirement: Exclude P. Ramlee entrance
+            if (fullAddress.toLowerCase().includes("p. ramlee")) return;
+
             const div = document.createElement('div');
             div.className = 'suggestion-item';
-            div.innerText = `${f.properties.name || ''}, ${f.properties.city || ''}, ${f.properties.state || ''}`;
+            div.innerText = fullAddress;
             div.onclick = () => {
                 document.getElementById(type).value = div.innerText;
-                if (type === 'pickup') { pickupCoords = f.geometry.coordinates; pState = f.properties.state; }
-                else { destCoords = f.geometry.coordinates; dState = f.properties.state; }
+                if (type === 'pickup') { pickupCoords = f.geometry.coordinates; pState = props.state; }
+                else { destCoords = f.geometry.coordinates; dState = props.state; }
                 box.style.display = 'none';
             };
             box.appendChild(div);
@@ -146,10 +183,7 @@
         const data = await resp.json();
         const route = data.routes[0];
         
-        // Define Klang Valley states
         const klangValley = ['Selangor', 'Kuala Lumpur', 'Putrajaya'];
-        
-        // Check if Intrastate (Both locations inside Klang Valley OR same state)
         const isP_KV = klangValley.includes(pState);
         const isD_KV = klangValley.includes(dState);
         const isIntrastate = (isP_KV && isD_KV) || (pState === dState);
@@ -157,27 +191,24 @@
         const distKm = route.distance / 1000;
         const durMin = route.duration / 60;
         
-        // Fare Rates
         const baseFare = 5.00;
         let distRate, timeRate, surge = 1.0;
 
         if (isIntrastate) {
             distRate = 1.40;
             timeRate = 0.45;
-            // Peak hour surge for Intrastate only
             const hr = new Date().getHours();
             if ((hr >= 6 && hr <= 9) || (hr >= 16 && hr <= 19)) surge = 1.4;
         } else {
             distRate = 1.20;
             timeRate = 0.50;
-            surge = 1.0; // No surge for interstate
+            surge = 1.0; 
         }
 
         const dPrice = distKm * distRate;
         const tPrice = (durMin * timeRate) * surge;
         const total = Math.round(baseFare + dPrice + tPrice);
 
-        // Update UI
         document.getElementById('f-dist-km').innerText = distKm.toFixed(1);
         document.getElementById('f-dist-price').innerText = `RM ${dPrice.toFixed(2)}`;
         document.getElementById('f-time-min').innerText = Math.round(durMin);
