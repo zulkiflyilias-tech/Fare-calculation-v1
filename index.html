@@ -3,229 +3,346 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY | Production</title>
+    <title>Rideshare MY | GPS Edition</title>
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
-        :root { --primary: #2ecc71; --dark: #2c3e50; --light: #f8f9fa; }
-        body { font-family: -apple-system, sans-serif; margin: 0; background: var(--light); overflow: hidden; }
-        
-        /* Fixed Map - Full Screen View */
-        #map { height: 100vh; width: 100vw; z-index: 1; }
-
-        /* Floating Search Panel */
-        .search-container {
-            position: absolute; top: 10px; left: 10px; right: 10px;
-            background: white; padding: 15px; border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000;
+        :root {
+            --primary: #00b14f;
+            --blue: #4285F4;
+            --red: #EA4335;
+            --dark: #1c1c1c;
+            --bg: #f2f2f2;
+            --shadow: 0 4px 25px rgba(0,0,0,0.15);
         }
 
-        .input-wrapper { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; position: relative; }
-        input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
-        
-        .icon-btn { background: #eee; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-size: 16px; }
-        .swap-btn { position: absolute; right: 10px; top: 45px; z-index: 10; background: white; border: 1px solid #ddd; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        * { box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background: var(--bg); }
+        #map { height: 100vh; width: 100%; z-index: 1; }
 
-        /* Floating Fare Invoice - Bottom Overlay */
-        .fare-card {
-            position: absolute; bottom: 20px; left: 10px; right: 10px;
-            background: var(--dark); color: white; padding: 20px; border-radius: 16px;
-            box-shadow: 0 -4px 20px rgba(0,0,0,0.3); z-index: 1000;
-            display: none; animation: slideUp 0.3s ease-out;
+        .overlay {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            display: flex; flex-direction: column; pointer-events: none; z-index: 1000;
         }
 
-        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .top-panel { pointer-events: auto; width: 100%; max-width: 500px; margin: 15px auto; padding: 0 15px; }
+        .card { background: white; border-radius: 20px; padding: 18px; box-shadow: var(--shadow); }
 
-        .fare-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; opacity: 0.85; }
-        .total-row { font-size: 22px; font-weight: bold; margin-top: 10px; border-top: 1px solid #444; padding-top: 10px; color: var(--primary); }
+        .search-container { display: flex; align-items: center; gap: 12px; }
+        .inputs-flex { flex-grow: 1; }
+        .input-wrapper { position: relative; margin-bottom: 8px; }
         
-        .btn-main { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 700; margin-top: 10px; }
+        input[type="text"] {
+            width: 100%; padding: 12px 65px 12px 38px; border: 1.5px solid #ececec;
+            border-radius: 12px; font-size: 14px; outline: none; transition: 0.2s;
+            background-color: white;
+        }
+        input:focus { border-color: var(--primary); background: #fafffb; }
+
+        .icon-point { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; }
         
-        /* Updated Suggestions Box for better visibility */
-        .suggestions { 
-            position: absolute; 
-            top: 100%; 
-            left: 0; 
-            right: 0; 
-            background: white; 
-            border-radius: 8px; 
-            max-height: 250px; 
-            overflow-y: auto; 
-            box-shadow: 0 8px 16px rgba(0,0,0,0.2); 
-            z-index: 1100; 
-            display: none; 
-            border: 1px solid #eee;
+        .action-group {
+            position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+            display: flex; gap: 5px;
         }
-        .suggestion-item { 
-            padding: 12px 15px; 
-            border-bottom: 1px solid #f0f0f0; 
-            font-size: 14px; 
-            line-height: 1.4;
-            color: #2c3e50; 
-            cursor: pointer;
+
+        .btn-inline {
+            border: none; background: #f0f0f0; color: #666; border-radius: 8px;
+            width: 26px; height: 26px; font-size: 14px; cursor: pointer; 
+            display: flex; align-items: center; justify-content: center;
         }
-        .suggestion-item:last-child { border-bottom: none; }
-        .suggestion-item:hover { background-color: #f8f9fa; }
+        .btn-gps { color: var(--blue); background: #eef4ff; }
+
+        .side-actions { display: flex; flex-direction: column; gap: 8px; }
+        .btn-round {
+            width: 42px; height: 42px; background: white; border: 1.5px solid #ececec;
+            border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); font-size: 18px;
+        }
+
+        .scheduler { display: flex; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #f8f8f8; }
+        .scheduler input {
+            flex: 1; padding: 10px; border: 1.5px solid #ececec; border-radius: 8px;
+            font-size: 12px; color: var(--dark); cursor: pointer;
+        }
+
+        .results-list {
+            position: absolute; top: 100%; left: 0; right: 0; background: white;
+            border-radius: 12px; margin-top: 8px; max-height: 200px; overflow-y: auto;
+            box-shadow: var(--shadow); z-index: 2000; display: none;
+        }
+        .result-item { padding: 12px 16px; border-bottom: 1px solid #f9f9f9; cursor: pointer; font-size: 13px; }
+
+        .bottom-panel { pointer-events: auto; margin-top: auto; width: 100%; max-width: 500px; margin-left: auto; margin-right: auto; }
+        .invoice-card {
+            background: white; border-radius: 24px 24px 0 0; padding: 24px;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.1);
+            transform: translateY(110%); transition: transform 0.4s ease-out;
+        }
+        .invoice-card.active { transform: translateY(0); }
+
+        .invoice-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px solid #f8f8f8; padding-bottom: 10px; }
+        .invoice-title { font-weight: 800; font-size: 20px; color: var(--primary); }
+        .total-fixed { font-size: 28px; font-weight: 900; color: var(--dark); }
+
+        .invoice-details { margin-bottom: 20px; }
+        .detail-row { display: flex; justify-content: space-between; font-size: 13px; color: #666; margin-bottom: 6px; }
+        .detail-row.bold { color: var(--dark); font-weight: 600; margin-top: 10px; border-top: 1px dashed #eee; padding-top: 10px; }
+        
+        .btn-confirm {
+            width: 100%; background: var(--primary); color: white; border: none;
+            padding: 18px; border-radius: 16px; font-size: 16px; font-weight: 700; cursor: pointer;
+        }
     </style>
 </head>
 <body>
 
 <div id="map"></div>
 
-<div class="search-container">
-    <div class="input-wrapper">
-        <input type="text" id="pickup" placeholder="Pickup location..." autocomplete="off">
-        <button class="icon-btn" onclick="useGPS()" title="Use GPS">📍</button>
-        <div id="pickup-results" class="suggestions"></div>
+<div class="overlay">
+    <div class="top-panel">
+        <div class="card">
+            <div class="search-container">
+                <div class="inputs-flex">
+                    <div class="input-wrapper">
+                        <span class="icon-point" style="color: var(--blue);">●</span>
+                        <input type="text" id="pickup" placeholder="Pickup location" autocomplete="off">
+                        <div class="action-group">
+                            <button class="btn-inline btn-gps" onclick="getCurrentLocation()" title="Use GPS">🎯</button>
+                            <button class="btn-inline" onclick="clearField('pickup')">&times;</button>
+                        </div>
+                        <div id="pickup-results" class="results-list"></div>
+                    </div>
+                    <div class="input-wrapper">
+                        <span class="icon-point" style="color: var(--red);">📍</span>
+                        <input type="text" id="destination" placeholder="Destination" autocomplete="off">
+                        <div class="action-group">
+                            <button class="btn-inline" onclick="clearField('destination')">&times;</button>
+                        </div>
+                        <div id="destination-results" class="results-list"></div>
+                    </div>
+                </div>
+                <div class="side-actions">
+                    <button class="btn-round" onclick="toggleSwap()" title="Swap">⇅</button>
+                    <button class="btn-round" onclick="resetAll()" title="Reset">↺</button>
+                </div>
+            </div>
+            <div class="scheduler">
+                <input type="date" id="sched-date">
+                <input type="time" id="sched-time">
+            </div>
+        </div>
     </div>
-    
-    <button class="swap-btn" onclick="swapLocations()">⇅</button>
 
-    <div class="input-wrapper">
-        <input type="text" id="dest" placeholder="Where to?" autocomplete="off">
-        <button class="icon-btn" onclick="resetForm()" title="Clear">✖</button>
-        <div id="dest-results" class="suggestions"></div>
+    <div class="bottom-panel">
+        <div id="invoice-card" class="invoice-card">
+            <div class="invoice-header">
+                <div class="invoice-title" id="ride-type">Economy</div>
+                <div class="total-fixed" id="total-price">RM 0</div>
+            </div>
+            
+            <div class="invoice-details">
+                <div class="detail-row"><span>Base Fare</span><span id="inv-base">RM 5.00</span></div>
+                <div class="detail-row">
+                    <span>Distance (<span id="inv-km-val">0</span> km) <span id="rate-display" style="font-size:11px; color:#999;"></span></span>
+                    <span id="inv-dist">RM 0.00</span>
+                </div>
+                <div class="detail-row"><span>Time (<span id="inv-min-val">0</span> min)</span><span id="inv-time">RM 0.00</span></div>
+                <div class="detail-row" id="surge-row" style="display:none; color: var(--red);"><span>Peak Hour Surge</span><span id="inv-surge">x 1.6</span></div>
+                <div class="detail-row bold"><span>Final Fixed Fare</span><span id="inv-total-bold">RM 0</span></div>
+            </div>
+
+            <button class="btn-confirm">Confirm Booking</button>
+        </div>
     </div>
-
-    <input type="datetime-local" id="schedule" style="margin-bottom: 10px;">
-    <button class="btn-main" onclick="getRoute()">ESTIMATE FARE</button>
-</div>
-
-<div id="fare-display" class="fare-card">
-    <div class="fare-row"><span>Base Fare</span><span id="f-base">RM 5.00</span></div>
-    <div class="fare-row"><span>Distance (<span id="f-dist-km">0</span> km)</span><span id="f-dist-price">RM 0</span></div>
-    <div class="fare-row"><span>Time (<span id="f-time-min">0</span> min)</span><span id="f-time-price">RM 0</span></div>
-    <div class="fare-row" id="surge-row"><span>Surge Multiplier</span><span id="f-surge">1.0x</span></div>
-    <div class="fare-row" style="color: #3498db;"><span>Route Type</span><span id="f-type">-</span></div>
-    <div class="fare-row total-row"><span>Total Estimation</span><span id="f-total">RM 0</span></div>
-    <button class="btn-main" style="background: #444; margin-top: 15px;" onclick="document.getElementById('fare-display').style.display='none'">CLOSE</button>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    let map, pickupCoords, destCoords, pState, dState, routeLayer;
-    const OSRM_URL = 'https://router.project-osrm.org/route/v1/driving/';
-    const PHOTON_URL = 'https://photon.komoot.io/api/?q=';
+const CONFIG = {
+    KLANG_VALLEY: ['kuala lumpur', 'selangor', 'putrajaya'],
+    BASE_FARE: 5.00,
+    INTRA_KM: 1.40,
+    INTRA_MIN: 0.45,
+    INTER_KM: 1.80,
+    INTER_MIN: 0.35,
+    PEAK_HOURS: [7, 8, 9, 17, 18, 19, 20],
+    SURGE_VAL: 1.6,
+    OSRM_URL: 'https://router.project-osrm.org/route/v1/driving/',
+    PHOTON_URL: 'https://photon.komoot.io/api/',
+    REVERSE_URL: 'https://photon.komoot.io/reverse'
+};
 
-    function initMap() {
-        map = L.map('map', { zoomControl: false }).setView([3.139, 101.686], 12);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-    }
+const State = { pickup: null, destination: null, debounce: null, routeLayer: null, pMarker: null, dMarker: null };
 
-    async function useGPS() {
-        if (!navigator.geolocation) return alert("GPS not supported.");
-        navigator.geolocation.getCurrentPosition(async (pos) => {
-            const { latitude, longitude } = pos.coords;
-            pickupCoords = [longitude, latitude];
-            const resp = await fetch(`https://photon.komoot.io/reverse?lon=${longitude}&lat=${latitude}`);
+const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([3.139, 101.686], 11);
+L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png').addTo(map);
+
+const dateInput = document.getElementById('sched-date');
+const timeInput = document.getElementById('sched-time');
+dateInput.valueAsDate = new Date();
+timeInput.value = new Date().toTimeString().substring(0,5);
+
+[dateInput, timeInput].forEach(el => {
+    el.addEventListener('input', () => updateMapAndFare());
+});
+
+async function getCurrentLocation() {
+    if (!navigator.geolocation) return alert("Geolocation not supported");
+    document.getElementById('pickup').value = "Locating...";
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        try {
+            const resp = await fetch(`${CONFIG.REVERSE_URL}?lon=${lon}&lat=${lat}`);
             const data = await resp.json();
-            const feat = data.features[0].properties;
-            document.getElementById('pickup').value = `${feat.name || ''}, ${feat.city || ''}`.replace(/^, /, '');
-            pState = feat.state;
-            map.flyTo([latitude, longitude], 15);
-        }, () => alert("Enable GPS access."));
-    }
-
-    function swapLocations() {
-        const pInput = document.getElementById('pickup');
-        const dInput = document.getElementById('dest');
-        [pInput.value, dInput.value] = [dInput.value, pInput.value];
-        [pickupCoords, destCoords] = [destCoords, pickupCoords];
-        [pState, dState] = [dState, pState];
-    }
-
-    function resetForm() {
-        document.getElementById('pickup').value = '';
-        document.getElementById('dest').value = '';
-        document.getElementById('fare-display').style.display = 'none';
-        if (routeLayer) map.removeLayer(routeLayer);
-        pickupCoords = destCoords = null;
-    }
-
-    async function search(query, type) {
-        if (query.length < 3) return;
-        // Search centered on KL for relevance
-        const res = await fetch(`${PHOTON_URL}${query}&lat=3.139&lon=101.686&limit=10`);
-        const data = await res.json();
-        const box = document.getElementById(`${type}-results`);
-        box.innerHTML = '';
-        box.style.display = 'block';
-        
-        data.features.forEach(f => {
-            if (f.properties.country !== "Malaysia") return;
-            
-            const props = f.properties;
-            const mainName = props.name || '';
-            const street = props.street ? `${props.street}, ` : '';
-            const city = props.city || props.district || '';
-            const state = props.state || '';
-            
-            const fullAddress = `${mainName}, ${street}${city}, ${state}`.replace(/, ,/g, ',');
-
-            // Requirement: Exclude P. Ramlee entrance
-            if (fullAddress.toLowerCase().includes("p. ramlee")) return;
-
-            const div = document.createElement('div');
-            div.className = 'suggestion-item';
-            div.innerText = fullAddress;
-            div.onclick = () => {
-                document.getElementById(type).value = div.innerText;
-                if (type === 'pickup') { pickupCoords = f.geometry.coordinates; pState = props.state; }
-                else { destCoords = f.geometry.coordinates; dState = props.state; }
-                box.style.display = 'none';
-            };
-            box.appendChild(div);
-        });
-    }
-
-    async function getRoute() {
-        if (!pickupCoords || !destCoords) return alert("Select locations first.");
-        const resp = await fetch(`${OSRM_URL}${pickupCoords[0]},${pickupCoords[1]};${destCoords[0]},${destCoords[1]}?overview=full&geometries=geojson`);
-        const data = await resp.json();
-        const route = data.routes[0];
-        
-        const klangValley = ['Selangor', 'Kuala Lumpur', 'Putrajaya'];
-        const isP_KV = klangValley.includes(pState);
-        const isD_KV = klangValley.includes(dState);
-        const isIntrastate = (isP_KV && isD_KV) || (pState === dState);
-
-        const distKm = route.distance / 1000;
-        const durMin = route.duration / 60;
-        
-        const baseFare = 5.00;
-        let distRate, timeRate, surge = 1.0;
-
-        if (isIntrastate) {
-            distRate = 1.40;
-            timeRate = 0.45;
-            const hr = new Date().getHours();
-            if ((hr >= 6 && hr <= 9) || (hr >= 16 && hr <= 19)) surge = 1.4;
-        } else {
-            distRate = 1.20;
-            timeRate = 0.50;
-            surge = 1.0; 
+            const f = data.features[0];
+            const address = [f.properties.name, f.properties.city, f.properties.state].filter(Boolean).join(', ');
+            document.getElementById('pickup').value = address;
+            State.pickup = { coords: [lat, lon], state: (f.properties.state || f.properties.city || '').toLowerCase() };
+            updateMapAndFare();
+        } catch (e) {
+            document.getElementById('pickup').value = `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+            State.pickup = { coords: [lat, lon], state: 'unknown' };
+            updateMapAndFare();
         }
+    }, () => {
+        alert("Unable to retrieve location");
+        document.getElementById('pickup').value = "";
+    });
+}
 
-        const dPrice = distKm * distRate;
-        const tPrice = (durMin * timeRate) * surge;
-        const total = Math.round(baseFare + dPrice + tPrice);
+function toggleSwap() {
+    const pInput = document.getElementById('pickup'), dInput = document.getElementById('destination');
+    const tempVal = pInput.value;
+    pInput.value = dInput.value;
+    dInput.value = tempVal;
 
-        document.getElementById('f-dist-km').innerText = distKm.toFixed(1);
-        document.getElementById('f-dist-price').innerText = `RM ${dPrice.toFixed(2)}`;
-        document.getElementById('f-time-min').innerText = Math.round(durMin);
-        document.getElementById('f-time-price').innerText = `RM ${tPrice.toFixed(2)}`;
-        document.getElementById('f-surge').innerText = `${surge.toFixed(1)}x`;
-        document.getElementById('f-type').innerText = isIntrastate ? "Intrastate" : "Interstate";
-        document.getElementById('f-total').innerText = `RM ${total}`;
-        document.getElementById('fare-display').style.display = 'block';
+    const tempState = State.pickup;
+    State.pickup = State.destination;
+    State.destination = tempState;
 
-        if (routeLayer) map.removeLayer(routeLayer);
-        routeLayer = L.geoJSON(route.geometry, { style: { color: '#2ecc71', weight: 6 } }).addTo(map);
-        map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
+    updateMapAndFare();
+}
+
+function resetAll() {
+    document.getElementById('pickup').value = ''; 
+    document.getElementById('destination').value = '';
+    State.pickup = null; 
+    State.destination = null;
+    updateMapAndFare();
+}
+
+function clearField(id) {
+    document.getElementById(id).value = ''; 
+    State[id] = null;
+    updateMapAndFare();
+}
+
+async function fetchAddresses(query, elementId) {
+    if (query.length < 3) return;
+    const list = document.getElementById(`${elementId}-results`);
+    list.style.display = 'block'; list.innerHTML = '<div class="result-item">Searching...</div>';
+    try {
+        const resp = await fetch(`${CONFIG.PHOTON_URL}?q=${encodeURIComponent(query)}&lat=3.139&lon=101.686&limit=5`);
+        const data = await resp.json();
+        list.innerHTML = '';
+        data.features.forEach(f => {
+            const label = [f.properties.name, f.properties.city, f.properties.state].filter(Boolean).join(', ');
+            const item = document.createElement('div');
+            item.className = 'result-item'; item.innerText = label;
+            item.onclick = () => {
+                document.getElementById(elementId).value = label; 
+                list.style.display = 'none';
+                State[elementId] = { 
+                    coords: [f.geometry.coordinates[1], f.geometry.coordinates[0]], 
+                    state: (f.properties.state || f.properties.city || f.properties.district || '').toLowerCase() 
+                };
+                updateMapAndFare();
+            };
+            list.appendChild(item);
+        });
+    } catch (e) { list.style.display = 'none'; }
+}
+
+async function updateMapAndFare() {
+    if (State.pMarker) map.removeLayer(State.pMarker);
+    if (State.dMarker) map.removeLayer(State.dMarker);
+    if (State.routeLayer) map.removeLayer(State.routeLayer);
+
+    if (!State.pickup || !State.destination) {
+        document.getElementById('invoice-card').classList.remove('active');
+        return;
     }
 
-    document.getElementById('pickup').oninput = (e) => search(e.target.value, 'pickup');
-    document.getElementById('dest').oninput = (e) => search(e.target.value, 'dest');
-    initMap();
+    State.pMarker = L.circleMarker(State.pickup.coords, { color: '#4285F4', radius: 8, fillOpacity: 1 }).addTo(map);
+    State.dMarker = L.marker(State.destination.coords).addTo(map);
+
+    try {
+        const url = `${CONFIG.OSRM_URL}${State.pickup.coords[1]},${State.pickup.coords[0]};${State.destination.coords[1]},${State.destination.coords[0]}?overview=full&geometries=geojson`;
+        const resp = await fetch(url);
+        const data = await resp.json();
+        if (data.routes && data.routes[0]) {
+            const route = data.routes[0];
+            State.routeLayer = L.geoJSON(route.geometry, { style: { color: '#00b14f', weight: 6 } }).addTo(map);
+            map.fitBounds(State.routeLayer.getBounds(), { padding: [50, 50] });
+            renderDetailedInvoice(route.distance, route.duration);
+        }
+    } catch (e) { 
+        console.error("Routing error:", e); 
+    }
+}
+
+function renderDetailedInvoice(meters, seconds) {
+    const km = meters / 1000;
+    const mins = seconds / 60;
+    const hour = parseInt(timeInput.value.split(':')[0]);
+    
+    // Updated Logic to support Klang Valley cross-border as local
+    const pickupInKV = CONFIG.KLANG_VALLEY.some(r => State.pickup.state.includes(r));
+    const destInKV = CONFIG.KLANG_VALLEY.some(r => State.destination.state.includes(r));
+    const isBothKV = pickupInKV && destInKV;
+    const isSameState = (State.pickup.state === State.destination.state) && State.pickup.state !== 'unknown';
+    
+    const isIntrastate = isBothKV || isSameState;
+    const isPeak = CONFIG.PEAK_HOURS.includes(hour) && isIntrastate;
+
+    const kmRate = isIntrastate ? CONFIG.INTRA_KM : CONFIG.INTER_KM;
+    const timeRate = isIntrastate ? CONFIG.INTRA_MIN : CONFIG.INTER_MIN;
+
+    let distCost = km * kmRate;
+    let timeCost = mins * timeRate;
+    if (isPeak) timeCost *= CONFIG.SURGE_VAL;
+
+    const rawTotal = CONFIG.BASE_FARE + distCost + timeCost;
+    const fixedTotal = Math.round(rawTotal);
+
+    document.getElementById('rate-display').innerText = `@ RM ${kmRate.toFixed(2)}/km`;
+    document.getElementById('inv-km-val').innerText = km.toFixed(1);
+    document.getElementById('inv-dist').innerText = `RM ${distCost.toFixed(2)}`;
+    document.getElementById('inv-min-val').innerText = Math.round(mins);
+    document.getElementById('inv-time').innerText = `RM ${timeCost.toFixed(2)}`;
+    
+    document.getElementById('surge-row').style.display = isPeak ? 'flex' : 'none';
+    document.getElementById('ride-type').innerText = isIntrastate ? 'Economy (Local)' : 'Interstate Trip';
+    
+    document.getElementById('total-price').innerText = `RM ${fixedTotal}`;
+    document.getElementById('inv-total-bold').innerText = `RM ${fixedTotal}`;
+    document.getElementById('invoice-card').classList.add('active');
+}
+
+['pickup', 'destination'].forEach(id => {
+    document.getElementById(id).addEventListener('input', (e) => {
+        clearTimeout(State.debounce);
+        State.debounce = setTimeout(() => fetchAddresses(e.target.value, id), 350);
+    });
+});
+
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.input-wrapper')) document.querySelectorAll('.results-list').forEach(l => l.style.display = 'none');
+});
 </script>
 </body>
 </html>
