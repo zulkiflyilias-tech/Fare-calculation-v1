@@ -410,12 +410,11 @@
         resetCalculationDisplay();
     });
 
-    // --- REVERSE GEOCODING SUBSYSTEM ---
+    // --- REVERSE GEOCODING SUBSYSTEM (MAP CLICK) ---
     map.on('click', function(e) {
         const lat = e.latlng.lat;
         const lon = e.latlng.lng;
         
-        // Render immediate local fallback string while performing remote asset handshakes
         const targetInput = document.getElementById(activeInputFieldId);
         const targetClearBtn = document.getElementById(activeInputFieldId === 'pickup' ? 'clear-pickup' : 'clear-dropoff');
         
@@ -447,7 +446,6 @@
             })
             .catch(err => {
                 console.error("Reverse Address Parsing Exception Code:", err);
-                // Keep the coordinate string safely if lookup fails/times out
             });
 
         // Toggle active targeting focus logic for faster mobile workflows
@@ -457,10 +455,10 @@
         }
     });
 
-    // Hardware GPS Location Capture Engine
+    // --- HARDWARE GPS LOCATION CAPTURE ENGINE WITH REVERSE GEOCODING ---
     document.getElementById('current-loc-btn').addEventListener('click', () => {
         if (!navigator.geolocation) {
-            showError("Geolocation capture infrastructure is unsupported by this client architecture.");
+            showError("Request dropped. Geolocation infrastructure is unsupported by this client layout.");
             return;
         }
 
@@ -475,15 +473,35 @@
                 const lon = position.coords.longitude;
                 
                 pickupCoords = { lat, lon };
-                document.getElementById('pickup').value = `Current Location (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
+                
+                // Set localized baseline coordinates first as interactive feedback
+                document.getElementById('pickup').value = `📍 Coordinates (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
                 document.getElementById('clear-pickup').style.display = 'block';
                 
                 updateMarker('pickup', pickupCoords);
                 map.setView([lat, lon], 14);
                 checkAndProcessRoute();
+
+                // Reverse geocode GPS location parameters via Photon Engine API
+                const reverseUrl = `https://photon.komoot.io/api/reverse/?lon=${lon}&lat=${lat}`;
+                fetch(reverseUrl)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.features && data.features.length > 0) {
+                            const props = data.features[0].properties;
+                            const addressString = expandAddress(props);
+                            document.getElementById('pickup').value = props.name || addressString;
+                        }
+                    })
+                    .catch(err => {
+                        console.error("GPS Reverse Address Parsing Exception:", err);
+                    });
                 
-                // Shift focus down to destination target element automatically
+                // Shift workflow pipeline down directly to destination input tracking index
                 activeInputFieldId = 'dropoff';
+                if (document.getElementById('dropoff')) {
+                    document.getElementById('dropoff').focus();
+                }
             },
             (error) => {
                 btn.textContent = "🎯";
@@ -755,7 +773,6 @@
         document.getElementById('result-card').style.display = 'block';
     }
 
-    // Modal invoice display block toggle
     function toggleInvoice() {
         const details = document.getElementById('invoice-details');
         const lbl = document.getElementById('toggle-lbl');
