@@ -111,7 +111,6 @@
             background-color: #fff;
         }
 
-        /* custom markers before inputs */
         .input-container::before {
             content: '';
             position: absolute;
@@ -219,10 +218,6 @@
             color: #1f2937;
         }
 
-        .suggestion-item strong {
-            color: #8b5cf6;
-        }
-
         .suggestion-item:hover {
             background-color: #faf5ff;
         }
@@ -304,6 +299,17 @@
             text-align: center;
         }
 
+        /* Leaflet Marker Styling Fix */
+        .custom-marker {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            line-height: 1;
+            background: transparent;
+            border: none;
+        }
+
         @media (min-width: 780px) {
             #container {
                 flex-direction: row-reverse;
@@ -318,11 +324,6 @@
                 border-radius: 0;
                 box-shadow: -4px 0 20px rgba(0, 0, 0, 0.03);
             }
-        }
-
-        .current-loc-badge {
-            background: #f1f5f9;
-            border-radius: 30px;
         }
     </style>
 </head>
@@ -382,7 +383,6 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // ---------- INIT MAP (Malaysia view) ----------
     const map = L.map('map').setView([3.1478, 101.6953], 12);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB',
@@ -394,6 +394,7 @@
     let pickupCoords = null, dropoffCoords = null;
     let currentRouteTimeout = null;
     let activeInputFieldId = 'pickup';
+    let reverseGeocodeCounter = 0; // Fixes async race conditions
 
     const pickupInput = document.getElementById('pickup');
     const dropoffInput = document.getElementById('dropoff');
@@ -401,12 +402,10 @@
     pickupInput.addEventListener('focus', () => activeInputFieldId = 'pickup');
     dropoffInput.addEventListener('focus', () => activeInputFieldId = 'dropoff');
 
-    // ---------- MALAYSIA HUMAN-READABLE ADDRESS FORMATTING (Forensic Fix) ----------
     function formatMalaysiaAddress(props, lat, lng) {
         if (!props) {
             return `📍 Malaysia (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
         }
-        // Prioritize meaningful local names: name, street, city, district, state
         let name = props.name || '';
         let street = props.street || props.road || '';
         let housenumber = props.housenumber ? props.housenumber + ', ' : '';
@@ -414,7 +413,6 @@
         let city = props.city || props.town || props.village || '';
         let state = props.state || '';
 
-        // Clean duplicates: if name contains street already, avoid duplication
         let addressParts = [];
         if (name && name.length > 0 && !(street && name.includes(street))) {
             addressParts.push(name);
@@ -433,37 +431,38 @@
         if (state && !addressParts.includes(state)) {
             addressParts.push(state);
         }
-        // last resort: provide coordinates reference
         if (addressParts.length === 0) {
             return `📍 Malaysia (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
         }
         return addressParts.join(', ');
     }
 
-    // Enhanced reverse geocode with Photon + robust fallback for Malaysia
-    async function reverseGeocodeMalaysia(lat, lng, inputElement, isPickup) {
+    async function reverseGeocodeMalaysia(lat, lng, inputElement) {
+        reverseGeocodeCounter++;
+        const currentTicket = reverseGeocodeCounter;
         try {
             const response = await fetch(`https://photon.komoot.io/api/reverse/?lon=${lng}&lat=${lat}`);
             if (!response.ok) throw new Error('Reverse geo fail');
             const data = await response.json();
+            
+            // Abort assignment if a newer user event generated a different ticket sequence
+            if (currentTicket !== reverseGeocodeCounter) return;
+
             if (data && data.features && data.features.length > 0) {
-                const feature = data.features[0];
-                const props = feature.properties;
-                const formatted = formatMalaysiaAddress(props, lat, lng);
+                const formatted = formatMalaysiaAddress(data.features[0].properties, lat, lng);
                 inputElement.value = formatted;
                 return formatted;
             } else {
                 inputElement.value = `📍 Malaysia (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
-                return inputElement.value;
             }
         } catch (err) {
             console.warn("Reverse geocoding error:", err);
-            inputElement.value = `📍 Malaysia (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
-            return inputElement.value;
+            if (currentTicket === reverseGeocodeCounter) {
+                inputElement.value = `📍 Malaysia (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+            }
         }
     }
 
-    // ---------- AUTOCOMPLETE WITH IMPROVED MALAYSIA SEARCH (PHOTON + FALLBACK) ----------
     function setupAutocomplete(inputId, suggestionsId, clearBtnId, onSelect, onClear) {
         const input = document.getElementById(inputId);
         const suggestionsBox = document.getElementById(suggestionsId);
@@ -480,7 +479,6 @@
                 return;
             }
             debounce = setTimeout(() => {
-                // BBOX: Peninsular Malaysia + East Malaysia broad limits
                 const bbox = "99.5,0.8,119.5,7.5";
                 const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&bbox=${bbox}&limit=8&lang=en`;
                 fetch(url)
@@ -494,12 +492,10 @@
                         suggestionsBox.style.display = 'block';
                         data.features.forEach(feat => {
                             const [lon, lat] = feat.geometry.coordinates;
-                            const props = feat.properties;
-                            // generate readable malaysian address
-                            let displayAddress = formatMalaysiaAddress(props, lat, lon);
+                            let displayAddress = formatMalaysiaAddress(feat.properties, lat, lon);
                             const div = document.createElement('div');
                             div.className = 'suggestion-item';
-                            div.innerHTML = displayAddress;
+                            div.textContent = displayAddress; 
                             div.addEventListener('click', () => {
                                 input.value = displayAddress;
                                 suggestionsBox.style.display = 'none';
@@ -548,7 +544,6 @@
         });
     }
 
-    // clear / reset
     function resetCalculationDisplay() {
         if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
         document.getElementById('result-card').style.display = 'none';
@@ -563,18 +558,22 @@
     }
 
     function updateMarker(type, coords) {
+        // Enforcing proper anchor points using specialized CSS mapping classes
         if (type === 'pickup') {
             if (pickupMarker) map.removeLayer(pickupMarker);
-            pickupMarker = L.marker([coords.lat, coords.lon], { icon: L.divIcon({ className: 'custom-marker', html: '📍', iconSize: [24,24] }) }).addTo(map);
+            pickupMarker = L.marker([coords.lat, coords.lon], { 
+                icon: L.divIcon({ className: 'custom-marker', html: '📍', iconSize: [24,24], iconAnchor: [12,24] }) 
+            }).addTo(map);
             pickupMarker.bindTooltip('Pickup', { permanent: false });
         } else {
             if (dropoffMarker) map.removeLayer(dropoffMarker);
-            dropoffMarker = L.marker([coords.lat, coords.lon], { icon: L.divIcon({ className: 'custom-marker', html: '🏁', iconSize: [24,24] }) }).addTo(map);
+            dropoffMarker = L.marker([coords.lat, coords.lon], { 
+                icon: L.divIcon({ className: 'custom-marker', html: '🏁', iconSize: [24,24], iconAnchor: [12,24] }) 
+            }).addTo(map);
             dropoffMarker.bindTooltip('Dropoff');
         }
     }
 
-    // ---- route & fare calculation ----
     function checkAndProcessRoute() {
         if (!pickupCoords || !dropoffCoords) return;
         document.getElementById('error-msg').style.display = 'none';
@@ -595,6 +594,7 @@
                 const now = new Date();
                 const hour = now.getHours();
                 const isWeekend = (now.getDay() === 0 || now.getDay() === 6);
+                
                 let trafficFactor = 1.15;
                 if (!isWeekend) {
                     if ((hour >= 7 && hour <= 9) || (hour >= 17 && hour <= 19.5)) trafficFactor = 1.55;
@@ -605,8 +605,10 @@
                 let distMod = 1.0;
                 if (distanceKm <= 5) distMod = 0.65;
                 else if (distanceKm <= 15) distMod = 0.85;
+                
                 const finalTraffic = 1 + ((trafficFactor - 1) * distMod);
                 const adjustedDuration = Math.max(1, Math.round(baseDurationMins * finalTraffic));
+                
                 if (routeLine) map.removeLayer(routeLine);
                 routeLine = L.geoJSON(route.geometry, { style: { color: '#a855f7', weight: 5, opacity: 0.9 } }).addTo(map);
                 map.fitBounds(L.latLngBounds([pickupCoords.lat, pickupCoords.lon], [dropoffCoords.lat, dropoffCoords.lon]), { padding: [45, 45] });
@@ -639,6 +641,7 @@
         let rawTotal = baseFare + distanceFare + tolls + incentive + deadhead;
         let roundedTotal = Math.round(rawTotal * 10) / 10;
         let finalDisplay = Math.round(roundedTotal);
+        
         document.getElementById('total-fare').innerHTML = `RM ${finalDisplay}`;
         document.getElementById('fare-distance').innerHTML = `${distance.toFixed(1)} km`;
         let durationText = durationMins < 60 ? `${durationMins} mins` : `${Math.floor(durationMins/60)} hr ${durationMins%60} mins`;
@@ -664,7 +667,6 @@
         }
     }
 
-    // Global swap function
     window.executeLocationSwap = function() {
         const tempText = pickupInput.value;
         const tempCoords = pickupCoords;
@@ -672,18 +674,20 @@
         pickupCoords = dropoffCoords;
         dropoffInput.value = tempText;
         dropoffCoords = tempCoords;
+        
         document.getElementById('clear-pickup').style.display = pickupInput.value ? 'block' : 'none';
         document.getElementById('clear-dropoff').style.display = dropoffInput.value ? 'block' : 'none';
+        
         if (pickupCoords) updateMarker('pickup', pickupCoords);
         else if (pickupMarker) { map.removeLayer(pickupMarker); pickupMarker = null; }
         if (dropoffCoords) updateMarker('dropoff', dropoffCoords);
         else if (dropoffMarker) { map.removeLayer(dropoffMarker); dropoffMarker = null; }
+        
         if (pickupCoords && dropoffCoords) checkAndProcessRoute();
         else resetCalculationDisplay();
     };
     document.getElementById('swap-locations-btn').addEventListener('click', () => window.executeLocationSwap());
 
-    // Autocomplete bindings
     setupAutocomplete('pickup', 'pickup-suggestions', 'clear-pickup', (coords) => {
         pickupCoords = coords;
         updateMarker('pickup', coords);
@@ -706,17 +710,17 @@
         resetCalculationDisplay();
     });
 
-    // Map click: set active field location
     map.on('click', async function(e) {
         const lat = e.latlng.lat;
         const lon = e.latlng.lng;
         const targetId = activeInputFieldId;
         const targetInput = document.getElementById(targetId);
         const clearBtn = document.getElementById(targetId === 'pickup' ? 'clear-pickup' : 'clear-dropoff');
-        // temporary coordinate indicator
+        
         targetInput.value = `📍 (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
         clearBtn.style.display = 'block';
         const selectedCoords = { lat, lon };
+        
         if (targetId === 'pickup') {
             pickupCoords = selectedCoords;
             updateMarker('pickup', selectedCoords);
@@ -724,17 +728,18 @@
             dropoffCoords = selectedCoords;
             updateMarker('dropoff', selectedCoords);
         }
-        // reverse geocode for readable malaysia address
-        await reverseGeocodeMalaysia(lat, lon, targetInput, targetId === 'pickup');
+        
+        await reverseGeocodeMalaysia(lat, lon, targetInput);
         if (pickupCoords && dropoffCoords) checkAndProcessRoute();
         else resetCalculationDisplay();
+        
+        // Contextually toggle only if user hasn't explicitly populated downstream field yet
         if (targetId === 'pickup' && !dropoffCoords) {
             activeInputFieldId = 'dropoff';
             dropoffInput.focus();
         }
     });
 
-    // Current location (GPS) with malaysia address fix
     document.getElementById('current-loc-btn').addEventListener('click', () => {
         if (!navigator.geolocation) return showError("Geolocation not supported.");
         const btn = document.getElementById('current-loc-btn');
@@ -744,10 +749,13 @@
             const lat = pos.coords.latitude;
             const lon = pos.coords.longitude;
             pickupCoords = { lat, lon };
-            await reverseGeocodeMalaysia(lat, lon, pickupInput, true);
-            document.getElementById('clear-pickup').style.display = 'block';
+            
             updateMarker('pickup', pickupCoords);
             map.setView([lat, lon], 15);
+            
+            await reverseGeocodeMalaysia(lat, lon, pickupInput);
+            document.getElementById('clear-pickup').style.display = 'block';
+            
             if (dropoffCoords) checkAndProcessRoute();
             activeInputFieldId = 'dropoff';
             dropoffInput.focus();
@@ -758,7 +766,6 @@
         }, { enableHighAccuracy: true, timeout: 8000 });
     });
     
-    // Initial reset UI
     resetCalculationDisplay();
 </script>
 </body>
