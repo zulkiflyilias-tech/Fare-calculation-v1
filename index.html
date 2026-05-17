@@ -26,6 +26,7 @@
             height: 35vh;
             width: 100%;
             z-index: 1;
+            cursor: pointer;
         }
         #search-panel {
             flex: 1;
@@ -68,7 +69,7 @@
         }
         input {
             width: 100%;
-            padding: 12px 64px 12px 12px;
+            padding: 12px 64px 12px 34px; /* Room for active field dot indicator */
             border: 1px solid #e0e0e0;
             border-radius: 8px;
             font-size: 14px;
@@ -84,6 +85,24 @@
             border-color: #8e24aa;
             background-color: #fff;
             box-shadow: 0 0 0 2px rgba(142, 36, 170, 0.1);
+        }
+
+        /* Active field dot indicator */
+        .input-container::before {
+            content: '';
+            position: absolute;
+            left: 14px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            z-index: 5;
+            pointer-events: none;
+        }
+        .input-container:has(#pickup)::before {
+            background-color: #4caf50; /* Green dot for pickup */
+        }
+        .input-container:has(#dropoff)::before {
+            background-color: #f44336; /* Red dot for drop-off */
         }
         
         /* Input Utilities Groups */
@@ -170,6 +189,18 @@
         }
         .suggestion-item:hover {
             background-color: #f5f5f5;
+        }
+
+        /* Quick helper context tip banner */
+        .map-tip {
+            font-size: 11px;
+            color: #666;
+            margin-bottom: 8px;
+            text-align: center;
+            background: #ede7f6;
+            padding: 4px;
+            border-radius: 4px;
+            font-weight: 500;
         }
         
         /* Result Rendering Engine Blocks */
@@ -264,9 +295,10 @@
         <div class="header-row">
             <h2>Fare Estimator</h2>
         </div>
+
+        <div class="map-tip">💡 Tap anywhere on the map to set your active pin target</div>
         
         <div class="routing-wrapper">
-            <!-- Pickup Field Subsystem -->
             <div class="input-container">
                 <input type="text" id="pickup" placeholder="Enter Pickup Location..." autocomplete="off" enterkeyhint="search">
                 <div class="action-group">
@@ -276,12 +308,10 @@
                 <div id="pickup-suggestions" class="suggestions"></div>
             </div>
             
-            <!-- Structural Positional Inversion Unit -->
             <div class="swap-container">
                 <button class="swap-btn" id="swap-locations-btn" title="Swap locations" onclick="executeLocationSwap()">⇅</button>
             </div>
             
-            <!-- Dropoff Field Subsystem -->
             <div class="input-container">
                 <input type="text" id="dropoff" placeholder="Enter Drop-off Location..." autocomplete="off" enterkeyhint="search">
                 <div class="action-group">
@@ -348,6 +378,16 @@
     let pickupMarker = null, dropoffMarker = null, routeLine = null;
     let pickupCoords = null, dropoffCoords = null;
     let currentRouteTimeout = null;
+    
+    // Tracks which input field should be targeted when the map is clicked
+    let activeInputFieldId = 'pickup';
+
+    // Highlight input box borders subtly to prioritize current active target element
+    const pickupInput = document.getElementById('pickup');
+    const dropoffInput = document.getElementById('dropoff');
+
+    pickupInput.addEventListener('focus', () => activeInputFieldId = 'pickup');
+    dropoffInput.addEventListener('focus', () => activeInputFieldId = 'dropoff');
 
     // Autocomplete Core Pipelines
     setupAutocomplete('pickup', 'pickup-suggestions', 'clear-pickup', (coords) => {
@@ -368,6 +408,53 @@
         dropoffCoords = null;
         if (dropoffMarker) { map.removeLayer(dropoffMarker); dropoffMarker = null; }
         resetCalculationDisplay();
+    });
+
+    // --- REVERSE GEOCODING SUBSYSTEM ---
+    map.on('click', function(e) {
+        const lat = e.latlng.lat;
+        const lon = e.latlng.lng;
+        
+        // Render immediate local fallback string while performing remote asset handshakes
+        const targetInput = document.getElementById(activeInputFieldId);
+        const targetClearBtn = document.getElementById(activeInputFieldId === 'pickup' ? 'clear-pickup' : 'clear-dropoff');
+        
+        targetInput.value = `📍 Coordinates (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
+        targetClearBtn.style.display = 'block';
+
+        const selectedCoords = { lat, lon };
+        if (activeInputFieldId === 'pickup') {
+            pickupCoords = selectedCoords;
+            updateMarker('pickup', selectedCoords);
+        } else {
+            dropoffCoords = selectedCoords;
+            updateMarker('dropoff', selectedCoords);
+        }
+        
+        checkAndProcessRoute();
+
+        // Query Photon Geocoding API Reverse Address Matching Subsystem
+        const reverseUrl = `https://photon.komoot.io/api/reverse/?lon=${lon}&lat=${lat}`;
+        
+        fetch(reverseUrl)
+            .then(res => res.json())
+            .then(data => {
+                if (data.features && data.features.length > 0) {
+                    const props = data.features[0].properties;
+                    const addressString = expandAddress(props);
+                    targetInput.value = props.name || addressString;
+                }
+            })
+            .catch(err => {
+                console.error("Reverse Address Parsing Exception Code:", err);
+                // Keep the coordinate string safely if lookup fails/times out
+            });
+
+        // Toggle active targeting focus logic for faster mobile workflows
+        if (activeInputFieldId === 'pickup' && !dropoffCoords) {
+            activeInputFieldId = 'dropoff';
+            dropoffInput.focus();
+        }
     });
 
     // Hardware GPS Location Capture Engine
@@ -394,6 +481,9 @@
                 updateMarker('pickup', pickupCoords);
                 map.setView([lat, lon], 14);
                 checkAndProcessRoute();
+                
+                // Shift focus down to destination target element automatically
+                activeInputFieldId = 'dropoff';
             },
             (error) => {
                 btn.textContent = "🎯";
@@ -415,9 +505,6 @@
     }
 
     function executeLocationSwap() {
-        const pickupInput = document.getElementById('pickup');
-        const dropoffInput = document.getElementById('dropoff');
-        
         const tempText = pickupInput.value;
         const tempCoords = pickupCoords;
         
@@ -485,7 +572,6 @@
             }
 
             debounceTimeout = setTimeout(() => {
-                // Bounds structural limit restricted entirely to Peninsular & East Malaysia coordinates bounding envelope
                 const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&bbox=99.6,0.8,119.5,7.4&limit=5`;
                 fetch(url)
                     .then(res => res.json())
@@ -579,7 +665,7 @@
 
                     if (!isWeekend) {
                         if ((currentHour >= 7 && currentHour <= 9) || (currentHour >= 17 && currentHour <= 19.5)) {
-                            trafficDelayFactor = 1.55; // Commute window peak scale
+                            trafficDelayFactor = 1.55; 
                         } else if (currentHour >= 12 && currentHour <= 14) {
                             trafficDelayFactor = 1.25; 
                         }
@@ -591,7 +677,7 @@
 
                     let distanceImpactModifier = 1.0;
                     if (distanceKm <= 5) {
-                        distanceImpactModifier = 0.65; // Dampens scaling for short runs
+                        distanceImpactModifier = 0.65; 
                     } else if (distanceKm <= 15) {
                         distanceImpactModifier = 0.85;
                     }
@@ -630,21 +716,17 @@
     }
 
     function processCalculations(distance, duration) {
-        // Standard Segment Cost Baseline
         const baseFare = 5.00;
         const perKmRate = 1.25;
         const rideDistanceFare = distance * perKmRate;
         
-        // Progressive Infrastructure Toll Scale
         let dynamicTolls = 0;
         if (distance > 6) {
             dynamicTolls = distance <= 45 ? 2.50 : 3.50 + ((distance - 45) * 0.095);
         }
 
-        // Temporal Opportunity Overhead Allocation
         const driverIncentive = (duration / 60) * 15.00;
 
-        // Long-Range Return Compensation (Deadhead Surcharge Vector)
         let deadheadCost = 0;
         if (distance > 12) {
             const boundaryKm = Math.min(distance, 350);
@@ -655,7 +737,6 @@
             document.getElementById('deadhead-km-row').style.display = 'none';
         }
 
-        // Compilation Sequence Execution
         const rawTotal = baseFare + rideDistanceFare + dynamicTolls + driverIncentive + deadheadCost;
         const roundedTotal = Math.max(baseFare, roundToMalaysianCents(rawTotal));
         const finalDisplayedWholeFare = Math.round(roundedTotal);
@@ -674,6 +755,7 @@
         document.getElementById('result-card').style.display = 'block';
     }
 
+    // Modal invoice display block toggle
     function toggleInvoice() {
         const details = document.getElementById('invoice-details');
         const lbl = document.getElementById('toggle-lbl');
