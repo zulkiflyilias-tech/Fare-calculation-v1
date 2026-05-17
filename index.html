@@ -368,7 +368,6 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-    // Initialize map focused strictly on Peninsular Malaysia economic core (Klang Valley)
     const map = L.map('map').setView([3.1390, 101.6869], 11);
     
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -378,18 +377,14 @@
     let pickupMarker = null, dropoffMarker = null, routeLine = null;
     let pickupCoords = null, dropoffCoords = null;
     let currentRouteTimeout = null;
-    
-    // Tracks which input field should be targeted when the map is clicked
     let activeInputFieldId = 'pickup';
 
-    // Highlight input box borders subtly to prioritize current active target element
     const pickupInput = document.getElementById('pickup');
     const dropoffInput = document.getElementById('dropoff');
 
     pickupInput.addEventListener('focus', () => activeInputFieldId = 'pickup');
     dropoffInput.addEventListener('focus', () => activeInputFieldId = 'dropoff');
 
-    // Autocomplete Core Pipelines
     setupAutocomplete('pickup', 'pickup-suggestions', 'clear-pickup', (coords) => {
         pickupCoords = coords;
         updateMarker('pickup', coords);
@@ -432,23 +427,16 @@
         
         checkAndProcessRoute();
 
-        // Query Photon Geocoding API Reverse Address Matching Subsystem
         const reverseUrl = `https://photon.komoot.io/api/reverse/?lon=${lon}&lat=${lat}`;
-        
         fetch(reverseUrl)
             .then(res => res.json())
             .then(data => {
                 if (data.features && data.features.length > 0) {
-                    const props = data.features[0].properties;
-                    const addressString = expandAddress(props);
-                    targetInput.value = props.name || addressString;
+                    targetInput.value = expandAddress(data.features[0].properties);
                 }
             })
-            .catch(err => {
-                console.error("Reverse Address Parsing Exception Code:", err);
-            });
+            .catch(err => console.error("Reverse Address Parsing Exception:", err));
 
-        // Toggle active targeting focus logic for faster mobile workflows
         if (activeInputFieldId === 'pickup' && !dropoffCoords) {
             activeInputFieldId = 'dropoff';
             dropoffInput.focus();
@@ -458,7 +446,7 @@
     // --- HARDWARE GPS LOCATION CAPTURE ENGINE WITH REVERSE GEOCODING ---
     document.getElementById('current-loc-btn').addEventListener('click', () => {
         if (!navigator.geolocation) {
-            showError("Request dropped. Geolocation infrastructure is unsupported by this client layout.");
+            showError("Geolocation infrastructure is unsupported by this client layout.");
             return;
         }
 
@@ -474,7 +462,6 @@
                 
                 pickupCoords = { lat, lon };
                 
-                // Set localized baseline coordinates first as interactive feedback
                 document.getElementById('pickup').value = `📍 Coordinates (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
                 document.getElementById('clear-pickup').style.display = 'block';
                 
@@ -482,22 +469,16 @@
                 map.setView([lat, lon], 14);
                 checkAndProcessRoute();
 
-                // Reverse geocode GPS location parameters via Photon Engine API
                 const reverseUrl = `https://photon.komoot.io/api/reverse/?lon=${lon}&lat=${lat}`;
                 fetch(reverseUrl)
                     .then(res => res.json())
                     .then(data => {
                         if (data.features && data.features.length > 0) {
-                            const props = data.features[0].properties;
-                            const addressString = expandAddress(props);
-                            document.getElementById('pickup').value = props.name || addressString;
+                            document.getElementById('pickup').value = expandAddress(data.features[0].properties);
                         }
                     })
-                    .catch(err => {
-                        console.error("GPS Reverse Address Parsing Exception:", err);
-                    });
+                    .catch(err => console.error("GPS Reverse Address Parsing Exception:", err));
                 
-                // Shift workflow pipeline down directly to destination input tracking index
                 activeInputFieldId = 'dropoff';
                 if (document.getElementById('dropoff')) {
                     document.getElementById('dropoff').focus();
@@ -548,14 +529,21 @@
         }
     }
 
+    // --- ENHANCED ADDRESS PARSING ENGINE ---
     function expandAddress(props) {
         const parts = [];
+        
+        // Add the major descriptive title element if available
         if (props.name) parts.push(props.name);
-        if (props.street) parts.push(props.street);
+        
+        // Append distinct road descriptors safely without duplicating the name string
+        if (props.street && props.street !== props.name) parts.push(props.street);
         if (props.district) parts.push(props.district);
         if (props.city || props.town) parts.push(props.city || props.town);
         if (props.state) parts.push(props.state);
-        return parts.length > 0 ? parts.join(', ') : 'Target Location Coordinates';
+        
+        // Fallback catch mechanism to make sure it never displays raw coordinate digits
+        return parts.length > 0 ? parts.join(', ') : "Unnamed Location, Selangor";
     }
 
     function resetCalculationDisplay() {
@@ -608,7 +596,7 @@
                             div.className = 'suggestion-item';
                             div.textContent = detailedAddress;
                             div.addEventListener('click', () => {
-                                input.value = props.name || detailedAddress;
+                                input.value = detailedAddress;
                                 suggestionsBox.innerHTML = '';
                                 suggestionsBox.style.display = 'none';
                                 const [lon, lat] = feature.geometry.coordinates;
@@ -638,7 +626,7 @@
                     fetch(url).then(res => res.json()).then(data => {
                         if (data.features && data.features.length > 0) {
                             const feature = data.features[0];
-                            input.value = feature.properties.name || expandAddress(feature.properties);
+                            input.value = expandAddress(feature.properties);
                             suggestionsBox.innerHTML = '';
                             suggestionsBox.style.display = 'none';
                             const [lon, lat] = feature.geometry.coordinates;
@@ -674,7 +662,6 @@
                     const distanceKm = route.distance / 1000;
                     const baseDurationMins = route.duration / 60;
 
-                    // --- TRAFFIC SIMULATION CORE LOGIC ---
                     const now = new Date();
                     const currentHour = now.getHours();
                     const isWeekend = (now.getDay() === 0 || now.getDay() === 6);
@@ -729,6 +716,7 @@
         return mins > 0 ? `${hours} hr ${mins} mins` : `${hours} hr`;
     }
 
+    // Standard rounding behavior
     function roundToMalaysianCents(value) {
         return Math.round(value * 10) / 10;
     }
