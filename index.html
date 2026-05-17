@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rideshare MY - Compact Fare Estimator</title>
+    <title>Rideshare MY - Professional Fare Estimator</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body {
@@ -23,46 +23,130 @@
             height: 100%;
         }
         #map {
-            height: 30vh;
+            height: 35vh;
             width: 100%;
             z-index: 1;
         }
         #search-panel {
             flex: 1;
             background: white;
-            padding: 14px 16px;
-            box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
+            padding: 16px;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
             z-index: 10;
             box-sizing: border-box;
             border-top-left-radius: 16px;
             border-top-right-radius: 16px;
             display: flex;
             flex-direction: column;
+            overflow-y: auto;
+        }
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
         }
         h2 {
-            margin: 0 0 10px 0;
+            margin: 0;
             font-size: 18px;
             font-weight: 700;
             color: #111;
         }
-        .input-group {
+        
+        /* Layout Structure for Routing Form Inputs */
+        .routing-wrapper {
             position: relative;
-            margin-bottom: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .input-container {
+            position: relative;
+            display: flex;
+            align-items: center;
         }
         input {
             width: 100%;
-            padding: 10px 12px;
+            padding: 12px 64px 12px 12px;
             border: 1px solid #e0e0e0;
             border-radius: 8px;
             font-size: 14px;
             box-sizing: border-box;
             background-color: #f9f9f9;
+            transition: all 0.2s ease;
+        }
+        #pickup {
+            padding-right: 88px; /* Allocated room for GPS and clear icons */
         }
         input:focus {
             outline: none;
-            border-color: #4caf50;
+            border-color: #8e24aa;
             background-color: #fff;
+            box-shadow: 0 0 0 2px rgba(142, 36, 170, 0.1);
         }
+        
+        /* Input Utilities Groups */
+        .action-group {
+            position: absolute;
+            right: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            z-index: 5;
+        }
+        .icon-btn {
+            border: none;
+            background: none;
+            color: #757575;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+        .icon-btn:hover {
+            background-color: #f0f0f0;
+            color: #8e24aa;
+        }
+        .clear-btn {
+            display: none;
+            font-size: 18px;
+            color: #aaa;
+        }
+        
+        /* Floating Midpoint Inversion Element */
+        .swap-container {
+            position: absolute;
+            right: 48px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 15;
+        }
+        .swap-btn {
+            background: white;
+            border: 1px solid #e0e0e0;
+            color: #8e24aa;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            transition: all 0.2s ease;
+            font-size: 14px;
+        }
+        .swap-btn:hover {
+            transform: scale(1.1) translateY(-45%);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            background-color: #fcf5ff;
+        }
+
         .suggestions {
             position: absolute;
             top: 100%;
@@ -71,13 +155,14 @@
             background: white;
             border: 1px solid #e0e0e0;
             border-radius: 8px;
-            max-height: 180px; 
+            max-height: 200px; 
             overflow-y: auto;
             z-index: 1000;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.1);
+            display: none;
         }
         .suggestion-item {
-            padding: 10px 12px;
+            padding: 12px;
             cursor: pointer;
             font-size: 13px;
             line-height: 1.4;
@@ -86,15 +171,17 @@
         .suggestion-item:hover {
             background-color: #f5f5f5;
         }
+        
+        /* Result Rendering Engine Blocks */
         #result-card {
             background: #1c1c1e;
             color: white;
-            padding: 16px 14px;
+            padding: 16px;
             border-radius: 12px;
-            margin-top: 8px;
+            margin-top: 10px;
             cursor: pointer;
             display: none;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 14px rgba(0,0,0,0.15);
         }
         .fare-header-row {
             display: flex;
@@ -105,27 +192,27 @@
         .fare-header {
             font-size: 32px;
             font-weight: 800;
-            color: #4caf50;
+            color: #b388ff;
         }
         .toggle-icon {
             font-size: 11px;
-            color: #8e8e93;
-            background: rgba(255,255,255,0.1);
-            padding: 2px 8px;
+            color: #aeaeb2;
+            background: rgba(255,255,255,0.15);
+            padding: 4px 10px;
             border-radius: 12px;
-            user-select: none;
+            font-weight: 600;
         }
         .fare-meta {
             font-size: 13px;
-            color: #fff;
+            color: #e5e5ea;
             display: flex;
             justify-content: space-between;
             font-weight: 500;
         }
         #invoice-details {
-            margin-top: 10px;
+            margin-top: 12px;
             border-top: 1px dashed #3a3a3c;
-            padding-top: 10px;
+            padding-top: 12px;
             display: none;
         }
         .detail-row {
@@ -133,14 +220,22 @@
             justify-content: space-between;
             font-size: 12px;
             color: #aeaeb2;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
         }
         .detail-row.total-bold {
             color: #fff;
             font-weight: 600;
             border-top: 1px solid #2c2c2e;
-            padding-top: 6px;
+            padding-top: 8px;
             margin-bottom: 0;
+            font-size: 14px;
+        }
+        #error-msg {
+            color: #ff3b30;
+            font-size: 13px;
+            margin-top: 8px;
+            display: none;
+            font-weight: 500;
         }
 
         @media(min-width: 768px) {
@@ -155,6 +250,7 @@
                 width: 380px;
                 height: 100%;
                 border-radius: 0;
+                box-shadow: -4px 0 20px rgba(0,0,0,0.05);
             }
         }
     </style>
@@ -165,21 +261,41 @@
     <div id="map"></div>
     
     <div id="search-panel">
-        <h2>Fare Estimator</h2>
-        
-        <div class="input-group">
-            <input type="text" id="pickup" placeholder="Enter Pickup Location..." autocomplete="off">
-            <div id="pickup-suggestions" class="suggestions"></div>
+        <div class="header-row">
+            <h2>Fare Estimator</h2>
         </div>
         
-        <div class="input-group">
-            <input type="text" id="dropoff" placeholder="Enter Drop-off Location..." autocomplete="off">
-            <div id="dropoff-suggestions" class="suggestions"></div>
+        <div class="routing-wrapper">
+            <!-- Pickup Field Subsystem -->
+            <div class="input-container">
+                <input type="text" id="pickup" placeholder="Enter Pickup Location..." autocomplete="off" enterkeyhint="search">
+                <div class="action-group">
+                    <button class="icon-btn" id="current-loc-btn" title="Use current location">🎯</button>
+                    <button class="icon-btn clear-btn" id="clear-pickup">&times;</button>
+                </div>
+                <div id="pickup-suggestions" class="suggestions"></div>
+            </div>
+            
+            <!-- Structural Positional Inversion Unit -->
+            <div class="swap-container">
+                <button class="swap-btn" id="swap-locations-btn" title="Swap locations" onclick="executeLocationSwap()">⇅</button>
+            </div>
+            
+            <!-- Dropoff Field Subsystem -->
+            <div class="input-container">
+                <input type="text" id="dropoff" placeholder="Enter Drop-off Location..." autocomplete="off" enterkeyhint="search">
+                <div class="action-group">
+                    <button class="icon-btn clear-btn" id="clear-dropoff">&times;</button>
+                </div>
+                <div id="dropoff-suggestions" class="suggestions"></div>
+            </div>
         </div>
+
+        <div id="error-msg"></div>
 
         <div id="result-card" onclick="toggleInvoice()">
             <div class="fare-header-row">
-                <div id="total-fare" class="fare-header">RM 0</div>
+                <div id="total-fare" class="fare-header">RM --</div>
                 <span class="toggle-icon" id="toggle-lbl">Details</span>
             </div>
             <div class="fare-meta">
@@ -189,26 +305,30 @@
             
             <div id="invoice-details">
                 <div class="detail-row">
-                    <span>Base Ride Fare</span>
-                    <span id="calc-base">RM 0.00</span>
+                    <span>Base Fare</span>
+                    <span id="calc-base-fare">RM 0.00</span>
+                </div>
+                <div class="detail-row">
+                    <span>Distance Fare</span>
+                    <span id="calc-ride-distance-rate">RM 0.00</span>
                 </div>
                 <div class="detail-row">
                     <span>PLUS Tolls (Est.)</span>
                     <span id="calc-tolls">RM 0.00</span>
                 </div>
                 <div class="detail-row">
-                    <span>Incentive (RM18/hr)</span>
+                    <span>Traffic Adjust & Incentive</span>
                     <span id="calc-incentive">RM 0.00</span>
                 </div>
                 
                 <div class="detail-row" id="deadhead-km-row" style="display: none;">
-                    <span>Out-of-Zone Surcharge (KM Rate)</span>
+                    <span>Out-of-Zone Surcharge</span>
                     <span id="calc-deadhead-km">RM 0.00</span>
                 </div>
 
                 <div class="detail-row total-bold">
                     <span>Rounded Final Total</span>
-                    <span id="calc-grand" style="color: #4caf50;">RM 0.00</span>
+                    <span id="calc-grand" style="color: #b388ff;">RM 0.00</span>
                 </div>
             </div>
         </div>
@@ -218,7 +338,8 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-    const map = L.map('map').setView([3.1390, 101.6869], 10);
+    // Initialize map focused strictly on Peninsular Malaysia economic core (Klang Valley)
+    const map = L.map('map').setView([3.1390, 101.6869], 11);
     
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
@@ -226,22 +347,101 @@
 
     let pickupMarker = null, dropoffMarker = null, routeLine = null;
     let pickupCoords = null, dropoffCoords = null;
+    let currentRouteTimeout = null;
 
-    setupAutocomplete('pickup', 'pickup-suggestions', (coords) => {
+    // Autocomplete Core Pipelines
+    setupAutocomplete('pickup', 'pickup-suggestions', 'clear-pickup', (coords) => {
         pickupCoords = coords;
-        if (pickupMarker) map.removeLayer(pickupMarker);
-        pickupMarker = L.marker([coords.lat, coords.lon]).addTo(map);
-        clearRouteAndHideCard(); 
+        updateMarker('pickup', coords);
         checkAndProcessRoute();
+    }, () => {
+        pickupCoords = null;
+        if (pickupMarker) { map.removeLayer(pickupMarker); pickupMarker = null; }
+        resetCalculationDisplay();
     });
 
-    setupAutocomplete('dropoff', 'dropoff-suggestions', (coords) => {
+    setupAutocomplete('dropoff', 'dropoff-suggestions', 'clear-dropoff', (coords) => {
         dropoffCoords = coords;
-        if (dropoffMarker) map.removeLayer(dropoffMarker);
-        dropoffMarker = L.marker([coords.lat, coords.lon]).addTo(map);
-        clearRouteAndHideCard(); 
+        updateMarker('dropoff', coords);
         checkAndProcessRoute();
+    }, () => {
+        dropoffCoords = null;
+        if (dropoffMarker) { map.removeLayer(dropoffMarker); dropoffMarker = null; }
+        resetCalculationDisplay();
     });
+
+    // Hardware GPS Location Capture Engine
+    document.getElementById('current-loc-btn').addEventListener('click', () => {
+        if (!navigator.geolocation) {
+            showError("Geolocation capture infrastructure is unsupported by this client architecture.");
+            return;
+        }
+
+        const btn = document.getElementById('current-loc-btn');
+        btn.textContent = "⏳";
+        document.getElementById('error-msg').style.display = 'none';
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                btn.textContent = "🎯";
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                
+                pickupCoords = { lat, lon };
+                document.getElementById('pickup').value = `Current Location (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
+                document.getElementById('clear-pickup').style.display = 'block';
+                
+                updateMarker('pickup', pickupCoords);
+                map.setView([lat, lon], 14);
+                checkAndProcessRoute();
+            },
+            (error) => {
+                btn.textContent = "🎯";
+                showError("Unable to safely resolve client coordinate trace positioning vectors.");
+                console.error("GPS Core Fault Exception:", error);
+            },
+            { enableHighAccuracy: true, timeout: 8000 }
+        );
+    });
+
+    function updateMarker(type, coords) {
+        if (type === 'pickup') {
+            if (pickupMarker) map.removeLayer(pickupMarker);
+            pickupMarker = L.marker([coords.lat, coords.lon]).addTo(map);
+        } else {
+            if (dropoffMarker) map.removeLayer(dropoffMarker);
+            dropoffMarker = L.marker([coords.lat, coords.lon]).addTo(map);
+        }
+    }
+
+    function executeLocationSwap() {
+        const pickupInput = document.getElementById('pickup');
+        const dropoffInput = document.getElementById('dropoff');
+        
+        const tempText = pickupInput.value;
+        const tempCoords = pickupCoords;
+        
+        pickupInput.value = dropoffInput.value;
+        pickupCoords = dropoffCoords;
+        
+        dropoffInput.value = tempText;
+        dropoffCoords = tempCoords;
+        
+        document.getElementById('clear-pickup').style.display = pickupInput.value ? 'block' : 'none';
+        document.getElementById('clear-dropoff').style.display = dropoffInput.value ? 'block' : 'none';
+        
+        if (pickupCoords) updateMarker('pickup', pickupCoords);
+        else if (pickupMarker) { map.removeLayer(pickupMarker); pickupMarker = null; }
+        
+        if (dropoffCoords) updateMarker('dropoff', dropoffCoords);
+        else if (dropoffMarker) { map.removeLayer(dropoffMarker); dropoffMarker = null; }
+        
+        if (pickupCoords && dropoffCoords) {
+            checkAndProcessRoute();
+        } else {
+            resetCalculationDisplay();
+        }
+    }
 
     function expandAddress(props) {
         const parts = [];
@@ -250,100 +450,179 @@
         if (props.district) parts.push(props.district);
         if (props.city || props.town) parts.push(props.city || props.town);
         if (props.state) parts.push(props.state);
-        
-        return parts.length > 0 ? parts.join(', ') : 'Unknown Location';
+        return parts.length > 0 ? parts.join(', ') : 'Target Location Coordinates';
     }
 
-    function setupAutocomplete(inputId, suggestionsId, onSelect) {
+    function resetCalculationDisplay() {
+        if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+        document.getElementById('result-card').style.display = 'none';
+        document.getElementById('error-msg').style.display = 'none';
+    }
+
+    function showError(msg) {
+        const errorDiv = document.getElementById('error-msg');
+        errorDiv.textContent = msg;
+        errorDiv.style.display = 'block';
+        document.getElementById('result-card').style.display = 'none';
+    }
+
+    function setupAutocomplete(inputId, suggestionsId, clearBtnId, onSelect, onClear) {
         const input = document.getElementById(inputId);
         const suggestionsBox = document.getElementById(suggestionsId);
+        const clearBtn = document.getElementById(clearBtnId);
         let debounceTimeout;
 
         input.addEventListener('input', () => {
             clearTimeout(debounceTimeout);
             const query = input.value.trim();
-            if (query.length < 3) { suggestionsBox.innerHTML = ''; return; }
+            
+            clearBtn.style.display = query.length > 0 ? 'block' : 'none';
+
+            if (query.length < 3) { 
+                suggestionsBox.innerHTML = ''; 
+                suggestionsBox.style.display = 'none';
+                return; 
+            }
 
             debounceTimeout = setTimeout(() => {
-                // CHANGED: Replaced restrictive bounding box with central Klang Valley location bias
-                const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lat=3.1390&lon=101.6869&limit=5`;
-                
-                fetch(url).then(res => res.json()).then(data => {
-                    suggestionsBox.innerHTML = '';
-                    data.features.forEach(feature => {
-                        const props = feature.properties;
-                        const detailedAddress = expandAddress(props);
-                        
-                        const div = document.createElement('div');
-                        div.className = 'suggestion-item';
-                        div.textContent = detailedAddress;
-                        div.addEventListener('click', (e) => {
-                            e.stopPropagation(); 
-                            input.value = props.name || detailedAddress;
-                            suggestionsBox.innerHTML = '';
-                            const [lon, lat] = feature.geometry.coordinates;
-                            onSelect({ lat, lon });
+                // Bounds structural limit restricted entirely to Peninsular & East Malaysia coordinates bounding envelope
+                const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&bbox=99.6,0.8,119.5,7.4&limit=5`;
+                fetch(url)
+                    .then(res => res.json())
+                    .then(data => {
+                        suggestionsBox.innerHTML = '';
+                        if(!data.features || data.features.length === 0) {
+                            suggestionsBox.style.display = 'none';
+                            return;
+                        }
+                        suggestionsBox.style.display = 'block';
+                        data.features.forEach(feature => {
+                            const props = feature.properties;
+                            const detailedAddress = expandAddress(props);
+                            
+                            const div = document.createElement('div');
+                            div.className = 'suggestion-item';
+                            div.textContent = detailedAddress;
+                            div.addEventListener('click', () => {
+                                input.value = props.name || detailedAddress;
+                                suggestionsBox.innerHTML = '';
+                                suggestionsBox.style.display = 'none';
+                                const [lon, lat] = feature.geometry.coordinates;
+                                onSelect({ lat, lon });
+                            });
+                            suggestionsBox.appendChild(div);
                         });
-                        suggestionsBox.appendChild(div);
-                    });
-                }).catch(err => console.error(err));
-            }, 300);
+                    }).catch(err => console.error("Geocoding Parsing Fault:", err));
+            }, 350);
         });
 
-        document.addEventListener('click', (e) => {
-            if (!input.contains(e.target) && !suggestionsBox.contains(e.target)) {
-                suggestionsBox.innerHTML = '';
+        clearBtn.addEventListener('click', () => {
+            input.value = '';
+            clearBtn.style.display = 'none';
+            suggestionsBox.innerHTML = '';
+            suggestionsBox.style.display = 'none';
+            onClear();
+        });
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                input.blur();
+                const query = input.value.trim();
+                if (query.length >= 3) {
+                    const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&bbox=99.6,0.8,119.5,7.4&limit=1`;
+                    fetch(url).then(res => res.json()).then(data => {
+                        if (data.features && data.features.length > 0) {
+                            const feature = data.features[0];
+                            input.value = feature.properties.name || expandAddress(feature.properties);
+                            suggestionsBox.innerHTML = '';
+                            suggestionsBox.style.display = 'none';
+                            const [lon, lat] = feature.geometry.coordinates;
+                            onSelect({ lat, lon });
+                        }
+                    }).catch(err => console.error(err));
+                }
             }
         });
     }
 
-    function clearRouteAndHideCard() {
-        if (routeLine) {
-            map.removeLayer(routeLine);
-            routeLine = null;
-        }
-        document.getElementById('result-card').style.display = 'none';
-    }
-
     function checkAndProcessRoute() {
         if (!pickupCoords || !dropoffCoords) return;
+        
+        document.getElementById('error-msg').style.display = 'none';
+        if(currentRouteTimeout) clearTimeout(currentRouteTimeout);
+        
+        currentRouteTimeout = setTimeout(() => {
+            const url = `https://router.project-osrm.org/route/v1/driving/${pickupCoords.lon},${pickupCoords.lat};${dropoffCoords.lon},${dropoffCoords.lat}?overview=full&geometries=geojson`;
 
-        const url = `https://router.project-osrm.org/route/v1/driving/${pickupCoords.lon},${pickupCoords.lat};${dropoffCoords.lon},${dropoffCoords.lat}?overview=full&geometries=geojson`;
+            fetch(url)
+                .then(res => {
+                    if (!res.ok) throw new Error('OSRM routing trace link dropped.');
+                    return res.json();
+                })
+                .then(data => {
+                    if (!data.routes || data.routes.length === 0) {
+                        showError("No valid drivable geometry found matching those vectors.");
+                        return;
+                    }
 
-        fetch(url)
-            .then(res => {
-                if (!res.ok) throw new Error('Network routing execution breakdown.');
-                return res.json();
-            })
-            .then(data => {
-                if (!data.routes || data.routes.length === 0) {
-                    alert("No valid drivable route could be calculated between these selected nodes.");
-                    return;
-                }
+                    const route = data.routes[0];
+                    const distanceKm = route.distance / 1000;
+                    const baseDurationMins = route.duration / 60;
 
-                const route = data.routes[0];
-                const distanceKm = route.distance / 1000;
-                const durationMins = Math.round(route.duration / 60);
+                    // --- TRAFFIC SIMULATION CORE LOGIC ---
+                    const now = new Date();
+                    const currentHour = now.getHours();
+                    const isWeekend = (now.getDay() === 0 || now.getDay() === 6);
 
-                if (routeLine) map.removeLayer(routeLine);
-                routeLine = L.geoJSON(route.geometry, { style: { color: '#4caf50', weight: 4, opacity: 0.85 } }).addTo(map);
-                map.fitBounds(L.latLngBounds([pickupCoords.lat, pickupCoords.lon], [dropoffCoords.lat, dropoffCoords.lon]), { padding: [40, 40] });
+                    let trafficDelayFactor = 1.15; 
 
-                processCalculations(distanceKm, durationMins);
-            })
-            .catch(err => {
-                console.error(err);
-                alert("Routing service is currently unreachable. Please check your network connection.");
-            });
+                    if (!isWeekend) {
+                        if ((currentHour >= 7 && currentHour <= 9) || (currentHour >= 17 && currentHour <= 19.5)) {
+                            trafficDelayFactor = 1.55; // Commute window peak scale
+                        } else if (currentHour >= 12 && currentHour <= 14) {
+                            trafficDelayFactor = 1.25; 
+                        }
+                    } else {
+                        if (currentHour >= 16 && currentHour <= 21) {
+                            trafficDelayFactor = 1.35; 
+                        }
+                    }
+
+                    let distanceImpactModifier = 1.0;
+                    if (distanceKm <= 5) {
+                        distanceImpactModifier = 0.65; // Dampens scaling for short runs
+                    } else if (distanceKm <= 15) {
+                        distanceImpactModifier = 0.85;
+                    }
+
+                    const localizedTrafficWeight = 1 + ((trafficDelayFactor - 1) * distanceImpactModifier);
+                    const correctedDurationMins = Math.max(1, Math.round(baseDurationMins * localizedTrafficWeight));
+
+                    if (routeLine) map.removeLayer(routeLine);
+                    
+                    routeLine = L.geoJSON(route.geometry, { 
+                        style: { color: '#8e24aa', weight: 5, opacity: 0.85 } 
+                    }).addTo(map);
+                    
+                    map.fitBounds(L.latLngBounds([pickupCoords.lat, pickupCoords.lon], [dropoffCoords.lat, dropoffCoords.lon]), { 
+                        padding: [40, 40] 
+                    });
+
+                    processCalculations(distanceKm, correctedDurationMins);
+                })
+                .catch(err => {
+                    console.error(err);
+                    showError("Routing link dropped or latency limit triggered.");
+                });
+        }, 200);
     }
 
     function formatDuration(totalMins) {
-        if (totalMins < 60) {
-            return `${totalMins} mins`;
-        }
+        if (totalMins < 60) return `${totalMins} mins`;
         const hours = Math.floor(totalMins / 60);
         const mins = totalMins % 60;
-        return mins > 0 ? `${hours} hrs ${mins} mins` : `${hours} hrs`;
+        return mins > 0 ? `${hours} hr ${mins} mins` : `${hours} hr`;
     }
 
     function roundToMalaysianCents(value) {
@@ -351,42 +630,45 @@
     }
 
     function processCalculations(distance, duration) {
-        const baseRide = 5.00 + (Math.max(0, distance - 1) * 1.35);
+        // Standard Segment Cost Baseline
+        const baseFare = 5.00;
+        const perKmRate = 1.25;
+        const rideDistanceFare = distance * perKmRate;
         
+        // Progressive Infrastructure Toll Scale
         let dynamicTolls = 0;
-        if (distance > 5) {
-            if (distance <= 50) {
-                dynamicTolls = 2.50; 
-            } else {
-                dynamicTolls = 3.50 + (distance * 0.112); 
-            }
+        if (distance > 6) {
+            dynamicTolls = distance <= 45 ? 2.50 : 3.50 + ((distance - 45) * 0.095);
         }
 
-        const driverIncentive = (duration / 60) * 18.00;
+        // Temporal Opportunity Overhead Allocation
+        const driverIncentive = (duration / 60) * 15.00;
 
-        let deadheadKmCost = 0;
-        const urbanBuffer = 50.0;
-
-        if (distance > urbanBuffer) {
-            const deadheadDistance = distance - urbanBuffer;
-            deadheadKmCost = deadheadDistance * 0.80;
+        // Long-Range Return Compensation (Deadhead Surcharge Vector)
+        let deadheadCost = 0;
+        if (distance > 12) {
+            const boundaryKm = Math.min(distance, 350);
+            const dynamicScalePct = ((boundaryKm - 12) / (350 - 12)) * 0.45;
+            deadheadCost = rideDistanceFare * dynamicScalePct;
             document.getElementById('deadhead-km-row').style.display = 'flex';
         } else {
             document.getElementById('deadhead-km-row').style.display = 'none';
         }
 
-        const rawTotal = baseRide + dynamicTolls + driverIncentive + deadheadKmCost;
-        const roundedTotal = roundToMalaysianCents(rawTotal);
-        const wholeFare = Math.round(roundedTotal);
+        // Compilation Sequence Execution
+        const rawTotal = baseFare + rideDistanceFare + dynamicTolls + driverIncentive + deadheadCost;
+        const roundedTotal = Math.max(baseFare, roundToMalaysianCents(rawTotal));
+        const finalDisplayedWholeFare = Math.round(roundedTotal);
 
-        document.getElementById('total-fare').textContent = `RM ${wholeFare}`;
+        document.getElementById('total-fare').textContent = `RM ${finalDisplayedWholeFare}`;
         document.getElementById('fare-distance').textContent = `${distance.toFixed(1)} km`;
         document.getElementById('fare-duration').textContent = formatDuration(duration);
 
-        document.getElementById('calc-base').textContent = `RM ${baseRide.toFixed(2)}`;
+        document.getElementById('calc-base-fare').textContent = `RM ${baseFare.toFixed(2)}`;
+        document.getElementById('calc-ride-distance-rate').textContent = `RM ${rideDistanceFare.toFixed(2)}`;
         document.getElementById('calc-tolls').textContent = `RM ${dynamicTolls.toFixed(2)}`;
         document.getElementById('calc-incentive').textContent = `RM ${driverIncentive.toFixed(2)}`;
-        document.getElementById('calc-deadhead-km').textContent = `RM ${deadheadKmCost.toFixed(2)}`;
+        document.getElementById('calc-deadhead-km').textContent = `RM ${deadheadCost.toFixed(2)}`;
         document.getElementById('calc-grand').textContent = `RM ${roundedTotal.toFixed(2)}`;
 
         document.getElementById('result-card').style.display = 'block';
