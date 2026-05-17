@@ -54,7 +54,6 @@
             color: #111;
         }
         
-        /* Layout Structure for Routing Form Inputs */
         .routing-wrapper {
             position: relative;
             display: flex;
@@ -69,7 +68,7 @@
         }
         input {
             width: 100%;
-            padding: 12px 64px 12px 34px; /* Room for active field dot indicator */
+            padding: 12px 64px 12px 34px;
             border: 1px solid #e0e0e0;
             border-radius: 8px;
             font-size: 14px;
@@ -78,7 +77,7 @@
             transition: all 0.2s ease;
         }
         #pickup {
-            padding-right: 88px; /* Allocated room for GPS and clear icons */
+            padding-right: 88px;
         }
         input:focus {
             outline: none;
@@ -87,7 +86,6 @@
             box-shadow: 0 0 0 2px rgba(142, 36, 170, 0.1);
         }
 
-        /* Active field dot indicator */
         .input-container::before {
             content: '';
             position: absolute;
@@ -99,13 +97,12 @@
             pointer-events: none;
         }
         .input-container:has(#pickup)::before {
-            background-color: #4caf50; /* Green dot for pickup */
+            background-color: #4caf50;
         }
         .input-container:has(#dropoff)::before {
-            background-color: #f44336; /* Red dot for drop-off */
+            background-color: #f44336;
         }
         
-        /* Input Utilities Groups */
         .action-group {
             position: absolute;
             right: 8px;
@@ -137,7 +134,6 @@
             color: #aaa;
         }
         
-        /* Floating Midpoint Inversion Element */
         .swap-container {
             position: absolute;
             right: 48px;
@@ -191,7 +187,6 @@
             background-color: #f5f5f5;
         }
 
-        /* Quick helper context tip banner */
         .map-tip {
             font-size: 11px;
             color: #666;
@@ -203,7 +198,6 @@
             font-weight: 500;
         }
         
-        /* Result Rendering Engine Blocks */
         #result-card {
             background: #1c1c1e;
             color: white;
@@ -385,6 +379,53 @@
     pickupInput.addEventListener('focus', () => activeInputFieldId = 'pickup');
     dropoffInput.addEventListener('focus', () => activeInputFieldId = 'dropoff');
 
+    // --- ENHANCED ADDRESS PARSING ENGINE WITH STRUCTURAL FALLBACK MECHANISMS ---
+    function expandAddress(props, fallbackLat = null, fallbackLon = null) {
+        if (!props) return fallbackLat && fallbackLon ? `📍 (${fallbackLat.toFixed(4)}, ${fallbackLon.toFixed(4)})` : "Selected Location";
+        
+        const parts = [];
+        
+        // 1. Primary Feature Identifier
+        if (props.name) {
+            parts.push(props.name);
+        }
+        
+        // 2. Road Vectors (Avoid duplicating if the feature name matches the street)
+        if (props.street && props.street !== props.name) {
+            parts.push(props.street);
+        } else if (props.road && props.road !== props.name) {
+            parts.push(props.road);
+        }
+        
+        // 3. Sub-District or Localized Mukim Context
+        if (props.district) {
+            parts.push(props.district);
+        } else if (props.suburb) {
+            parts.push(props.suburb);
+        }
+        
+        // 4. Urban Settlement Cluster
+        if (props.city) {
+            parts.push(props.city);
+        } else if (props.town) {
+            parts.push(props.town);
+        } else if (props.village) {
+            parts.push(props.village);
+        }
+        
+        // 5. State Level Context
+        if (props.state) {
+            parts.push(props.state);
+        }
+        
+        if (parts.length > 0) {
+            return parts.join(', ');
+        }
+        
+        // Catch-all structural string guarantee
+        return fallbackLat && fallbackLon ? `📍 (${fallbackLat.toFixed(4)}, ${fallbackLon.toFixed(4)})` : "Unnamed Location, Malaysia";
+    }
+
     setupAutocomplete('pickup', 'pickup-suggestions', 'clear-pickup', (coords) => {
         pickupCoords = coords;
         updateMarker('pickup', coords);
@@ -405,19 +446,21 @@
         resetCalculationDisplay();
     });
 
-    // --- REVERSE GEOCODING SUBSYSTEM (MAP CLICK) ---
+    // --- REVERSE GEOCODING SUBSYSTEM (MAP CLICK) WITH ROBUST ERROR HANDLING ---
     map.on('click', function(e) {
         const lat = e.latlng.lat;
         const lon = e.latlng.lng;
         
-        const targetInput = document.getElementById(activeInputFieldId);
-        const targetClearBtn = document.getElementById(activeInputFieldId === 'pickup' ? 'clear-pickup' : 'clear-dropoff');
+        const targetInputId = activeInputFieldId;
+        const targetInput = document.getElementById(targetInputId);
+        const targetClearBtn = document.getElementById(targetInputId === 'pickup' ? 'clear-pickup' : 'clear-dropoff');
         
+        // Instant visual placeholder feedback
         targetInput.value = `📍 Coordinates (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
         targetClearBtn.style.display = 'block';
 
         const selectedCoords = { lat, lon };
-        if (activeInputFieldId === 'pickup') {
+        if (targetInputId === 'pickup') {
             pickupCoords = selectedCoords;
             updateMarker('pickup', selectedCoords);
         } else {
@@ -428,22 +471,34 @@
         checkAndProcessRoute();
 
         const reverseUrl = `https://photon.komoot.io/api/reverse/?lon=${lon}&lat=${lat}`;
+        
         fetch(reverseUrl)
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) throw new Error("Reverse geocode network response exception.");
+                return res.json();
+            })
             .then(data => {
                 if (data.features && data.features.length > 0) {
-                    targetInput.value = expandAddress(data.features[0].properties);
+                    // Update input with human-readable parsed address string
+                    targetInput.value = expandAddress(data.features[0].properties, lat, lon);
+                } else {
+                    targetInput.value = `📍 (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
                 }
             })
-            .catch(err => console.error("Reverse Address Parsing Exception:", err));
+            .catch(err => {
+                console.error("Photon Reverse Address Parsing Exception:", err);
+                // Fail-safe protection: Maintain operational coordinate text inside DOM instead of erasing it
+                targetInput.value = `📍 (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
+            });
 
-        if (activeInputFieldId === 'pickup' && !dropoffCoords) {
+        // Smart UI Input Target Toggle Focus Cycle
+        if (targetInputId === 'pickup' && !dropoffCoords) {
             activeInputFieldId = 'dropoff';
             dropoffInput.focus();
         }
     });
 
-    // --- HARDWARE GPS LOCATION CAPTURE ENGINE WITH REVERSE GEOCODING ---
+    // --- HARDWARE GPS LOCATION CAPTURE ENGINE WITH SAFARI/CHROME FALLBACKS ---
     document.getElementById('current-loc-btn').addEventListener('click', () => {
         if (!navigator.geolocation) {
             showError("Geolocation infrastructure is unsupported by this client layout.");
@@ -471,13 +526,21 @@
 
                 const reverseUrl = `https://photon.komoot.io/api/reverse/?lon=${lon}&lat=${lat}`;
                 fetch(reverseUrl)
-                    .then(res => res.json())
+                    .then(res => {
+                        if (!res.ok) throw new Error("Network drop during GPS reverse lookup.");
+                        return res.json();
+                    })
                     .then(data => {
                         if (data.features && data.features.length > 0) {
-                            document.getElementById('pickup').value = expandAddress(data.features[0].properties);
+                            document.getElementById('pickup').value = expandAddress(data.features[0].properties, lat, lon);
+                        } else {
+                            document.getElementById('pickup').value = `📍 My Location (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
                         }
                     })
-                    .catch(err => console.error("GPS Reverse Address Parsing Exception:", err));
+                    .catch(err => {
+                        console.error("GPS Reverse Address Parsing Exception:", err);
+                        document.getElementById('pickup').value = `📍 My Location (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
+                    });
                 
                 activeInputFieldId = 'dropoff';
                 if (document.getElementById('dropoff')) {
@@ -529,23 +592,6 @@
         }
     }
 
-    // --- ENHANCED ADDRESS PARSING ENGINE ---
-    function expandAddress(props) {
-        const parts = [];
-        
-        // Add the major descriptive title element if available
-        if (props.name) parts.push(props.name);
-        
-        // Append distinct road descriptors safely without duplicating the name string
-        if (props.street && props.street !== props.name) parts.push(props.street);
-        if (props.district) parts.push(props.district);
-        if (props.city || props.town) parts.push(props.city || props.town);
-        if (props.state) parts.push(props.state);
-        
-        // Fallback catch mechanism to make sure it never displays raw coordinate digits
-        return parts.length > 0 ? parts.join(', ') : "Unnamed Location, Selangor";
-    }
-
     function resetCalculationDisplay() {
         if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
         document.getElementById('result-card').style.display = 'none';
@@ -578,6 +624,7 @@
             }
 
             debounceTimeout = setTimeout(() => {
+                // Strict Bounding Box Restraints for Peninsular Malaysia Vectors
                 const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&bbox=99.6,0.8,119.5,7.4&limit=5`;
                 fetch(url)
                     .then(res => res.json())
@@ -590,7 +637,8 @@
                         suggestionsBox.style.display = 'block';
                         data.features.forEach(feature => {
                             const props = feature.properties;
-                            const detailedAddress = expandAddress(props);
+                            const [lon, lat] = feature.geometry.coordinates;
+                            const detailedAddress = expandAddress(props, lat, lon);
                             
                             const div = document.createElement('div');
                             div.className = 'suggestion-item';
@@ -599,7 +647,6 @@
                                 input.value = detailedAddress;
                                 suggestionsBox.innerHTML = '';
                                 suggestionsBox.style.display = 'none';
-                                const [lon, lat] = feature.geometry.coordinates;
                                 onSelect({ lat, lon });
                             });
                             suggestionsBox.appendChild(div);
@@ -626,10 +673,10 @@
                     fetch(url).then(res => res.json()).then(data => {
                         if (data.features && data.features.length > 0) {
                             const feature = data.features[0];
-                            input.value = expandAddress(feature.properties);
+                            const [lon, lat] = feature.geometry.coordinates;
+                            input.value = expandAddress(feature.properties, lat, lon);
                             suggestionsBox.innerHTML = '';
                             suggestionsBox.style.display = 'none';
-                            const [lon, lat] = feature.geometry.coordinates;
                             onSelect({ lat, lon });
                         }
                     }).catch(err => console.error(err));
@@ -716,7 +763,6 @@
         return mins > 0 ? `${hours} hr ${mins} mins` : `${hours} hr`;
     }
 
-    // Standard rounding behavior
     function roundToMalaysianCents(value) {
         return Math.round(value * 10) / 10;
     }
