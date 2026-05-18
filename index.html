@@ -654,7 +654,10 @@
         // Standard Segment Cost Baseline
         const baseFare = 5.00;
         const perKmRate = 1.25;
-        const rideDistanceFare = distance * perKmRate;
+        
+        // Fix: Deduct the 1km included in the base fare to prevent double charging
+        const chargeableDistance = Math.max(0, distance - 1);
+        const rideDistanceFare = chargeableDistance * perKmRate;
         
         // Dynamic Infrastructure Toll Evaluator Engine
         let dynamicTolls = 0;
@@ -670,6 +673,7 @@
         if (distance > 12) {
             const boundaryKm = Math.min(distance, 350);
             const dynamicScalePct = ((boundaryKm - 12) / (350 - 12)) * 0.45;
+            // Deadhead calculation uses the updated ride distance fare
             deadheadCost = rideDistanceFare * dynamicScalePct;
             document.getElementById('deadhead-km-row').style.display = 'flex';
         } else {
