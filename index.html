@@ -54,7 +54,6 @@
             color: #111;
         }
 
-        /* Toll Registry Button */
         .registry-trigger-btn {
             background-color: #8e24aa;
             color: white;
@@ -73,7 +72,6 @@
             background-color: #7b1fa2;
         }
         
-        /* Layout Structure for Routing Form Inputs */
         .routing-wrapper {
             position: relative;
             display: flex;
@@ -106,7 +104,6 @@
             box-shadow: 0 0 0 2px rgba(142, 36, 170, 0.1);
         }
         
-        /* Input Utilities Groups */
         .action-group {
             position: absolute;
             right: 8px;
@@ -138,7 +135,6 @@
             color: #aaa;
         }
         
-        /* Floating Midpoint Inversion Element */
         .swap-container {
             position: absolute;
             right: 48px;
@@ -192,7 +188,6 @@
             background-color: #f5f5f5;
         }
         
-        /* Result Rendering Engine Blocks */
         #result-card {
             background: #1c1c1e;
             color: white;
@@ -249,7 +244,6 @@
             font-weight: 500;
         }
 
-        /* --- OFFICIAL TOLL REGISTRY SLIDE OUT PANEL --- */
         #registry-backdrop {
             position: fixed;
             top: 0;
@@ -308,7 +302,6 @@
             padding: 16px;
         }
         
-        /* Toll Registry Database Table Styles */
         .registry-table-wrapper {
             overflow-x: auto;
             border: 1px solid #e0e0e0;
@@ -449,7 +442,7 @@
                     <span id="calc-ride-distance-rate">RM 0.00</span>
                 </div>
                 <div class="detail-row">
-                    <span id="toll-type-label">PLUS Tolls (Actual)</span>
+                    <span id="toll-type-label">Tolls (Est.)</span>
                     <span id="calc-tolls">RM 0.00</span>
                 </div>
                 <div class="detail-row">
@@ -580,13 +573,6 @@
                             <td><span class="badge badge-open">Open System</span></td>
                             <td>Batu, Sentul Pasar, Ayer Panas, Segambut checkpoints: RM2.50.</td>
                         </tr>
-                        <tr>
-                            <td style="font-weight: 600;">Amanat Lebuhraya Rakyat</td>
-                            <td><span class="hwy-code">ALR Matrix</span></td>
-                            <td>Consolidated Trust Restructure Network</td>
-                            <td><span class="badge badge-comp">Conglomerate</span></td>
-                            <td>Trust framework managing LDP, SPRINT, KESAS, and SMART configurations for stability.</td>
-                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -603,7 +589,6 @@
         attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    // --- ACTIVATED ENTERPRISE ROUTING TOKEN ---
     const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0="; 
 
     let pickupMarker = null, dropoffMarker = null, routeLine = null;
@@ -910,24 +895,28 @@
             const pickupText = document.getElementById('pickup').value.toLowerCase();
             const dropoffText = document.getElementById('dropoff').value.toLowerCase();
 
-            // --- STRATEGIC INTERSTATE PHYSICAL CHECKPOINT HARDCODING ---
+            // --- CROSS-BORDER STRATEGIC HARDCODE ALIGNMENT CHECKS ---
             const isKlangKaparOrigin = pickupText.includes('meru') || pickupText.includes('kapar') || pickupText.includes('bukit raja') || pickupText.includes('klang');
             const isJohorBahruDest = dropoffText.includes('holiday plaza') || dropoffText.includes('jb sentral') || dropoffText.includes('skudai') || dropoffText.includes('r&f mall') || dropoffText.includes('johor');
-            
             const isKlangKaparDest = dropoffText.includes('meru') || dropoffText.includes('kapar') || dropoffText.includes('bukit raja') || dropoffText.includes('klang');
             const isJohorBahruOrigin = pickupText.includes('holiday plaza') || pickupText.includes('jb sentral') || pickupText.includes('skudai') || pickupText.includes('r&f mall') || pickupText.includes('johor');
 
+            // Genting Highlands Premium Outlets Interception Keys
+            const isGentingDest = dropoffText.includes('genting') || dropoffText.includes('premium outlet') || dropoffText.includes('ghpo') || dropoffText.includes('gohtong');
+            const isGentingOrigin = pickupText.includes('genting') || pickupText.includes('premium outlet') || pickupText.includes('ghpo') || pickupText.includes('gohtong');
+
             if ((isKlangKaparOrigin && isJohorBahruDest) || (isJohorBahruOrigin && isKlangKaparDest)) {
-                dynamicTolls = 37.31; // Official Closed-System Ticket Trace Price
+                dynamicTolls = 37.31; // Official Closed PLUS Ticket 
+                isOfficialActualToll = true;
+            } else if ((isKlangKaparOrigin && isGentingDest) || (isGentingOrigin && isKlangKaparDest)) {
+                dynamicTolls = 12.10; // NKVE (3.60) + DUKE (2.50) + Gombak Karak (6.00)
                 isOfficialActualToll = true;
             } else {
-                // Fallback Dynamic Estimate Curve
                 dynamicTolls = distance <= 45 ? 2.50 : 3.50 + ((distance - 45) * 0.095);
             }
         }
 
-        // Apply updated context label identifiers
-        document.getElementById('toll-type-label').textContent = isOfficialActualToll ? "PLUS Tolls (Actual)" : "PLUS Tolls (Est.)";
+        document.getElementById('toll-type-label').textContent = isOfficialActualToll ? "Tolls (Actual)" : "Tolls (Est.)";
 
         const driverIncentive = (duration / 60) * 12.00;
 
