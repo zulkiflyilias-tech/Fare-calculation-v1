@@ -402,6 +402,20 @@
         errorDiv.style.display = 'block';
         resultCard.style.display = 'none';
     }
+
+    // Standardized Malaysian Address Builder Utility
+    function buildMalaysianAddress(props) {
+        let parts = [];
+        if (props.name) parts.push(props.name);
+        if (props.street && props.street !== props.name) parts.push(props.street);
+        if (props.district) parts.push(props.district);
+        if (props.city && props.city !== props.district) parts.push(props.city);
+        if (props.postcode) parts.push(props.postcode);
+        if (props.state) parts.push(props.state);
+        
+        // Clean out duplicate substrings if they creep into chained fields
+        return parts.filter((val, idx, self) => self.indexOf(val) === idx).join(', ');
+    }
     
     // Update markers on map
     function updateMarker(type, coords) {
@@ -479,12 +493,10 @@
     }
     
     function calculateFare(distance, durationMinutes) {
-        // Dynamic fare model (Malaysia-centric)
         const baseFare = 4.50;
         const perKm = 1.25;
         const distanceFare = distance * perKm;
         
-        // Toll simulation based on distance & known corridors
         let tollEstimate = 0;
         if (distance > 5.5) {
             if (distance <= 25) tollEstimate = 2.80;
@@ -493,11 +505,9 @@
             tollEstimate = Math.min(tollEstimate, 14.0);
         }
         
-        // Driver incentive based on time & distance
         let incentive = (durationMinutes / 55) * 12.0;
         incentive = Math.min(incentive, 9.5);
         
-        // Long distance surcharge (out-of-zone)
         let longDistSurcharge = 0;
         let showDeadhead = false;
         if (distance > 18) {
@@ -509,11 +519,9 @@
         document.getElementById('deadhead-km-row').style.display = showDeadhead ? 'flex' : 'none';
         
         let rawTotal = baseFare + distanceFare + tollEstimate + incentive + longDistSurcharge;
-        // floor rounding to nearest 10 sen (Malaysian style)
         let roundedTotal = Math.ceil(rawTotal * 10) / 10;
-        const finalFareRounded = Math.round(roundedTotal);   // show RM integer for main display
+        const finalFareRounded = Math.round(roundedTotal);
         
-        // Update UI
         document.getElementById('total-fare').innerHTML = `RM ${finalFareRounded}`;
         document.getElementById('fare-distance').innerHTML = `${distance.toFixed(1)} km`;
         let durStr = durationMinutes < 60 ? `${durationMinutes} mins` : `${Math.floor(durationMinutes/60)} hr ${durationMinutes%60} mins`;
@@ -530,7 +538,7 @@
         errorDiv.style.display = 'none';
     }
     
-    // Smart reverse geocoding + UI update
+    // Smart reverse geocoding + Full address construction for Map Clicks
     async function reverseGeocode(lat, lon, inputElement, clearBtn, isPickup) {
         const fallbackName = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
         inputElement.value = `📍 ${fallbackName}`;
@@ -539,55 +547,42 @@
         if (isPickup) {
             pickupCoords = coords;
             updateMarker('pickup', coords);
-            removeMarker('dropoff'); // not remove other, just update
         } else {
             dropoffCoords = coords;
             updateMarker('dropoff', coords);
         }
         fetchRouteAndCalculate();
-        // Try to get nice address
+        
         try {
             const revUrl = `https://photon.komoot.io/api/reverse/?lon=${lon}&lat=${lat}`;
             const res = await fetch(revUrl);
             const data = await res.json();
             if (data.features && data.features.length > 0) {
                 const props = data.features[0].properties;
+                const fullAddress = buildMalaysianAddress(props);
                 
-                // Build robust, clean string out of components
-                let parts = [];
-                if (props.name) parts.push(props.name);
-                if (props.street && props.street !== props.name) parts.push(props.street);
-                if (props.district) parts.push(props.district);
-                if (props.city && props.city !== props.district) parts.push(props.city);
-                if (props.state) parts.push(props.state);
-                
-                let address = parts.join(', ');
-                if (address && address.trim()) inputElement.value = address;
+                if (fullAddress && fullAddress.trim()) inputElement.value = fullAddress;
                 else inputElement.value = `📍 ${lat.toFixed(4)}, ${lon.toFixed(4)}`;
             }
         } catch(e) { console.warn("reverse geo silent"); }
     }
     
-    // ---- MAP CLICK HANDLER (sets active field) ----
+    // ---- MAP CLICK HANDLER (Both Inputs) ----
     map.on('click', async (e) => {
         const { lat, lng } = e.latlng;
         if (activeFieldId === 'pickup') {
             await reverseGeocode(lat, lng, pickupInput, clearPickupBtn, true);
-            // after setting pickup, smart focus: if dropoff missing, move active to dropoff
             if (!dropoffCoords) {
                 activeFieldId = 'dropoff';
                 dropoffInput.focus();
             }
         } else {
             await reverseGeocode(lat, lng, dropoffInput, clearDropoffBtn, false);
-            if (!pickupCoords && activeFieldId === 'dropoff') {
-                // edge: if dropoff set but pickup missing? active stays but still ok
-            }
         }
         updateClearButtons();
     });
     
-    // ---- GPS LOCATION (sets pickup & auto-fetches address)
+    // ---- GPS LOCATION (Pickup Only Input Context) ----
     gpsBtn.addEventListener('click', () => {
         if (!navigator.geolocation) {
             showErrorMessage("Geolocation not supported by this browser.");
@@ -598,23 +593,16 @@
         navigator.geolocation.getCurrentPosition(async (position) => {
             const lat = position.coords.latitude;
             const lon = position.coords.longitude;
-            // Reverse geocode for nice place name
             try {
                 const revUrl = `https://photon.komoot.io/api/reverse/?lon=${lon}&lat=${lat}`;
                 const resp = await fetch(revUrl);
                 const data = await resp.json();
-                let addressText = "My Location";
+                let addressText = "";
                 if (data.features && data.features.length > 0) {
                     const props = data.features[0].properties;
-                    let parts = [];
-                    if (props.name) parts.push(props.name);
-                    if (props.street && props.street !== props.name) parts.push(props.street);
-                    if (props.district) parts.push(props.district);
-                    if (props.city && props.city !== props.district) parts.push(props.city);
-                    if (props.state) parts.push(props.state);
-                    
-                    addressText = parts.join(', ') || `📍 ${lat.toFixed(3)}, ${lon.toFixed(3)}`;
-                } else {
+                    addressText = buildMalaysianAddress(props);
+                }
+                if (!addressText || !addressText.trim()) {
                     addressText = `📍 ${lat.toFixed(3)}, ${lon.toFixed(3)}`;
                 }
                 pickupInput.value = addressText;
@@ -624,11 +612,11 @@
                 map.setView([lat, lon], 14);
                 if (dropoffCoords) fetchRouteAndCalculate();
                 else resetFareCard();
-                // set active to dropoff for next map click flow
+                
                 activeFieldId = 'dropoff';
                 dropoffInput.focus();
             } catch(err) {
-                pickupInput.value = `My Location (${lat.toFixed(3)}, ${lon.toFixed(3)})`;
+                pickupInput.value = `📍 ${lat.toFixed(3)}, ${lon.toFixed(3)}`;
                 pickupCoords = { lat, lon };
                 updateMarker('pickup', pickupCoords);
                 clearPickupBtn.style.display = 'block';
@@ -646,7 +634,7 @@
         }, { enableHighAccuracy: true, timeout: 10000 });
     });
     
-    // swap locations
+    // Swap locations logic
     function swapLocations() {
         if (!pickupCoords && !dropoffCoords) return;
         const tempText = pickupInput.value;
@@ -665,7 +653,7 @@
     }
     swapBtn.addEventListener('click', swapLocations);
     
-    // clear buttons
+    // Clear buttons
     clearPickupBtn.addEventListener('click', () => {
         pickupInput.value = '';
         pickupCoords = null;
@@ -701,17 +689,7 @@
                     suggestionsBox.style.display = 'block';
                     data.features.forEach(feat => {
                         const props = feat.properties;
-                        
-                        // RECTIFIED: Build dynamic, highly informative full address strings
-                        let addrParts = [];
-                        if (props.name) addrParts.push(props.name);
-                        if (props.street && props.street !== props.name) addrParts.push(props.street);
-                        if (props.district) addrParts.push(props.district);
-                        if (props.city && props.city !== props.district) addrParts.push(props.city);
-                        if (props.postcode) addrParts.push(props.postcode);
-                        if (props.state) addrParts.push(props.state);
-                        
-                        const fullAddr = addrParts.join(', ') || props.name || "Location";
+                        const fullAddr = buildMalaysianAddress(props) || "Location";
                         
                         const div = document.createElement('div');
                         div.className = 'suggestion-item';
@@ -749,11 +727,9 @@
     setupAutoComplete(pickupInput, 'pickup-suggestions', onAddressSelect, true);
     setupAutoComplete(dropoffInput, 'dropoff-suggestions', onAddressSelect, false);
     
-    // Additional: Focus tracking & visual hints for active field
     pickupInput.addEventListener('focus', () => { activeFieldId = 'pickup'; });
     dropoffInput.addEventListener('focus', () => { activeFieldId = 'dropoff'; });
     
-    // Toggle invoice details
     window.toggleInvoice = function() {
         const details = document.getElementById('invoice-details');
         const lbl = document.getElementById('toggle-lbl');
@@ -767,7 +743,6 @@
     };
     document.getElementById('result-card').addEventListener('click', (e) => { if(e.target === resultCard || e.target.classList.contains('toggle-icon')) toggleInvoice(); });
     
-    // Sync initial clear states
     updateClearButtons();
 </script>
 </body>
