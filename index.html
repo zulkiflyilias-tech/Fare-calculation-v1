@@ -432,24 +432,23 @@
             </div>
             
             <div id="invoice-details">
-                <div class="detail-row">
+                <div class="detail-row" id="base-fare-row">
                     <span>Base Fare</span>
                     <span id="calc-base-fare">RM 5.00</span>
                 </div>
-                <div class="detail-row">
+                <div class="detail-row" id="distance-fare-row">
                     <span>Distance Fare</span>
                     <span id="calc-ride-distance-rate">RM 0.00</span>
                 </div>
-                <div class="detail-row">
+                <div class="detail-row" id="tolls-row">
                     <span id="toll-type-label">Tolls (Est.)</span>
                     <span id="calc-tolls">RM 0.00</span>
                 </div>
-                <div class="detail-row">
+                <div class="detail-row" id="incentive-row">
                     <span>Traffic Adjust & Incentive</span>
                     <span id="calc-incentive">RM 0.00</span>
                 </div>
-                
-                <div class="detail-row" id="deadhead-km-row" style="display: none;">
+                <div class="detail-row" id="deadhead-km-row">
                     <span>Out-of-Zone Surcharge</span>
                     <span id="calc-deadhead-km">RM 0.00</span>
                 </div>
@@ -864,22 +863,20 @@
         const isKLCenterDest = dropoffText.includes('klcc') || dropoffText.includes('kuala lumpur') || dropoffText.includes('kl tower') || dropoffText.includes('bintang') || dropoffText.includes('sentral');
         const isKLCenterOrigin = pickupText.includes('klcc') || pickupText.includes('kuala lumpur') || pickupText.includes('kl tower') || pickupText.includes('bintang') || pickupText.includes('sentral');
 
-        // Target clusters for Southern / Negeri Sembilan lines
         const isSerembanDest = dropoffText.includes('seremban') || dropoffText.includes('tuanku jaafar') || dropoffText.includes('senawang') || dropoffText.includes('nilai');
         const isSerembanOrigin = pickupText.includes('seremban') || pickupText.includes('tuanku jaafar') || pickupText.includes('senawang') || pickupText.includes('nilai');
 
-        // CRITICAL SPATIAL OVERRIDES
         if ((isKlangKaparOrigin && isJohorBahruDest) || (isJohorBahruOrigin && isKlangKaparDest)) {
             dynamicTolls = 37.31; 
             tollSystemLabel = "PLUS Tolls (Actual)";
         } else if ((isKlangKaparOrigin && isSerembanDest) || (isSerembanOrigin && isKlangKaparDest)) {
-            dynamicTolls = 9.30; // Matches TollGuru ELITE + NSE Closed-System Class 1 standard perfectly
+            dynamicTolls = 9.30; 
             tollSystemLabel = "PLUS Tolls (NKVE-ELITE)";
         } else if ((isPuncakPerdanaOrigin && isKLCenterDest) || (isKLCenterOrigin && isPuncakPerdanaDest)) {
-            dynamicTolls = 5.00; // Force override to cover DASH + SPRINT/DUKE combo framework
+            dynamicTolls = 5.00; 
             tollSystemLabel = "DASH + SPRINT/DUKE Toll";
         } else if ((isKlangKaparOrigin && isDamansaraDest) || (isDamansaraOrigin && isKlangKaparDest) || (isDamansaraOrigin && isPuncakPerdanaDest) || (isPuncakPerdanaOrigin && isDamansaraDest)) {
-            dynamicTolls = 2.30; // Flat open system Class 1 rate for the DASH highway run
+            dynamicTolls = 2.30; 
             tollSystemLabel = "DASH Toll (Actual)";
         } else if ((isKlangKaparOrigin && isGentingDest) || (isGentingOrigin && isKlangKaparDest)) {
             dynamicTolls = 12.10; 
@@ -893,7 +890,6 @@
         } else if (routeHasTolls) {
             dynamicTolls = distance <= 45 ? 2.50 : 3.50 + ((distance - 45) * 0.095);
             
-            // Tightened bounding constraints to prevent southern routes from throwing East Coast tags
             if ((isEastCoastDest || isEastCoastOrigin || (dropoffCoords && dropoffCoords.lon > 101.95)) && !isSerembanDest) {
                 tollSystemLabel = "LPT / East Coast Tolls";
             } else {
@@ -910,9 +906,6 @@
             const boundaryKm = Math.min(distance, 350);
             const dynamicScalePct = ((boundaryKm - 12) / (350 - 12)) * 0.45;
             deadheadCost = rideDistanceFare * dynamicScalePct;
-            document.getElementById('deadhead-km-row').style.display = 'flex';
-        } else {
-            document.getElementById('deadhead-km-row').style.display = 'none';
         }
 
         const rawTotal = baseFare + rideDistanceFare + dynamicTolls + driverIncentive + deadheadCost;
@@ -923,12 +916,20 @@
         document.getElementById('fare-distance').textContent = `${distance.toFixed(1)} km`;
         document.getElementById('fare-duration').textContent = formatDuration(duration);
 
+        // Update elements text value
         document.getElementById('calc-base-fare').textContent = `RM ${baseFare.toFixed(2)}`;
         document.getElementById('calc-ride-distance-rate').textContent = `RM ${rideDistanceFare.toFixed(2)}`;
         document.getElementById('calc-tolls').textContent = `RM ${dynamicTolls.toFixed(2)}`;
         document.getElementById('calc-incentive').textContent = `RM ${driverIncentive.toFixed(2)}`;
         document.getElementById('calc-deadhead-km').textContent = `RM ${deadheadCost.toFixed(2)}`;
         document.getElementById('calc-grand').textContent = `RM ${roundedTotal.toFixed(2)}`;
+
+        // DYNAMIC RENDERING: Hide row completely if calculated item value equals RM 0.00
+        document.getElementById('base-fare-row').style.display = baseFare > 0 ? 'flex' : 'none';
+        document.getElementById('distance-fare-row').style.display = rideDistanceFare > 0 ? 'flex' : 'none';
+        document.getElementById('tolls-row').style.display = dynamicTolls > 0 ? 'flex' : 'none';
+        document.getElementById('incentive-row').style.display = driverIncentive > 0 ? 'flex' : 'none';
+        document.getElementById('deadhead-km-row').style.display = deadheadCost > 0 ? 'flex' : 'none';
 
         document.getElementById('result-card').style.display = 'block';
     }
