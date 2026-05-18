@@ -434,7 +434,7 @@
             <div id="invoice-details">
                 <div class="detail-row">
                     <span>Base Fare</span>
-                    <span id="calc-base-fare">RM 0.00</span>
+                    <span id="calc-base-fare">RM 5.00</span>
                 </div>
                 <div class="detail-row">
                     <span>Distance Fare</span>
@@ -776,7 +776,18 @@
                         }
                     }
 
-                    let distanceImpactModifier = distanceKm <= 5 ? 0.65 : (distanceKm <= 15 ? 0.85 : 1.0);
+                    // ATTENUATION ENGINE: Dampen city rush penalties over long-haul open highways
+                    let distanceImpactModifier = 1.0;
+                    if (distanceKm <= 5) {
+                        distanceImpactModifier = 0.65;
+                    } else if (distanceKm <= 15) {
+                        distanceImpactModifier = 0.85;
+                    } else if (distanceKm > 100) {
+                        distanceImpactModifier = 0.35; // Diminishes runaway interstate duration inflation
+                    } else if (distanceKm > 50) {
+                        distanceImpactModifier = 0.60;
+                    }
+
                     const localizedTrafficWeight = 1 + ((trafficDelayFactor - 1) * distanceImpactModifier);
                     const correctedDurationMins = Math.max(1, Math.round(baseDurationMins * localizedTrafficWeight));
 
@@ -836,8 +847,8 @@
         const isBangiKajangDest = dropoffText.includes('bangi') || dropoffText.includes('pelangi') || dropoffText.includes('kajang') || dropoffText.includes('reko');
         const isBangiKajangOrigin = pickupText.includes('bangi') || pickupText.includes('pelangi') || pickupText.includes('kajang') || pickupText.includes('reko');
 
-        const isEastCoastDest = dropoffText.includes('kuantan') || dropoffText.includes('pahang') || dropoffText.includes('terengganu') || dropoffText.includes('maran') || dropoffText.includes('temerloh');
-        const isEastCoastOrigin = pickupText.includes('kuantan') || pickupText.includes('pahang') || pickupText.includes('terengganu') || pickupText.includes('maran') || pickupText.includes('temerloh');
+        const isEastCoastDest = dropoffText.includes('kuantan') || dropoffText.includes('pahang') || dropoffText.includes('terengganu') || dropoffText.includes('maran') || dropoffText.includes('temerloh') || dropoffText.includes('gebeng');
+        const isEastCoastOrigin = pickupText.includes('kuantan') || pickupText.includes('pahang') || pickupText.includes('terengganu') || pickupText.includes('maran') || pickupText.includes('temerloh') || pickupText.includes('gebeng');
 
         // CRITICAL SPATIAL OVERRIDES
         if ((isKlangKaparOrigin && isJohorBahruDest) || (isJohorBahruOrigin && isKlangKaparDest)) {
@@ -855,7 +866,7 @@
         } else if (routeHasTolls) {
             dynamicTolls = distance <= 45 ? 2.50 : 3.50 + ((distance - 45) * 0.095);
             
-            // DYNAMIC CORRIDOR DETECTION FOR INTERSTATE ROUTING
+            // DYNAMIC CORRIDOR BOUNDARY LOOKUP
             if (isEastCoastDest || isEastCoastOrigin || (dropoffCoords && dropoffCoords.lon > 101.9)) {
                 tollSystemLabel = "LPT / East Coast Tolls";
             } else {
