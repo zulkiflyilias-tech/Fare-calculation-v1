@@ -266,7 +266,6 @@
         </div>
         
         <div class="routing-wrapper">
-            <!-- Pickup Field Subsystem -->
             <div class="input-container">
                 <input type="text" id="pickup" placeholder="Enter Pickup Location..." autocomplete="off" enterkeyhint="search">
                 <div class="action-group">
@@ -276,12 +275,10 @@
                 <div id="pickup-suggestions" class="suggestions"></div>
             </div>
             
-            <!-- Structural Positional Inversion Unit -->
             <div class="swap-container">
                 <button class="swap-btn" id="swap-locations-btn" title="Swap locations" onclick="executeLocationSwap()">⇅</button>
             </div>
             
-            <!-- Dropoff Field Subsystem -->
             <div class="input-container">
                 <input type="text" id="dropoff" placeholder="Enter Drop-off Location..." autocomplete="off" enterkeyhint="search">
                 <div class="action-group">
@@ -485,7 +482,6 @@
             }
 
             debounceTimeout = setTimeout(() => {
-                // Bounds structural limit restricted entirely to Peninsular & East Malaysia coordinates bounding envelope
                 const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&bbox=99.6,0.8,119.5,7.4&limit=5`;
                 fetch(url)
                     .then(res => res.json())
@@ -553,7 +549,8 @@
         if(currentRouteTimeout) clearTimeout(currentRouteTimeout);
         
         currentRouteTimeout = setTimeout(() => {
-            const url = `https://router.project-osrm.org/route/v1/driving/${pickupCoords.lon},${pickupCoords.lat};${dropoffCoords.lon},${dropoffCoords.lat}?overview=full&geometries=geojson`;
+            // Appended &steps=true parameter to access individual segment data
+            const url = `https://router.project-osrm.org/route/v1/driving/${pickupCoords.lon},${pickupCoords.lat};${dropoffCoords.lon},${dropoffCoords.lat}?overview=full&geometries=geojson&steps=true`;
 
             fetch(url)
                 .then(res => {
@@ -570,6 +567,23 @@
                     const distanceKm = route.distance / 1000;
                     const baseDurationMins = route.duration / 60;
 
+                    // --- SMART TOLL ROAD DETECTION ENGINE ---
+                    let routeHasTolls = false;
+                    if (route.legs && route.legs.length > 0) {
+                        routeHasTolls = route.legs.some(leg => {
+                            if (!leg.steps) return false;
+                            return leg.steps.some(step => {
+                                // Check step attributes for toll landmarks or names
+                                const hasTollFlag = step.maneuver && step.maneuver.type === 'toll booth';
+                                const hasTollName = step.name && (
+                                    step.name.toLowerCase().includes('toll') || 
+                                    step.name.toLowerCase().includes('plaza tol')
+                                );
+                                return hasTollFlag || hasTollName;
+                            });
+                        });
+                    }
+
                     // --- TRAFFIC SIMULATION CORE LOGIC ---
                     const now = new Date();
                     const currentHour = now.getHours();
@@ -579,7 +593,7 @@
 
                     if (!isWeekend) {
                         if ((currentHour >= 7 && currentHour <= 9) || (currentHour >= 17 && currentHour <= 19.5)) {
-                            trafficDelayFactor = 1.55; // Commute window peak scale
+                            trafficDelayFactor = 1.55; 
                         } else if (currentHour >= 12 && currentHour <= 14) {
                             trafficDelayFactor = 1.25; 
                         }
@@ -591,7 +605,7 @@
 
                     let distanceImpactModifier = 1.0;
                     if (distanceKm <= 5) {
-                        distanceImpactModifier = 0.65; // Dampens scaling for short runs
+                        distanceImpactModifier = 0.65; 
                     } else if (distanceKm <= 15) {
                         distanceImpactModifier = 0.85;
                     }
@@ -609,7 +623,7 @@
                         padding: [40, 40] 
                     });
 
-                    processCalculations(distanceKm, correctedDurationMins);
+                    processCalculations(distanceKm, correctedDurationMins, routeHasTolls);
                 })
                 .catch(err => {
                     console.error(err);
@@ -629,15 +643,15 @@
         return Math.round(value * 10) / 10;
     }
 
-    function processCalculations(distance, duration) {
+    function processCalculations(distance, duration, routeHasTolls) {
         // Standard Segment Cost Baseline
         const baseFare = 5.00;
         const perKmRate = 1.25;
         const rideDistanceFare = distance * perKmRate;
         
-        // Progressive Infrastructure Toll Scale
+        // Dynamic Infrastructure Toll Evaluator Engine
         let dynamicTolls = 0;
-        if (distance > 6) {
+        if (routeHasTolls) {
             dynamicTolls = distance <= 45 ? 2.50 : 3.50 + ((distance - 45) * 0.095);
         }
 
