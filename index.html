@@ -179,7 +179,6 @@
             padding: 16px;
             border-radius: 12px;
             margin-top: 10px;
-            cursor: pointer;
             display: none;
             box-shadow: 0 4px 14px rgba(0,0,0,0.15);
         }
@@ -194,14 +193,6 @@
             font-weight: 800;
             color: #b388ff;
         }
-        .toggle-icon {
-            font-size: 11px;
-            color: #aeaeb2;
-            background: rgba(255,255,255,0.15);
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-weight: 600;
-        }
         .fare-meta {
             font-size: 13px;
             color: #e5e5ea;
@@ -213,7 +204,7 @@
             margin-top: 12px;
             border-top: 1px dashed #3a3a3c;
             padding-top: 12px;
-            display: none;
+            display: block; /* Modified to display natively without toggle dependencies */
         }
         .detail-row {
             display: flex;
@@ -290,10 +281,9 @@
 
         <div id="error-msg"></div>
 
-        <div id="result-card" onclick="toggleInvoice()">
+        <div id="result-card">
             <div class="fare-header-row">
                 <div id="total-fare" class="fare-header">RM --</div>
-                <span class="toggle-icon" id="toggle-lbl">Details</span>
             </div>
             <div class="fare-meta">
                 <span id="fare-distance">0 km</span>
@@ -367,7 +357,7 @@
         resetCalculationDisplay();
     });
 
-    // Hardware GPS Location Capture Engine
+    // Hardware GPS Location Capture Engine with Integrated Reverse Geocoding Address Resolver
     document.getElementById('current-loc-btn').addEventListener('click', () => {
         if (!navigator.geolocation) {
             showError("Geolocation capture infrastructure is unsupported by this client architecture.");
@@ -380,17 +370,36 @@
 
         navigator.geolocation.getCurrentPosition(
             (position) => {
-                btn.textContent = "🎯";
                 const lat = position.coords.latitude;
                 const lon = position.coords.longitude;
                 
                 pickupCoords = { lat, lon };
-                document.getElementById('pickup').value = `Current Location (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
-                document.getElementById('clear-pickup').style.display = 'block';
-                
                 updateMarker('pickup', pickupCoords);
                 map.setView([lat, lon], 14);
-                checkAndProcessRoute();
+                
+                // Query Photon reverse geocoding pipeline to translate coordinates into a structured address
+                const reverseGeocodeUrl = `https://photon.komoot.io/reverse?lon=${lon}&lat=${lat}`;
+                
+                fetch(reverseGeocodeUrl)
+                    .then(res => res.json())
+                    .then(data => {
+                        btn.textContent = "🎯";
+                        if (data.features && data.features.length > 0) {
+                            const props = data.features[0].properties;
+                            document.getElementById('pickup').value = expandAddress(props);
+                        } else {
+                            document.getElementById('pickup').value = `Current Location (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
+                        }
+                        document.getElementById('clear-pickup').style.display = 'block';
+                        checkAndProcessRoute();
+                    })
+                    .catch(err => {
+                        console.error("Reverse Geocoding Fault:", err);
+                        btn.textContent = "🎯";
+                        document.getElementById('pickup').value = `Current Location (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
+                        document.getElementById('clear-pickup').style.display = 'block';
+                        checkAndProcessRoute();
+                    });
             },
             (error) => {
                 btn.textContent = "🎯";
@@ -549,7 +558,6 @@
         if(currentRouteTimeout) clearTimeout(currentRouteTimeout);
         
         currentRouteTimeout = setTimeout(() => {
-            // Appended &steps=true parameter to access individual segment data
             const url = `https://router.project-osrm.org/route/v1/driving/${pickupCoords.lon},${pickupCoords.lat};${dropoffCoords.lon},${dropoffCoords.lat}?overview=full&geometries=geojson&steps=true`;
 
             fetch(url)
@@ -573,7 +581,6 @@
                         routeHasTolls = route.legs.some(leg => {
                             if (!leg.steps) return false;
                             return leg.steps.some(step => {
-                                // Check step attributes for toll landmarks or names
                                 const hasTollFlag = step.maneuver && step.maneuver.type === 'toll booth';
                                 const hasTollName = step.name && (
                                     step.name.toLowerCase().includes('toll') || 
@@ -686,18 +693,6 @@
         document.getElementById('calc-grand').textContent = `RM ${roundedTotal.toFixed(2)}`;
 
         document.getElementById('result-card').style.display = 'block';
-    }
-
-    function toggleInvoice() {
-        const details = document.getElementById('invoice-details');
-        const lbl = document.getElementById('toggle-lbl');
-        if (details.style.display === 'none' || !details.style.display) {
-            details.style.display = 'block';
-            lbl.textContent = 'Hide';
-        } else {
-            details.style.display = 'none';
-            lbl.textContent = 'Details';
-        }
     }
 </script>
 </body>
