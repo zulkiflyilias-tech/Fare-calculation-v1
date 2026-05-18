@@ -229,89 +229,6 @@
             font-weight: 500;
         }
 
-        /* ACTUAL MALAYSIAN TOLL RATE DATABASE INTERFACE STYLES */
-        .toll-database-container {
-            margin-top: 20px;
-            border-top: 1px solid #e2e8f0;
-            padding-top: 16px;
-        }
-        .database-title {
-            font-size: 15px;
-            font-weight: 700;
-            color: #2d3748;
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .accordion-item {
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            margin-bottom: 8px;
-            overflow: hidden;
-            background: #fff;
-        }
-        .accordion-trigger {
-            width: 100%;
-            background: #f7fafc;
-            padding: 12px;
-            text-align: left;
-            font-weight: 600;
-            font-size: 13px;
-            color: #4a5568;
-            border: none;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: background 0.2s;
-        }
-        .accordion-trigger:hover {
-            background: #edf2f7;
-        }
-        .accordion-content {
-            display: none;
-            overflow-x: auto;
-            border-top: 1px solid #e2e8f0;
-            background: #fff;
-        }
-        .toll-data-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 11px;
-            text-align: left;
-        }
-        .toll-data-table th {
-            background: #edf2f7;
-            color: #4a5568;
-            font-weight: 700;
-            padding: 8px 10px;
-            border-bottom: 2px solid #cbd5e0;
-            white-space: nowrap;
-        }
-        .toll-data-table td {
-            padding: 8px 10px;
-            border-bottom: 1px solid #e2e8f0;
-            color: #2d3748;
-        }
-        .toll-data-table tr:nth-child(even) {
-            background: #fcfdfd;
-        }
-        .rate-badge {
-            font-family: monospace;
-            font-weight: 700;
-            color: #2b6cb0;
-            font-size: 12px;
-        }
-        .operator-tag {
-            font-size: 10px;
-            background: #e2e8f0;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: 500;
-            color: #4a5568;
-        }
-
         @media(min-width: 768px) {
             #container {
                 flex-direction: row-reverse;
@@ -402,77 +319,6 @@
                 </div>
             </div>
         </div>
-
-        <div class="toll-database-container">
-            <div class="database-title">🛣️ Official Highway Toll Rates Registry</div>
-            
-            <div class="accordion-item">
-                <button class="accordion-trigger" onclick="toggleAccordion('kv-urban-plaza')">
-                    <span>Klang Valley Urban Expressway Networks</span>
-                    <span>▼</span>
-                </button>
-                <div id="kv-urban-plaza" class="accordion-content">
-                    <table class="toll-data-table">
-                        <thead>
-                            <tr>
-                                <th>Code</th>
-                                <th>Expressway</th>
-                                <th>Operator</th>
-                                <th>Sector / Plaza Sector</th>
-                                <th>Rate (RM)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr><td><b>LDP</b></td><td>Damansara-Puchong</td><td><span class="operator-tag">LITRAK</span></td><td>Puchong Jaya / Penchala / PJS</td><td class="rate-badge">2.10</td></tr>
-                            <tr><td><b>SPRINT</b></td><td>KL Barat Bypass</td><td><span class="operator-tag">LITRAK</span></td><td>Damansara / Kerinchi Link</td><td class="rate-badge">2.00</td></tr>
-                            <tr><td><b>SPRINT</b></td><td>KL Barat Bypass</td><td><span class="operator-tag">LITRAK</span></td><td>Penchala Link Segment</td><td class="rate-badge">3.00</td></tr>
-                            <tr><td><b>KESAS</b></td><td>Shah Alam Highway</td><td><span class="operator-tag">Gamuda</span></td><td>Sunway / Kemuning / Kebun</td><td class="rate-badge">2.00</td></tr>
-                            <tr><td><b>GCE</b></td><td>Guthrie Corridor</td><td><span class="operator-tag">PROLINTAS</span></td><td>Bukit Jelutong / Elmina</td><td class="rate-badge">1.90</td></tr>
-                            <tr><td><b>AKLEH</b></td><td>Ampang Elevated</td><td><span class="operator-tag">PROLINTAS</span></td><td>Datok Keramat Plaza</td><td class="rate-badge">2.50</td></tr>
-                            <tr><td><b>SUKE</b></td><td>Sg Besi-Ulu Kelang</td><td><span class="operator-tag">PROLINTAS</span></td><td>Bukit Teratai / Ampang</td><td class="rate-badge">2.30</td></tr>
-                            <tr><td><b>DASH</b></td><td>Damansara-Shah Alam</td><td><span class="operator-tag">PROLINTAS</span></td><td>Denai Alam / Kwasa Damansara</td><td class="rate-badge">2.30</td></tr>
-                            <tr><td><b>MEX</b></td><td>Maju Expressway</td><td><span class="operator-tag">Maju</span></td><td>Salak South Barrier</td><td class="rate-badge">2.20</td></tr>
-                            <tr><td><b>MEX</b></td><td>Maju Expressway</td><td><span class="operator-tag">Maju</span></td><td>Putrajaya Main Barrier</td><td class="rate-badge">3.50</td></tr>
-                            <tr><td><b>DUKE</b></td><td>Duta-Ulu Kelang</td><td><span class="operator-tag">Ekovest</span></td><td>Batu / Ayer Panas / Sentul</td><td class="rate-badge">2.50</td></tr>
-                            <tr><td><b>SMART</b></td><td>Stormwater Tunnel</td><td><span class="operator-tag">MMC-Gamuda</span></td><td>Tunnel Toll Portal</td><td class="rate-badge">3.00</td></tr>
-                            <tr><td><b>NPE</b></td><td>New Pantai Exp</td><td><span class="operator-tag">IJM Land</span></td><td>Pantai Dalam / PJS 5</td><td class="rate-badge">2.00</td></tr>
-                            <tr><td><b>BESRAYA</b></td><td>Sg Besi Expressway</td><td><span class="operator-tag">IJM Land</span></td><td>Mines North & South</td><td class="rate-badge">2.00</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="accordion-item">
-                <button class="accordion-trigger" onclick="toggleAccordion('interstate-trunk')">
-                    <span>Interstate Trunk Lines & Closed Systems</span>
-                    <span>▼</span>
-                </button>
-                <div id="interstate-trunk" class="accordion-content">
-                    <table class="toll-data-table">
-                        <thead>
-                            <tr>
-                                <th>Code</th>
-                                <th>Expressway Name</th>
-                                <th>Operator</th>
-                                <th>Route Segment Target Area</th>
-                                <th>Rate (RM)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr><td><b>PLUS</b></td><td>North-South (NSE)</td><td><span class="operator-tag">PLUS Berhad</span></td><td>Bukit Raja $\rightarrow$ Skudai Closed Entry</td><td class="rate-badge">37.31</td></tr>
-                            <tr><td><b>PLUS</b></td><td>North-South (NSE)</td><td><span class="operator-tag">PLUS Berhad</span></td><td>Juru $\rightarrow$ Skudai Longitudinal Trunk</td><td class="rate-badge">43.30</td></tr>
-                            <tr><td><b>NKVE</b></td><td>New Klang Valley</td><td><span class="operator-tag">PLUS Berhad</span></td><td>Bukit Raja $\rightarrow$ Jalan Duta Axis</td><td class="rate-badge">3.20</td></tr>
-                            <tr><td><b>ELITE</b></td><td>KLIA Central Link</td><td><span class="operator-tag">PLUS Berhad</span></td><td>Shah Alam Interchange $\rightarrow$ KLIA Main</td><td class="rate-badge">4.60</td></tr>
-                            <tr><td><b>ECE1</b></td><td>East Coast Phase 1</td><td><span class="operator-tag">ANIH Berhad</span></td><td>Gombak Link Gateway Terminal</td><td class="rate-badge">6.00</td></tr>
-                            <tr><td><b>ECE1</b></td><td>East Coast Phase 1</td><td><span class="operator-tag">ANIH Berhad</span></td><td>Bentong Link Gateway Terminal</td><td class="rate-badge">3.50</td></tr>
-                            <tr><td><b>ECE2</b></td><td>East Coast Phase 2</td><td><span class="operator-tag">LPT2 Sdn Bhd</span></td><td>Kuala Lumpur $\rightarrow$ Kuala Terengganu</td><td class="rate-badge">23.10</td></tr>
-                            <tr><td><b>WCE</b></td><td>West Coast Exp</td><td><span class="operator-tag">WCE Holdings</span></td><td>Hutan Melintang $\rightarrow$ Teluk Intan</td><td class="rate-badge">2.90</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
     </div>
 </div>
 
@@ -485,19 +331,12 @@
         attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    // --- ENCRYPTED DEVELOpER TOKEN INFRASTRUCTURE REGISTRATION ---
+    // --- ACTIVATED ENTERPRISE ROUTING TOKEN ---
     const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0="; 
 
     let pickupMarker = null, dropoffMarker = null, routeLine = null;
     let pickupCoords = null, dropoffCoords = null;
     let currentRouteTimeout = null;
-
-    // Accordion UI Layout Event Controller
-    function toggleAccordion(id) {
-        const el = document.getElementById(id);
-        const isOpen = el.style.display === "block";
-        el.style.display = isOpen ? "none" : "block";
-    }
 
     setupAutocomplete('pickup', 'pickup-suggestions', 'clear-pickup', (coords) => {
         pickupCoords = coords;
@@ -687,7 +526,7 @@
 
             fetch(url)
                 .then(res => {
-                    if (!res.ok) throw new Error('API server trace validation failure.');
+                    if (!res.ok) throw new Error('API routing validation drop.');
                     return res.json();
                 })
                 .then(data => {
@@ -702,12 +541,14 @@
                     const distanceKm = summary.distance / 1000;
                     const baseDurationMins = summary.duration / 60;
 
+                    // --- HIGHWAY OPERATOR TOLLWAY NATIVE ATTRIBUTE DETECTION ---
                     let routeHasTolls = false;
                     const extras = feature.properties.extras;
                     if (extras && extras.tollways && extras.tollways.values) {
                         routeHasTolls = extras.tollways.values.some(valueArray => valueArray[2] === 1);
                     }
 
+                    // Strategic Cross-State Safety Fallback
                     if (!routeHasTolls && distanceKm > 80) {
                         routeHasTolls = true;
                     }
@@ -745,7 +586,7 @@
                     processCalculations(distanceKm, correctedDurationMins, routeHasTolls);
                 })
                 .catch(err => {
-                    console.error("ORS Infrastructure Error Logged:", err);
+                    console.error("ORS Enterprise Core Error:", err);
                     showError("API connectivity fault or quota restriction triggered.");
                 });
         }, 250);
@@ -758,7 +599,6 @@
         return mins > 0 ? `${hours} hr ${mins} mins` : `${hours} hr`;
     }
 
-    // Cent rounded values logic
     function roundToMalaysianCents(value) {
         return Math.round(value * 10) / 10;
     }
@@ -767,15 +607,16 @@
         const baseFare = 5.00;
         const perKmRate = 1.25;
         
+        // Fix: Subtract the 1km included inside the base fare to avoid double charging
         const chargeableDistance = Math.max(0, distance - 1);
         const rideDistanceFare = chargeableDistance * perKmRate;
         
         let dynamicTolls = 0;
         if (routeHasTolls) {
-            // Re-calibrated long distance toll projection alignment
             dynamicTolls = distance <= 45 ? 2.50 : 3.50 + ((distance - 45) * 0.095);
         }
 
+        // Updated baseline temporal rate allocation to RM 12.00 per hour
         const driverIncentive = (duration / 60) * 12.00;
 
         let deadheadCost = 0;
