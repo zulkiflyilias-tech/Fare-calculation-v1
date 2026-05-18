@@ -204,7 +204,7 @@
             margin-top: 12px;
             border-top: 1px dashed #3a3a3c;
             padding-top: 12px;
-            display: block; /* Modified to display natively without toggle dependencies */
+            display: block;
         }
         .detail-row {
             display: flex;
@@ -325,18 +325,19 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-    // Initialize map focused strictly on Peninsular Malaysia economic core (Klang Valley)
     const map = L.map('map').setView([3.1390, 101.6869], 11);
     
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
+    // --- INTEGRATED PRODUCTION ENTERPRISE TOKEN KEY ---
+    const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0="; 
+
     let pickupMarker = null, dropoffMarker = null, routeLine = null;
     let pickupCoords = null, dropoffCoords = null;
     let currentRouteTimeout = null;
 
-    // Autocomplete Core Pipelines
     setupAutocomplete('pickup', 'pickup-suggestions', 'clear-pickup', (coords) => {
         pickupCoords = coords;
         updateMarker('pickup', coords);
@@ -357,13 +358,11 @@
         resetCalculationDisplay();
     });
 
-    // Hardware GPS Location Capture Engine with Integrated Reverse Geocoding Address Resolver
     document.getElementById('current-loc-btn').addEventListener('click', () => {
         if (!navigator.geolocation) {
-            showError("Geolocation capture infrastructure is unsupported by this client architecture.");
+            showError("Geolocation trace is unsupported by this browser.");
             return;
         }
-
         const btn = document.getElementById('current-loc-btn');
         btn.textContent = "⏳";
         document.getElementById('error-msg').style.display = 'none';
@@ -372,39 +371,33 @@
             (position) => {
                 const lat = position.coords.latitude;
                 const lon = position.coords.longitude;
-                
                 pickupCoords = { lat, lon };
                 updateMarker('pickup', pickupCoords);
                 map.setView([lat, lon], 14);
                 
-                // Query Photon reverse geocoding pipeline to translate coordinates into a structured address
                 const reverseGeocodeUrl = `https://photon.komoot.io/reverse?lon=${lon}&lat=${lat}`;
-                
                 fetch(reverseGeocodeUrl)
                     .then(res => res.json())
                     .then(data => {
                         btn.textContent = "🎯";
                         if (data.features && data.features.length > 0) {
-                            const props = data.features[0].properties;
-                            document.getElementById('pickup').value = expandAddress(props);
+                            document.getElementById('pickup').value = expandAddress(data.features[0].properties);
                         } else {
                             document.getElementById('pickup').value = `Current Location (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
                         }
                         document.getElementById('clear-pickup').style.display = 'block';
                         checkAndProcessRoute();
                     })
-                    .catch(err => {
-                        console.error("Reverse Geocoding Fault:", err);
+                    .catch(() => {
                         btn.textContent = "🎯";
                         document.getElementById('pickup').value = `Current Location (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
                         document.getElementById('clear-pickup').style.display = 'block';
                         checkAndProcessRoute();
                     });
             },
-            (error) => {
+            () => {
                 btn.textContent = "🎯";
-                showError("Unable to safely resolve client coordinate trace positioning vectors.");
-                console.error("GPS Core Fault Exception:", error);
+                showError("Unable to safely track device location trace.");
             },
             { enableHighAccuracy: true, timeout: 8000 }
         );
@@ -423,13 +416,11 @@
     function executeLocationSwap() {
         const pickupInput = document.getElementById('pickup');
         const dropoffInput = document.getElementById('dropoff');
-        
         const tempText = pickupInput.value;
         const tempCoords = pickupCoords;
         
         pickupInput.value = dropoffInput.value;
         pickupCoords = dropoffCoords;
-        
         dropoffInput.value = tempText;
         dropoffCoords = tempCoords;
         
@@ -438,15 +429,11 @@
         
         if (pickupCoords) updateMarker('pickup', pickupCoords);
         else if (pickupMarker) { map.removeLayer(pickupMarker); pickupMarker = null; }
-        
         if (dropoffCoords) updateMarker('dropoff', dropoffCoords);
         else if (dropoffMarker) { map.removeLayer(dropoffMarker); dropoffMarker = null; }
         
-        if (pickupCoords && dropoffCoords) {
-            checkAndProcessRoute();
-        } else {
-            resetCalculationDisplay();
-        }
+        if (pickupCoords && dropoffCoords) checkAndProcessRoute();
+        else resetCalculationDisplay();
     }
 
     function expandAddress(props) {
@@ -481,7 +468,6 @@
         input.addEventListener('input', () => {
             clearTimeout(debounceTimeout);
             const query = input.value.trim();
-            
             clearBtn.style.display = query.length > 0 ? 'block' : 'none';
 
             if (query.length < 3) { 
@@ -504,7 +490,6 @@
                         data.features.forEach(feature => {
                             const props = feature.properties;
                             const detailedAddress = expandAddress(props);
-                            
                             const div = document.createElement('div');
                             div.className = 'suggestion-item';
                             div.textContent = detailedAddress;
@@ -517,7 +502,7 @@
                             });
                             suggestionsBox.appendChild(div);
                         });
-                    }).catch(err => console.error("Geocoding Parsing Fault:", err));
+                    }).catch(err => console.error(err));
             }, 350);
         });
 
@@ -528,27 +513,6 @@
             suggestionsBox.style.display = 'none';
             onClear();
         });
-
-        input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                input.blur();
-                const query = input.value.trim();
-                if (query.length >= 3) {
-                    const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&bbox=99.6,0.8,119.5,7.4&limit=1`;
-                    fetch(url).then(res => res.json()).then(data => {
-                        if (data.features && data.features.length > 0) {
-                            const feature = data.features[0];
-                            input.value = feature.properties.name || expandAddress(feature.properties);
-                            suggestionsBox.innerHTML = '';
-                            suggestionsBox.style.display = 'none';
-                            const [lon, lat] = feature.geometry.coordinates;
-                            onSelect({ lat, lon });
-                        }
-                    }).catch(err => console.error(err));
-                }
-            }
-        });
     }
 
     function checkAndProcessRoute() {
@@ -558,53 +522,34 @@
         if(currentRouteTimeout) clearTimeout(currentRouteTimeout);
         
         currentRouteTimeout = setTimeout(() => {
-            // Appended overview=full and annotations=nodes,classes to extract underlying road asset metadata tags
-            const url = `https://router.project-osrm.org/route/v1/driving/${pickupCoords.lon},${pickupCoords.lat};${dropoffCoords.lon},${dropoffCoords.lat}?overview=full&geometries=geojson&steps=true&annotations=nodes,classes`;
+            const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${ORS_API_KEY}&start=${pickupCoords.lon},${pickupCoords.lat}&end=${dropoffCoords.lon},${dropoffCoords.lat}&extra_info=tollways`;
 
             fetch(url)
                 .then(res => {
-                    if (!res.ok) throw new Error('OSRM routing trace link dropped.');
+                    if (!res.ok) throw new Error('API server trace validation failure.');
                     return res.json();
                 })
                 .then(data => {
-                    if (!data.routes || data.routes.length === 0) {
+                    if (!data.features || data.features.length === 0) {
                         showError("No valid drivable geometry found matching those vectors.");
                         return;
                     }
 
-                    const route = data.routes[0];
-                    const distanceKm = route.distance / 1000;
-                    const baseDurationMins = route.duration / 60;
+                    const feature = data.features[0];
+                    const summary = feature.properties.summary;
+                    
+                    const distanceKm = summary.distance / 1000;
+                    const baseDurationMins = summary.duration / 60;
 
-                    // --- SMART ROAD INFRASTRUCTURE TOLL DETECTION CORRIDOR SYSTEM ---
+                    // --- NATIVE TOLLWAY PROPERTY CAPTURE ---
                     let routeHasTolls = false;
-
-                    // Level 1 Inspection: Step Naming Vector Checks
-                    if (route.legs && route.legs.length > 0) {
-                        routeHasTolls = route.legs.some(leg => {
-                            if (!leg.steps) return false;
-                            return leg.steps.some(step => {
-                                const hasTollFlag = step.maneuver && step.maneuver.type === 'toll booth';
-                                const hasTollName = step.name && (
-                                    step.name.toLowerCase().includes('toll') || 
-                                    step.name.toLowerCase().includes('plaza tol') ||
-                                    step.name.toLowerCase().includes('lebuhraya utara-selatan') // Explicit fallback for E2 core links
-                                );
-                                return hasTollFlag || hasTollName;
-                            });
-                        });
+                    const extras = feature.properties.extras;
+                    if (extras && extras.tollways && extras.tollways.values) {
+                        routeHasTolls = extras.tollways.values.some(valueArray => valueArray[2] === 1);
                     }
 
-                    // Level 2 Inspection: Metadata Node Block Annotation Fallback Check
-                    if (!routeHasTolls && route.legs) {
-                        routeHasTolls = route.legs.some(leg => {
-                            return leg.annotation && leg.annotation.classes && leg.annotation.classes.includes('toll');
-                        });
-                    }
-
-                    // Level 3 Inspection: Regional Interstate Boundary Fallback
                     if (!routeHasTolls && distanceKm > 80) {
-                        routeHasTolls = true; 
+                        routeHasTolls = true;
                     }
 
                     // --- TRAFFIC SIMULATION CORE LOGIC ---
@@ -613,7 +558,6 @@
                     const isWeekend = (now.getDay() === 0 || now.getDay() === 6);
 
                     let trafficDelayFactor = 1.15; 
-
                     if (!isWeekend) {
                         if ((currentHour >= 7 && currentHour <= 9) || (currentHour >= 17 && currentHour <= 19.5)) {
                             trafficDelayFactor = 1.55; 
@@ -626,33 +570,25 @@
                         }
                     }
 
-                    let distanceImpactModifier = 1.0;
-                    if (distanceKm <= 5) {
-                        distanceImpactModifier = 0.65; 
-                    } else if (distanceKm <= 15) {
-                        distanceImpactModifier = 0.85;
-                    }
-
+                    let distanceImpactModifier = distanceKm <= 5 ? 0.65 : (distanceKm <= 15 ? 0.85 : 1.0);
                     const localizedTrafficWeight = 1 + ((trafficDelayFactor - 1) * distanceImpactModifier);
                     const correctedDurationMins = Math.max(1, Math.round(baseDurationMins * localizedTrafficWeight));
 
                     if (routeLine) map.removeLayer(routeLine);
                     
-                    routeLine = L.geoJSON(route.geometry, { 
+                    routeLine = L.geoJSON(feature.geometry, { 
                         style: { color: '#8e24aa', weight: 5, opacity: 0.85 } 
                     }).addTo(map);
                     
-                    map.fitBounds(L.latLngBounds([pickupCoords.lat, pickupCoords.lon], [dropoffCoords.lat, dropoffCoords.lon]), { 
-                        padding: [40, 40] 
-                    });
+                    map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
 
                     processCalculations(distanceKm, correctedDurationMins, routeHasTolls);
                 })
                 .catch(err => {
-                    console.error(err);
-                    showError("Routing link dropped or latency limit triggered.");
+                    console.error("ORS Infrastructure Error Logged:", err);
+                    showError("API connectivity fault or quota restriction triggered.");
                 });
-        }, 200);
+        }, 250);
     }
 
     function formatDuration(totalMins) {
@@ -667,36 +603,29 @@
     }
 
     function processCalculations(distance, duration, routeHasTolls) {
-        // Standard Segment Cost Baseline
         const baseFare = 5.00;
         const perKmRate = 1.25;
         
-        // Fix: Deduct the 1km included in the base fare to prevent double charging
         const chargeableDistance = Math.max(0, distance - 1);
         const rideDistanceFare = chargeableDistance * perKmRate;
         
-        // Dynamic Infrastructure Toll Evaluator Engine
         let dynamicTolls = 0;
         if (routeHasTolls) {
             dynamicTolls = distance <= 45 ? 2.50 : 3.50 + ((distance - 45) * 0.095);
         }
 
-        // Temporal Opportunity Overhead Allocation (Updated baseline to RM 12.00 per hour)
         const driverIncentive = (duration / 60) * 12.00;
 
-        // Long-Range Return Compensation (Deadhead Surcharge Vector)
         let deadheadCost = 0;
         if (distance > 12) {
             const boundaryKm = Math.min(distance, 350);
             const dynamicScalePct = ((boundaryKm - 12) / (350 - 12)) * 0.45;
-            // Deadhead calculation uses the updated ride distance fare
             deadheadCost = rideDistanceFare * dynamicScalePct;
             document.getElementById('deadhead-km-row').style.display = 'flex';
         } else {
             document.getElementById('deadhead-km-row').style.display = 'none';
         }
 
-        // Compilation Sequence Execution
         const rawTotal = baseFare + rideDistanceFare + dynamicTolls + driverIncentive + deadheadCost;
         const roundedTotal = Math.max(baseFare, roundToMalaysianCents(rawTotal));
         const finalDisplayedWholeFare = Math.round(roundedTotal);
