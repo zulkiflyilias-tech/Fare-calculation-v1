@@ -449,7 +449,7 @@
                     <span id="calc-ride-distance-rate">RM 0.00</span>
                 </div>
                 <div class="detail-row">
-                    <span>PLUS Tolls (Est.)</span>
+                    <span id="toll-type-label">PLUS Tolls (Actual)</span>
                     <span id="calc-tolls">RM 0.00</span>
                 </div>
                 <div class="detail-row">
@@ -610,7 +610,6 @@
     let pickupCoords = null, dropoffCoords = null;
     let currentRouteTimeout = null;
 
-    // Registry Window Animator System Toggle
     function toggleRegistry(open) {
         const backdrop = document.getElementById('registry-backdrop');
         const drawer = document.getElementById('registry-drawer');
@@ -838,7 +837,6 @@
                     const distanceKm = summary.distance / 1000;
                     const baseDurationMins = summary.duration / 60;
 
-                    // --- NATIVE ATTRIBUTE TOLLWAY CAPTURE MECHANISM ---
                     let routeHasTolls = false;
                     const extras = feature.properties.extras;
                     if (extras && extras.tollways && extras.tollways.values) {
@@ -849,7 +847,6 @@
                         routeHasTolls = true;
                     }
 
-                    // --- TRAFFIC SIMULATION MODULE ---
                     const now = new Date();
                     const currentHour = now.getHours();
                     const isWeekend = (now.getDay() === 0 || now.getDay() === 6);
@@ -903,16 +900,35 @@
         const baseFare = 5.00;
         const perKmRate = 1.25;
         
-        // 1km double-charge guard adjustment
         const chargeableDistance = Math.max(0, distance - 1);
         const rideDistanceFare = chargeableDistance * perKmRate;
         
         let dynamicTolls = 0;
+        let isOfficialActualToll = false;
+
         if (routeHasTolls) {
-            dynamicTolls = distance <= 45 ? 2.50 : 3.50 + ((distance - 45) * 0.095);
+            const pickupText = document.getElementById('pickup').value.toLowerCase();
+            const dropoffText = document.getElementById('dropoff').value.toLowerCase();
+
+            // --- STRATEGIC INTERSTATE PHYSICAL CHECKPOINT HARDCODING ---
+            const isKlangKaparOrigin = pickupText.includes('meru') || pickupText.includes('kapar') || pickupText.includes('bukit raja') || pickupText.includes('klang');
+            const isJohorBahruDest = dropoffText.includes('holiday plaza') || dropoffText.includes('jb sentral') || dropoffText.includes('skudai') || dropoffText.includes('r&f mall') || dropoffText.includes('johor');
+            
+            const isKlangKaparDest = dropoffText.includes('meru') || dropoffText.includes('kapar') || dropoffText.includes('bukit raja') || dropoffText.includes('klang');
+            const isJohorBahruOrigin = pickupText.includes('holiday plaza') || pickupText.includes('jb sentral') || pickupText.includes('skudai') || pickupText.includes('r&f mall') || pickupText.includes('johor');
+
+            if ((isKlangKaparOrigin && isJohorBahruDest) || (isJohorBahruOrigin && isKlangKaparDest)) {
+                dynamicTolls = 37.31; // Official Closed-System Ticket Trace Price
+                isOfficialActualToll = true;
+            } else {
+                // Fallback Dynamic Estimate Curve
+                dynamicTolls = distance <= 45 ? 2.50 : 3.50 + ((distance - 45) * 0.095);
+            }
         }
 
-        // RM 12.00/hour temporal incentive engine calculation Matrix
+        // Apply updated context label identifiers
+        document.getElementById('toll-type-label').textContent = isOfficialActualToll ? "PLUS Tolls (Actual)" : "PLUS Tolls (Est.)";
+
         const driverIncentive = (duration / 60) * 12.00;
 
         let deadheadCost = 0;
