@@ -495,6 +495,13 @@
                             <td><span class="badge badge-open">Open System</span></td>
                             <td>Sg. Ramal, Bukit Kajang, Sg. Long, Sg. Balak: RM1.80 flat per plaza.</td>
                         </tr>
+                        <tr>
+                            <td style="font-weight: 600;">ANIH Berhad</td>
+                            <td><span class="hwy-code">E8</span></td>
+                            <td>KL-Karak Highway & East Coast Expressway (LPT1)</td>
+                            <td><span class="badge badge-open">Open & Closed</span></td>
+                            <td>Gombak: RM6.00, Bentong: RM3.50. LPT1 System: ~RM0.12/km.</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -744,14 +751,11 @@
                     const distanceKm = summary.distance / 1000;
                     const baseDurationMins = summary.duration / 60;
 
-                    // ADVANCED API INFRASTRUCTURE LOGIC BLOCK
                     let routeHasTolls = false;
                     const extras = feature.properties.extras;
                     if (extras && extras.tollways && extras.tollways.values) {
-                        // 1. Prioritize real-time structural flags from OpenRouteService
                         routeHasTolls = extras.tollways.values.some(valueArray => valueArray[2] === 1);
                     } else if (distanceKm > 50) {
-                        // 2. Fallback cross-city threshold lowered to 50km to capture regional highway rings (Bangi/Kajang)
                         routeHasTolls = true;
                     }
 
@@ -812,7 +816,7 @@
         const rideDistanceFare = chargeableDistance * perKmRate;
         
         let dynamicTolls = 0;
-        let isOfficialActualToll = false;
+        let tollSystemLabel = "PLUS Tolls (Est.)";
 
         const pickupText = document.getElementById('pickup').value.toLowerCase();
         const dropoffText = document.getElementById('dropoff').value.toLowerCase();
@@ -832,24 +836,34 @@
         const isBangiKajangDest = dropoffText.includes('bangi') || dropoffText.includes('pelangi') || dropoffText.includes('kajang') || dropoffText.includes('reko');
         const isBangiKajangOrigin = pickupText.includes('bangi') || pickupText.includes('pelangi') || pickupText.includes('kajang') || pickupText.includes('reko');
 
-        // METROPOLITAN CRITICAL CROSSOVER OVERRIDES
+        const isEastCoastDest = dropoffText.includes('kuantan') || dropoffText.includes('pahang') || dropoffText.includes('terengganu') || dropoffText.includes('maran') || dropoffText.includes('temerloh');
+        const isEastCoastOrigin = pickupText.includes('kuantan') || pickupText.includes('pahang') || pickupText.includes('terengganu') || pickupText.includes('maran') || pickupText.includes('temerloh');
+
+        // CRITICAL SPATIAL OVERRIDES
         if ((isKlangKaparOrigin && isJohorBahruDest) || (isJohorBahruOrigin && isKlangKaparDest)) {
             dynamicTolls = 37.31; 
-            isOfficialActualToll = true;
+            tollSystemLabel = "PLUS Tolls (Actual)";
         } else if ((isKlangKaparOrigin && isGentingDest) || (isGentingOrigin && isKlangKaparDest)) {
             dynamicTolls = 12.10; 
-            isOfficialActualToll = true;
+            tollSystemLabel = "PLUS + Karak Tolls";
         } else if ((isKlangKaparOrigin && isKelantanDest) || (isKelantanOrigin && isKlangKaparDest)) {
             dynamicTolls = 24.30; 
-            isOfficialActualToll = true;
+            tollSystemLabel = "PLUS + LPT Tolls";
         } else if ((isKlangKaparOrigin && isBangiKajangDest) || (isBangiKajangOrigin && isKlangKaparDest)) {
-            dynamicTolls = 6.91; // Standardized class-1 closed expressway routing from Bukit Raja down to Bangi/Kajang hubs
-            isOfficialActualToll = true;
+            dynamicTolls = 6.91; 
+            tollSystemLabel = "PLUS Tolls (Actual)";
         } else if (routeHasTolls) {
             dynamicTolls = distance <= 45 ? 2.50 : 3.50 + ((distance - 45) * 0.095);
+            
+            // DYNAMIC CORRIDOR DETECTION FOR INTERSTATE ROUTING
+            if (isEastCoastDest || isEastCoastOrigin || (dropoffCoords && dropoffCoords.lon > 101.9)) {
+                tollSystemLabel = "LPT / East Coast Tolls";
+            } else {
+                tollSystemLabel = "PLUS Tolls (Est.)";
+            }
         }
 
-        document.getElementById('toll-type-label').textContent = isOfficialActualToll ? "PLUS Tolls (Actual)" : "PLUS Tolls (Est.)";
+        document.getElementById('toll-type-label').textContent = tollSystemLabel;
 
         const driverIncentive = (duration / 60) * 12.00;
 
