@@ -563,7 +563,7 @@
 
     document.getElementById('current-loc-btn').addEventListener('click', () => {
         if (!navigator.geolocation) {
-            showError("Geolocation trace is unsupported by this browser.");
+            showError("Compass or location trace features are unsupported by this application shell.");
             return;
         }
         const btn = document.getElementById('current-loc-btn');
@@ -600,7 +600,7 @@
             },
             () => {
                 btn.textContent = "🎯";
-                showError("Unable to safely track device location trace.");
+                showError("Unable to safely track user positioning metrics.");
             },
             { enableHighAccuracy: true, timeout: 8000 }
         );
@@ -744,13 +744,14 @@
                     const distanceKm = summary.distance / 1000;
                     const baseDurationMins = summary.duration / 60;
 
+                    // ADVANCED API INFRASTRUCTURE LOGIC BLOCK
                     let routeHasTolls = false;
                     const extras = feature.properties.extras;
                     if (extras && extras.tollways && extras.tollways.values) {
+                        // 1. Prioritize real-time structural flags from OpenRouteService
                         routeHasTolls = extras.tollways.values.some(valueArray => valueArray[2] === 1);
-                    }
-
-                    if (!routeHasTolls && distanceKm > 80) {
+                    } else if (distanceKm > 50) {
+                        // 2. Fallback cross-city threshold lowered to 50km to capture regional highway rings (Bangi/Kajang)
                         routeHasTolls = true;
                     }
 
@@ -825,13 +826,13 @@
         const isGentingDest = dropoffText.includes('genting') || dropoffText.includes('premium outlet') || dropoffText.includes('ghpo') || dropoffText.includes('gohtong');
         const isGentingOrigin = pickupText.includes('genting') || pickupText.includes('premium outlet') || pickupText.includes('ghpo') || pickupText.includes('gohtong');
 
-        const isKelantanDest = dropoffText.includes('pengkalan kubor') || dropoffText.includes('kota bharu') || dropoffText.includes('kelantan');
-        const isKelantanOrigin = pickupText.includes('pengkalan kubor') || pickupText.includes('kota bharu') || pickupText.includes('kelantan');
+        const isKelantanDest = dropoffText.includes('pengkalan kubor') || dropoffText.includes('kota bharu') || dropoffText.includes('kubor') || dropoffText.includes('kelantan');
+        const isKelantanOrigin = pickupText.includes('pengkalan kubor') || pickupText.includes('kota bharu') || pickupText.includes('kubor') || pickupText.includes('kelantan');
 
-        // New Interception Keys for Kajang/Bangi Routes
-        const isBangiDest = dropoffText.includes('bangi') || dropoffText.includes('pelangi publishing') || dropoffText.includes('kajang');
-        const isBangiOrigin = pickupText.includes('bangi') || pickupText.includes('pelangi publishing') || pickupText.includes('kajang');
+        const isBangiKajangDest = dropoffText.includes('bangi') || dropoffText.includes('pelangi') || dropoffText.includes('kajang') || dropoffText.includes('reko');
+        const isBangiKajangOrigin = pickupText.includes('bangi') || pickupText.includes('pelangi') || pickupText.includes('kajang') || pickupText.includes('reko');
 
+        // METROPOLITAN CRITICAL CROSSOVER OVERRIDES
         if ((isKlangKaparOrigin && isJohorBahruDest) || (isJohorBahruOrigin && isKlangKaparDest)) {
             dynamicTolls = 37.31; 
             isOfficialActualToll = true;
@@ -841,14 +842,14 @@
         } else if ((isKlangKaparOrigin && isKelantanDest) || (isKelantanOrigin && isKlangKaparDest)) {
             dynamicTolls = 24.30; 
             isOfficialActualToll = true;
-        } else if ((isKlangKaparOrigin && isBangiDest) || (isBangiOrigin && isKlangKaparDest)) {
-            dynamicTolls = 6.91; // True physical PLUS toll to Bangi
+        } else if ((isKlangKaparOrigin && isBangiKajangDest) || (isBangiKajangOrigin && isKlangKaparDest)) {
+            dynamicTolls = 6.91; // Standardized class-1 closed expressway routing from Bukit Raja down to Bangi/Kajang hubs
             isOfficialActualToll = true;
         } else if (routeHasTolls) {
             dynamicTolls = distance <= 45 ? 2.50 : 3.50 + ((distance - 45) * 0.095);
         }
 
-        document.getElementById('toll-type-label').textContent = isOfficialActualToll ? "Tolls (Actual)" : "Tolls (Est.)";
+        document.getElementById('toll-type-label').textContent = isOfficialActualToll ? "PLUS Tolls (Actual)" : "PLUS Tolls (Est.)";
 
         const driverIncentive = (duration / 60) * 12.00;
 
