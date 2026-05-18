@@ -665,8 +665,8 @@
             dynamicTolls = distance <= 45 ? 2.50 : 3.50 + ((distance - 45) * 0.095);
         }
 
-        // Temporal Opportunity Overhead Allocation
-        const driverIncentive = (duration / 60) * 15.00;
+        // Temporal Opportunity Overhead Allocation (Updated baseline to RM 12.00 per hour)
+        const driverIncentive = (duration / 60) * 12.00;
 
         // Long-Range Return Compensation (Deadhead Surcharge Vector)
         let deadheadCost = 0;
