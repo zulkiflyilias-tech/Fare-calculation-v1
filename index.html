@@ -558,7 +558,8 @@
         if(currentRouteTimeout) clearTimeout(currentRouteTimeout);
         
         currentRouteTimeout = setTimeout(() => {
-            const url = `https://router.project-osrm.org/route/v1/driving/${pickupCoords.lon},${pickupCoords.lat};${dropoffCoords.lon},${dropoffCoords.lat}?overview=full&geometries=geojson&steps=true`;
+            // Appended overview=full and annotations=nodes,classes to extract underlying road asset metadata tags
+            const url = `https://router.project-osrm.org/route/v1/driving/${pickupCoords.lon},${pickupCoords.lat};${dropoffCoords.lon},${dropoffCoords.lat}?overview=full&geometries=geojson&steps=true&annotations=nodes,classes`;
 
             fetch(url)
                 .then(res => {
@@ -575,8 +576,10 @@
                     const distanceKm = route.distance / 1000;
                     const baseDurationMins = route.duration / 60;
 
-                    // --- SMART TOLL ROAD DETECTION ENGINE ---
+                    // --- SMART ROAD INFRASTRUCTURE TOLL DETECTION CORRIDOR SYSTEM ---
                     let routeHasTolls = false;
+
+                    // Level 1 Inspection: Step Naming Vector Checks
                     if (route.legs && route.legs.length > 0) {
                         routeHasTolls = route.legs.some(leg => {
                             if (!leg.steps) return false;
@@ -584,11 +587,24 @@
                                 const hasTollFlag = step.maneuver && step.maneuver.type === 'toll booth';
                                 const hasTollName = step.name && (
                                     step.name.toLowerCase().includes('toll') || 
-                                    step.name.toLowerCase().includes('plaza tol')
+                                    step.name.toLowerCase().includes('plaza tol') ||
+                                    step.name.toLowerCase().includes('lebuhraya utara-selatan') // Explicit fallback for E2 core links
                                 );
                                 return hasTollFlag || hasTollName;
                             });
                         });
+                    }
+
+                    // Level 2 Inspection: Metadata Node Block Annotation Fallback Check
+                    if (!routeHasTolls && route.legs) {
+                        routeHasTolls = route.legs.some(leg => {
+                            return leg.annotation && leg.annotation.classes && leg.annotation.classes.includes('toll');
+                        });
+                    }
+
+                    // Level 3 Inspection: Regional Interstate Boundary Fallback
+                    if (!routeHasTolls && distanceKm > 80) {
+                        routeHasTolls = true; 
                     }
 
                     // --- TRAFFIC SIMULATION CORE LOGIC ---
