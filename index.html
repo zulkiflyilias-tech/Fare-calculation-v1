@@ -344,7 +344,6 @@
         }
         .badge-open { background-color: #efe5fd; color: #4a148c; }
         .badge-closed { background-color: #e3f2fd; color: #0d47a1; }
-        .badge-comp { background-color: #e0e0e0; color: #333; }
         .hwy-code {
             font-family: monospace;
             background: #f1f1f1;
@@ -485,23 +484,16 @@
                         <tr>
                             <td style="font-weight: 600;">PLUS Malaysia Berhad</td>
                             <td><span class="hwy-code">E1,E2,E3,E6,E15</span></td>
-                            <td>North-South Expressway (NSE), NKVE, ELITE, Federal Hwy Route 2, BKE</td>
+                            <td>North-South Expressway (NSE), NKVE, ELITE, Federal Hwy Route 2</td>
                             <td><span class="badge badge-closed">Closed & Open</span></td>
-                            <td>Main Axis Link: ~RM0.136/km. Key Entries: Jalan Duta, Sungai Besi, Skudai.</td>
+                            <td>Main Axis Link: ~RM0.136/km. Key Entries: Jalan Duta, Sungai Besi, Bukit Raja.</td>
                         </tr>
                         <tr>
-                            <td style="font-weight: 600;">Litrak</td>
-                            <td><span class="hwy-code">E11</span></td>
-                            <td>Lebuhraya Damansara-Puchong (LDP)</td>
+                            <td style="font-weight: 600;">ProLintas (SILK)</td>
+                            <td><span class="hwy-code">E18</span></td>
+                            <td>Kajang SILK Highway</td>
                             <td><span class="badge badge-open">Open System</span></td>
-                            <td>Penchala, Petaling Jaya, Puchong Barat, Puchong Selatan: RM2.10 flat per gantry.</td>
-                        </tr>
-                        <tr>
-                            <td style="font-weight: 600;">ANIH Berhad</td>
-                            <td><span class="hwy-code">E8</span></td>
-                            <td>KL-Karak Highway & East Coast Expressway Phase 1</td>
-                            <td><span class="badge badge-closed">Closed & Open</span></td>
-                            <td>Gombak: RM6.00 | Bentong: RM3.50 | ECE1 Closed Network Loop: ~RM0.12/km.</td>
+                            <td>Sg. Ramal, Bukit Kajang, Sg. Long, Sg. Balak: RM1.80 flat per plaza.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -821,35 +813,39 @@
         let dynamicTolls = 0;
         let isOfficialActualToll = false;
 
-        if (routeHasTolls) {
-            const pickupText = document.getElementById('pickup').value.toLowerCase();
-            const dropoffText = document.getElementById('dropoff').value.toLowerCase();
+        const pickupText = document.getElementById('pickup').value.toLowerCase();
+        const dropoffText = document.getElementById('dropoff').value.toLowerCase();
 
-            const isKlangKaparOrigin = pickupText.includes('meru') || pickupText.includes('kapar') || pickupText.includes('bukit raja') || pickupText.includes('klang');
-            const isKlangKaparDest = dropoffText.includes('meru') || dropoffText.includes('kapar') || dropoffText.includes('bukit raja') || dropoffText.includes('klang');
+        const isKlangKaparOrigin = pickupText.includes('meru') || pickupText.includes('kapar') || pickupText.includes('bukit raja') || pickupText.includes('klang');
+        const isKlangKaparDest = dropoffText.includes('meru') || dropoffText.includes('kapar') || dropoffText.includes('bukit raja') || dropoffText.includes('klang');
 
-            const isJohorBahruDest = dropoffText.includes('holiday plaza') || dropoffText.includes('jb sentral') || dropoffText.includes('skudai') || dropoffText.includes('r&f mall') || dropoffText.includes('johor');
-            const isJohorBahruOrigin = pickupText.includes('holiday plaza') || pickupText.includes('jb sentral') || pickupText.includes('skudai') || pickupText.includes('r&f mall') || pickupText.includes('johor');
+        const isJohorBahruDest = dropoffText.includes('holiday plaza') || dropoffText.includes('jb sentral') || dropoffText.includes('skudai') || dropoffText.includes('r&f mall') || dropoffText.includes('johor');
+        const isJohorBahruOrigin = pickupText.includes('holiday plaza') || pickupText.includes('jb sentral') || pickupText.includes('skudai') || pickupText.includes('r&f mall') || pickupText.includes('johor');
 
-            const isGentingDest = dropoffText.includes('genting') || dropoffText.includes('premium outlet') || dropoffText.includes('ghpo') || dropoffText.includes('gohtong');
-            const isGentingOrigin = pickupText.includes('genting') || pickupText.includes('premium outlet') || pickupText.includes('ghpo') || pickupText.includes('gohtong');
+        const isGentingDest = dropoffText.includes('genting') || dropoffText.includes('premium outlet') || dropoffText.includes('ghpo') || dropoffText.includes('gohtong');
+        const isGentingOrigin = pickupText.includes('genting') || pickupText.includes('premium outlet') || pickupText.includes('ghpo') || pickupText.includes('gohtong');
 
-            // East-West Pass Interception Keys (Pengkalan Kubor / Kota Bharu Kelantan)
-            const isKelantanDest = dropoffText.includes('pengkalan kubor') || dropoffText.includes('kota bharu') || dropoffText.includes('kubor') || dropoffText.includes('kelantan');
-            const isKelantanOrigin = pickupText.includes('pengkalan kubor') || pickupText.includes('kota bharu') || pickupText.includes('kubor') || pickupText.includes('kelantan');
+        const isKelantanDest = dropoffText.includes('pengkalan kubor') || dropoffText.includes('kota bharu') || dropoffText.includes('kelantan');
+        const isKelantanOrigin = pickupText.includes('pengkalan kubor') || pickupText.includes('kota bharu') || pickupText.includes('kelantan');
 
-            if ((isKlangKaparOrigin && isJohorBahruDest) || (isJohorBahruOrigin && isKlangKaparDest)) {
-                dynamicTolls = 37.31; 
-                isOfficialActualToll = true;
-            } else if ((isKlangKaparOrigin && isGentingDest) || (isGentingOrigin && isKlangKaparDest)) {
-                dynamicTolls = 12.10; 
-                isOfficialActualToll = true;
-            } else if ((isKlangKaparOrigin && isKelantanDest) || (isKelantanOrigin && isKlangKaparDest)) {
-                dynamicTolls = 24.30; // True physical PLUS E1 exit at Toll Plaza Kuala Kangsar
-                isOfficialActualToll = true;
-            } else {
-                dynamicTolls = distance <= 45 ? 2.50 : 3.50 + ((distance - 45) * 0.095);
-            }
+        // New Interception Keys for Kajang/Bangi Routes
+        const isBangiDest = dropoffText.includes('bangi') || dropoffText.includes('pelangi publishing') || dropoffText.includes('kajang');
+        const isBangiOrigin = pickupText.includes('bangi') || pickupText.includes('pelangi publishing') || pickupText.includes('kajang');
+
+        if ((isKlangKaparOrigin && isJohorBahruDest) || (isJohorBahruOrigin && isKlangKaparDest)) {
+            dynamicTolls = 37.31; 
+            isOfficialActualToll = true;
+        } else if ((isKlangKaparOrigin && isGentingDest) || (isGentingOrigin && isKlangKaparDest)) {
+            dynamicTolls = 12.10; 
+            isOfficialActualToll = true;
+        } else if ((isKlangKaparOrigin && isKelantanDest) || (isKelantanOrigin && isKlangKaparDest)) {
+            dynamicTolls = 24.30; 
+            isOfficialActualToll = true;
+        } else if ((isKlangKaparOrigin && isBangiDest) || (isBangiOrigin && isKlangKaparDest)) {
+            dynamicTolls = 6.91; // True physical PLUS toll to Bangi
+            isOfficialActualToll = true;
+        } else if (routeHasTolls) {
+            dynamicTolls = distance <= 45 ? 2.50 : 3.50 + ((distance - 45) * 0.095);
         }
 
         document.getElementById('toll-type-label').textContent = isOfficialActualToll ? "Tolls (Actual)" : "Tolls (Est.)";
