@@ -374,7 +374,7 @@
     let pickupMarker = null, dropoffMarker = null, routeLine = null;
     let pickupCoords = null, dropoffCoords = null;
     let routeRequestTimeout = null;
-    let activeFieldId = 'pickup';   // which input gets map click results
+    let activeFieldId = 'pickup';
     
     const pickupInput = document.getElementById('pickup');
     const dropoffInput = document.getElementById('dropoff');
@@ -385,13 +385,11 @@
     const errorDiv = document.getElementById('error-msg');
     const resultCard = document.getElementById('result-card');
     
-    // UI sync helpers
     function updateClearButtons() {
         clearPickupBtn.style.display = pickupInput.value.trim() ? 'flex' : 'none';
         clearDropoffBtn.style.display = dropoffInput.value.trim() ? 'flex' : 'none';
     }
     
-    // Reset fare card
     function resetFareCard() {
         resultCard.style.display = 'none';
         errorDiv.style.display = 'none';
@@ -403,21 +401,44 @@
         resultCard.style.display = 'none';
     }
 
-    // Standardized Malaysian Address Builder Utility
-    function buildMalaysianAddress(props) {
+    // Standard Address Parsing Engine (Handles both Nominatim and Photon Objects dynamically)
+    function buildMalaysianAddress(addressObj, fallbackName = "") {
         let parts = [];
-        if (props.name) parts.push(props.name);
-        if (props.street && props.street !== props.name) parts.push(props.street);
-        if (props.district) parts.push(props.district);
-        if (props.city && props.city !== props.district) parts.push(props.city);
-        if (props.postcode) parts.push(props.postcode);
-        if (props.state) parts.push(props.state);
         
-        // Clean out duplicate substrings if they creep into chained fields
-        return parts.filter((val, idx, self) => self.indexOf(val) === idx).join(', ');
+        // Pick primary architectural name identifier
+        const mainBuilding = addressObj.building || addressObj.amenity || addressObj.shop || addressObj.office || addressObj.historic;
+        if (mainBuilding) parts.push(mainBuilding);
+        
+        // Road names
+        if (addressObj.road) parts.push(addressObj.road);
+        else if (fallbackName && fallbackName !== mainBuilding) parts.push(fallbackName);
+        
+        // Suburban/Residential levels
+        const area = addressObj.suburb || addressObj.neighbourhood || addressObj.residential || addressObj.quarter;
+        if (area) parts.push(area);
+        
+        // District/Town levels
+        const localTown = addressObj.district || addressObj.city_district || addressObj.town || addressObj.village;
+        if (localTown) parts.push(localTown);
+        
+        // City Level
+        if (addressObj.city && addressObj.city !== localTown) parts.push(addressObj.city);
+        
+        // Postal Code
+        if (addressObj.postcode) parts.push(addressObj.postcode);
+        
+        // State Level
+        if (addressObj.state) parts.push(addressObj.state);
+        
+        // Deduplicate strings safely
+        let cleanedParts = parts.filter((val, idx, self) => self.indexOf(val) === idx);
+        
+        if (cleanedParts.length > 0) {
+            return cleanedParts.join(', ');
+        }
+        return addressObj.display_name || fallbackName || "Unknown Malaysian Address";
     }
     
-    // Update markers on map
     function updateMarker(type, coords) {
         if (!coords) return;
         const latlng = [coords.lat, coords.lon];
@@ -439,7 +460,6 @@
         if (type === 'dropoff' && dropoffMarker) { map.removeLayer(dropoffMarker); dropoffMarker = null; }
     }
     
-    // Process route & fare
     async function fetchRouteAndCalculate() {
         if (!pickupCoords || !dropoffCoords) {
             if (routeLine) map.removeLayer(routeLine);
@@ -462,7 +482,6 @@
                 const distanceKm = route.distance / 1000;
                 const durationMinsRaw = route.duration / 60;
                 
-                // Smart traffic factor (KL/Selangor pattern)
                 const now = new Date();
                 const hour = now.getHours();
                 const isWeekend = (now.getDay() === 0 || now.getDay() === 6);
@@ -475,11 +494,9 @@
                     if (hour >= 16 && hour <= 21) trafficFactor = 1.38;
                     else trafficFactor = 1.02;
                 }
-                // short trips affected slightly less
                 let finalDuration = durationMinsRaw * (distanceKm < 8 ? (1 + (trafficFactor-1)*0.7) : trafficFactor);
                 finalDuration = Math.round(Math.max(2, finalDuration));
                 
-                // Draw route
                 if (routeLine) map.removeLayer(routeLine);
                 routeLine = L.geoJSON(route.geometry, { style: { color: '#9c27b0', weight: 5, opacity: 0.9, dashArray: '6, 8' } }).addTo(map);
                 map.fitBounds(L.latLngBounds([pickupCoords.lat, pickupCoords.lon], [dropoffCoords.lat, dropoffCoords.lon]), { padding: [50, 50] });
@@ -538,10 +555,9 @@
         errorDiv.style.display = 'none';
     }
     
-    // Smart reverse geocoding + Full address construction for Map Clicks
+    // RECTIFIED: Upgraded Map Reverse Geocoding to high-fidelity Nominatim Engine
     async function reverseGeocode(lat, lon, inputElement, clearBtn, isPickup) {
-        const fallbackName = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
-        inputElement.value = `📍 ${fallbackName}`;
+        inputElement.value = "🔍 Fetching full address...";
         clearBtn.style.display = 'block';
         const coords = { lat, lon };
         if (isPickup) {
@@ -551,23 +567,27 @@
             dropoffCoords = coords;
             updateMarker('dropoff', coords);
         }
-        fetchRouteAndCalculate();
         
         try {
-            const revUrl = `https://photon.komoot.io/api/reverse/?lon=${lon}&lat=${lat}`;
-            const res = await fetch(revUrl);
+            // Using OSM Nominatim JSON endpoint for detailed Malaysian architectural addressing structures
+            const revUrl = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`;
+            const res = await fetch(revUrl, { headers: { 'Accept-Language': 'en' } });
             const data = await res.json();
-            if (data.features && data.features.length > 0) {
-                const props = data.features[0].properties;
-                const fullAddress = buildMalaysianAddress(props);
-                
-                if (fullAddress && fullAddress.trim()) inputElement.value = fullAddress;
-                else inputElement.value = `📍 ${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+            
+            if (data && data.address) {
+                const fullAddress = buildMalaysianAddress(data.address, data.name);
+                inputElement.value = fullAddress;
+            } else {
+                inputElement.value = `📍 ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
             }
-        } catch(e) { console.warn("reverse geo silent"); }
+        } catch(e) { 
+            console.warn("Reverse address lookup error, using coordinates fallback:", e);
+            inputElement.value = `📍 ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+        }
+        fetchRouteAndCalculate();
     }
     
-    // ---- MAP CLICK HANDLER (Both Inputs) ----
+    // ---- MAP CLICK HANDLER ----
     map.on('click', async (e) => {
         const { lat, lng } = e.latlng;
         if (activeFieldId === 'pickup') {
@@ -582,7 +602,7 @@
         updateClearButtons();
     });
     
-    // ---- GPS LOCATION (Pickup Only Input Context) ----
+    // ---- GPS TRACKING (Upgraded to Nominatim Parser) ----
     gpsBtn.addEventListener('click', () => {
         if (!navigator.geolocation) {
             showErrorMessage("Geolocation not supported by this browser.");
@@ -590,37 +610,38 @@
         }
         gpsBtn.textContent = "🔄";
         gpsBtn.disabled = true;
+        pickupInput.value = "🛰️ Locating via GPS...";
+        
         navigator.geolocation.getCurrentPosition(async (position) => {
             const lat = position.coords.latitude;
             const lon = position.coords.longitude;
             try {
-                const revUrl = `https://photon.komoot.io/api/reverse/?lon=${lon}&lat=${lat}`;
-                const resp = await fetch(revUrl);
+                const revUrl = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`;
+                const resp = await fetch(revUrl, { headers: { 'Accept-Language': 'en' } });
                 const data = await resp.json();
+                
                 let addressText = "";
-                if (data.features && data.features.length > 0) {
-                    const props = data.features[0].properties;
-                    addressText = buildMalaysianAddress(props);
+                if (data && data.address) {
+                    addressText = buildMalaysianAddress(data.address, data.name);
                 }
-                if (!addressText || !addressText.trim()) {
-                    addressText = `📍 ${lat.toFixed(3)}, ${lon.toFixed(3)}`;
-                }
-                pickupInput.value = addressText;
+                
+                pickupInput.value = addressText || `📍 ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
                 clearPickupBtn.style.display = 'block';
                 pickupCoords = { lat, lon };
                 updateMarker('pickup', pickupCoords);
-                map.setView([lat, lon], 14);
+                map.setView([lat, lon], 15);
+                
                 if (dropoffCoords) fetchRouteAndCalculate();
                 else resetFareCard();
                 
                 activeFieldId = 'dropoff';
                 dropoffInput.focus();
             } catch(err) {
-                pickupInput.value = `📍 ${lat.toFixed(3)}, ${lon.toFixed(3)}`;
+                pickupInput.value = `📍 ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
                 pickupCoords = { lat, lon };
                 updateMarker('pickup', pickupCoords);
                 clearPickupBtn.style.display = 'block';
-                map.setView([lat, lon], 14);
+                map.setView([lat, lon], 15);
                 if (dropoffCoords) fetchRouteAndCalculate();
                 activeFieldId = 'dropoff';
             }
@@ -629,12 +650,13 @@
             updateClearButtons();
         }, (err) => {
             showErrorMessage("GPS access denied or unavailable.");
+            pickupInput.value = "";
             gpsBtn.textContent = "🎯";
             gpsBtn.disabled = false;
+            updateClearButtons();
         }, { enableHighAccuracy: true, timeout: 10000 });
     });
     
-    // Swap locations logic
     function swapLocations() {
         if (!pickupCoords && !dropoffCoords) return;
         const tempText = pickupInput.value;
@@ -653,7 +675,6 @@
     }
     swapBtn.addEventListener('click', swapLocations);
     
-    // Clear buttons
     clearPickupBtn.addEventListener('click', () => {
         pickupInput.value = '';
         pickupCoords = null;
@@ -673,7 +694,7 @@
         if (pickupCoords) fetchRouteAndCalculate(); else resultCard.style.display = 'none';
     });
     
-    // ---- Autocomplete for both inputs (Photon Geocoding) ----
+    // ---- Autocomplete for search bar input (Photon Engine) ----
     function setupAutoComplete(inputEl, suggestionsId, onSelectCallback, isPickup) {
         const suggestionsBox = document.getElementById(suggestionsId);
         let debTimer;
@@ -689,7 +710,9 @@
                     suggestionsBox.style.display = 'block';
                     data.features.forEach(feat => {
                         const props = feat.properties;
-                        const fullAddr = buildMalaysianAddress(props) || "Location";
+                        
+                        // Adapt Photon properties payload into our standard Malaysian address format builder
+                        const fullAddr = buildMalaysianAddress(props, props.name);
                         
                         const div = document.createElement('div');
                         div.className = 'suggestion-item';
