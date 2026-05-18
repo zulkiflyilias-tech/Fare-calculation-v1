@@ -494,56 +494,7 @@
                             <td><span class="hwy-code">E11</span></td>
                             <td>Lebuhraya Damansara-Puchong (LDP)</td>
                             <td><span class="badge badge-open">Open System</span></td>
-                            <td>Penchala, Petaling Jaya, Puchong Barat, Puchong Selatan: RM2.10 flat per plaza.</td>
-                        </tr>
-                        <tr>
-                            <td style="font-weight: 600;">Prolintas</td>
-                            <td><span class="hwy-code">E12,E19,E31,E38</span></td>
-                            <td>AKLEH, GCE, LKSA, SUKE, DASH</td>
-                            <td><span class="badge badge-open">Open System</span></td>
-                            <td>AKLEH: RM2.50 | GCE: RM2.00 | SUKE: RM2.30 | DASH: RM2.30 baseline pricing.</td>
-                        </tr>
-                        <tr>
-                            <td style="font-weight: 600;">Gamuda Berhad (KESAS)</td>
-                            <td><span class="hwy-code">E5</span></td>
-                            <td>Shah Alam Expressway</td>
-                            <td><span class="badge badge-open">Open System</span></td>
-                            <td>Awan Besar, Sunway, Kemuning, Bukit Rimau: RM2.00 flat tariff.</td>
-                        </tr>
-                        <tr>
-                            <td style="font-weight: 600;">Gamuda Berhad (SPRINT)</td>
-                            <td><span class="hwy-code">E23</span></td>
-                            <td>Western KL Traffic Dispersal System</td>
-                            <td><span class="badge badge-open">Open System</span></td>
-                            <td>Damansara Link: RM2.00 | Penchala Link: RM3.00 | Kerinchi Link: RM2.50.</td>
-                        </tr>
-                        <tr>
-                            <td style="font-weight: 600;">Gamuda Berhad (SMART)</td>
-                            <td><span class="hwy-code">E38</span></td>
-                            <td>SMART Tunnel</td>
-                            <td><span class="badge badge-open">Open System</span></td>
-                            <td>Sungai Besi / Air Terjun structural checkpoints: RM3.00.</td>
-                        </tr>
-                        <tr>
-                            <td style="font-weight: 600;">IJM Land (Besraya)</td>
-                            <td><span class="hwy-code">E9</span></td>
-                            <td>Besraya Expressway</td>
-                            <td><span class="badge badge-open">Open System</span></td>
-                            <td>Mines (North & South Plazas), Loke Yew Corridor: RM2.00.</td>
-                        </tr>
-                        <tr>
-                            <td style="font-weight: 600;">IJM Land (NPE)</td>
-                            <td><span class="hwy-code">E10</span></td>
-                            <td>New Pantai Expressway</td>
-                            <td><span class="badge badge-open">Open System</span></td>
-                            <td>Pantai Dalam, PJS 5: RM2.30 | PJS 2: RM1.00 (Abolished Southbound).</td>
-                        </tr>
-                        <tr>
-                            <td style="font-weight: 600;">IJM Land (LEKAS)</td>
-                            <td><span class="hwy-code">E21</span></td>
-                            <td>Kajang-Seremban Highway</td>
-                            <td><span class="badge badge-closed">Closed & Open</span></td>
-                            <td>Kajang South to Paroi (Closed Matrix) | Ampangan Plaza (Open Structure): RM2.40.</td>
+                            <td>Penchala, Petaling Jaya, Puchong Barat, Puchong Selatan: RM2.10 flat per gantry.</td>
                         </tr>
                         <tr>
                             <td style="font-weight: 600;">ANIH Berhad</td>
@@ -551,27 +502,6 @@
                             <td>KL-Karak Highway & East Coast Expressway Phase 1</td>
                             <td><span class="badge badge-closed">Closed & Open</span></td>
                             <td>Gombak: RM6.00 | Bentong: RM3.50 | ECE1 Closed Network Loop: ~RM0.12/km.</td>
-                        </tr>
-                        <tr>
-                            <td style="font-weight: 600;">Grand Saga Sdn Bhd</td>
-                            <td><span class="hwy-code">E7</span></td>
-                            <td>Cheras-Kajang Expressway</td>
-                            <td><span class="badge badge-open">Open System</span></td>
-                            <td>Batu 9 & Batu 11 Plazas: RM1.30 per crossing vehicle.</td>
-                        </tr>
-                        <tr>
-                            <td style="font-weight: 600;">Maju Expressway</td>
-                            <td><span class="hwy-code">E20</span></td>
-                            <td>Maju Expressway (MEX)</td>
-                            <td><span class="badge badge-open">Open System</span></td>
-                            <td>Salak Selatan: RM2.00 | Putrajaya Interchange: RM3.50 | Seri Kembangan: RM2.20.</td>
-                        </tr>
-                        <tr>
-                            <td style="font-weight: 600;">Ekowest Berhad</td>
-                            <td><span class="hwy-code">E33</span></td>
-                            <td>Duta-Ulu Kelang Expressway (DUKE)</td>
-                            <td><span class="badge badge-open">Open System</span></td>
-                            <td>Batu, Sentul Pasar, Ayer Panas, Segambut checkpoints: RM2.50.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -895,21 +825,27 @@
             const pickupText = document.getElementById('pickup').value.toLowerCase();
             const dropoffText = document.getElementById('dropoff').value.toLowerCase();
 
-            // --- CROSS-BORDER STRATEGIC HARDCODE ALIGNMENT CHECKS ---
             const isKlangKaparOrigin = pickupText.includes('meru') || pickupText.includes('kapar') || pickupText.includes('bukit raja') || pickupText.includes('klang');
-            const isJohorBahruDest = dropoffText.includes('holiday plaza') || dropoffText.includes('jb sentral') || dropoffText.includes('skudai') || dropoffText.includes('r&f mall') || dropoffText.includes('johor');
             const isKlangKaparDest = dropoffText.includes('meru') || dropoffText.includes('kapar') || dropoffText.includes('bukit raja') || dropoffText.includes('klang');
+
+            const isJohorBahruDest = dropoffText.includes('holiday plaza') || dropoffText.includes('jb sentral') || dropoffText.includes('skudai') || dropoffText.includes('r&f mall') || dropoffText.includes('johor');
             const isJohorBahruOrigin = pickupText.includes('holiday plaza') || pickupText.includes('jb sentral') || pickupText.includes('skudai') || pickupText.includes('r&f mall') || pickupText.includes('johor');
 
-            // Genting Highlands Premium Outlets Interception Keys
             const isGentingDest = dropoffText.includes('genting') || dropoffText.includes('premium outlet') || dropoffText.includes('ghpo') || dropoffText.includes('gohtong');
             const isGentingOrigin = pickupText.includes('genting') || pickupText.includes('premium outlet') || pickupText.includes('ghpo') || pickupText.includes('gohtong');
 
+            // East-West Pass Interception Keys (Pengkalan Kubor / Kota Bharu Kelantan)
+            const isKelantanDest = dropoffText.includes('pengkalan kubor') || dropoffText.includes('kota bharu') || dropoffText.includes('kubor') || dropoffText.includes('kelantan');
+            const isKelantanOrigin = pickupText.includes('pengkalan kubor') || pickupText.includes('kota bharu') || pickupText.includes('kubor') || pickupText.includes('kelantan');
+
             if ((isKlangKaparOrigin && isJohorBahruDest) || (isJohorBahruOrigin && isKlangKaparDest)) {
-                dynamicTolls = 37.31; // Official Closed PLUS Ticket 
+                dynamicTolls = 37.31; 
                 isOfficialActualToll = true;
             } else if ((isKlangKaparOrigin && isGentingDest) || (isGentingOrigin && isKlangKaparDest)) {
-                dynamicTolls = 12.10; // NKVE (3.60) + DUKE (2.50) + Gombak Karak (6.00)
+                dynamicTolls = 12.10; 
+                isOfficialActualToll = true;
+            } else if ((isKlangKaparOrigin && isKelantanDest) || (isKelantanOrigin && isKlangKaparDest)) {
+                dynamicTolls = 24.30; // True physical PLUS E1 exit at Toll Plaza Kuala Kangsar
                 isOfficialActualToll = true;
             } else {
                 dynamicTolls = distance <= 45 ? 2.50 : 3.50 + ((distance - 45) * 0.095);
