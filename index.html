@@ -502,6 +502,13 @@
                             <td><span class="badge badge-open">Open & Closed</span></td>
                             <td>Gombak: RM6.00, Bentong: RM3.50. LPT1 System: ~RM0.12/km.</td>
                         </tr>
+                        <tr>
+                            <td style="font-weight: 600;">Prolintas (DASH)</td>
+                            <td><span class="hwy-code">E31</span></td>
+                            <td>Damansara-Shah Alam Elevated Expressway</td>
+                            <td><span class="badge badge-open">Open System</span></td>
+                            <td>Denai Alam, RRIM (Kwasa Damansara), Sri Damansara: RM2.30 flat.</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -776,14 +783,14 @@
                         }
                     }
 
-                    // ATTENUATION ENGINE: Dampen city rush penalties over long-haul open highways
+                    // ATTENUATION ENGINE: Prevents compounding runaway delays on long-distance interstate roads
                     let distanceImpactModifier = 1.0;
                     if (distanceKm <= 5) {
                         distanceImpactModifier = 0.65;
                     } else if (distanceKm <= 15) {
                         distanceImpactModifier = 0.85;
                     } else if (distanceKm > 100) {
-                        distanceImpactModifier = 0.35; // Diminishes runaway interstate duration inflation
+                        distanceImpactModifier = 0.35; // Diminishes rush weights on clear interstate segments
                     } else if (distanceKm > 50) {
                         distanceImpactModifier = 0.60;
                     }
@@ -850,10 +857,19 @@
         const isEastCoastDest = dropoffText.includes('kuantan') || dropoffText.includes('pahang') || dropoffText.includes('terengganu') || dropoffText.includes('maran') || dropoffText.includes('temerloh') || dropoffText.includes('gebeng');
         const isEastCoastOrigin = pickupText.includes('kuantan') || pickupText.includes('pahang') || pickupText.includes('terengganu') || pickupText.includes('maran') || pickupText.includes('temerloh') || pickupText.includes('gebeng');
 
+        // Target matching nodes for the DASH Expressway (E31) structural overlay
+        const isPuncakPerdanaDest = dropoffText.includes('puncak perdana') || dropoffText.includes('uitm puncak') || dropoffText.includes('subang dua');
+        const isPuncakPerdanaOrigin = pickupText.includes('puncak perdana') || pickupText.includes('uitm puncak') || pickupText.includes('subang dua');
+        const isDamansaraOrigin = pickupText.includes('the curve') || pickupText.includes('mutiara damansara') || pickupText.includes('one utama') || pickupText.includes('pj');
+        const isDamansaraDest = dropoffText.includes('the curve') || dropoffText.includes('mutiara damansara') || dropoffText.includes('one utama') || dropoffText.includes('pj');
+
         // CRITICAL SPATIAL OVERRIDES
         if ((isKlangKaparOrigin && isJohorBahruDest) || (isJohorBahruOrigin && isKlangKaparDest)) {
             dynamicTolls = 37.31; 
             tollSystemLabel = "PLUS Tolls (Actual)";
+        } else if ((isDamansaraOrigin && isPuncakPerdanaDest) || (isPuncakPerdanaOrigin && isDamansaraDest)) {
+            dynamicTolls = 2.30; // Flat open system Class 1 rate for DASH highway corridors
+            tollSystemLabel = "DASH Toll (Actual)";
         } else if ((isKlangKaparOrigin && isGentingDest) || (isGentingOrigin && isKlangKaparDest)) {
             dynamicTolls = 12.10; 
             tollSystemLabel = "PLUS + Karak Tolls";
@@ -866,7 +882,7 @@
         } else if (routeHasTolls) {
             dynamicTolls = distance <= 45 ? 2.50 : 3.50 + ((distance - 45) * 0.095);
             
-            // DYNAMIC CORRIDOR BOUNDARY LOOKUP
+            // Dynamic check for East Coast infrastructure
             if (isEastCoastDest || isEastCoastOrigin || (dropoffCoords && dropoffCoords.lon > 101.9)) {
                 tollSystemLabel = "LPT / East Coast Tolls";
             } else {
