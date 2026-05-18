@@ -552,8 +552,16 @@
             const data = await res.json();
             if (data.features && data.features.length > 0) {
                 const props = data.features[0].properties;
-                let address = props.name || props.street || '';
-                if (!address) address = `${props.city || props.town || ''} ${props.district || ''}`;
+                
+                // Build robust, clean string out of components
+                let parts = [];
+                if (props.name) parts.push(props.name);
+                if (props.street && props.street !== props.name) parts.push(props.street);
+                if (props.district) parts.push(props.district);
+                if (props.city && props.city !== props.district) parts.push(props.city);
+                if (props.state) parts.push(props.state);
+                
+                let address = parts.join(', ');
                 if (address && address.trim()) inputElement.value = address;
                 else inputElement.value = `📍 ${lat.toFixed(4)}, ${lon.toFixed(4)}`;
             }
@@ -598,8 +606,14 @@
                 let addressText = "My Location";
                 if (data.features && data.features.length > 0) {
                     const props = data.features[0].properties;
-                    addressText = props.name || props.street || `${props.city || ''}`;
-                    if (!addressText.trim()) addressText = `📍 ${lat.toFixed(3)}, ${lon.toFixed(3)}`;
+                    let parts = [];
+                    if (props.name) parts.push(props.name);
+                    if (props.street && props.street !== props.name) parts.push(props.street);
+                    if (props.district) parts.push(props.district);
+                    if (props.city && props.city !== props.district) parts.push(props.city);
+                    if (props.state) parts.push(props.state);
+                    
+                    addressText = parts.join(', ') || `📍 ${lat.toFixed(3)}, ${lon.toFixed(3)}`;
                 } else {
                     addressText = `📍 ${lat.toFixed(3)}, ${lon.toFixed(3)}`;
                 }
@@ -671,7 +685,7 @@
         if (pickupCoords) fetchRouteAndCalculate(); else resultCard.style.display = 'none';
     });
     
-    // ---- Autocomplete for both inputs (Photon Geocoding)
+    // ---- Autocomplete for both inputs (Photon Geocoding) ----
     function setupAutoComplete(inputEl, suggestionsId, onSelectCallback, isPickup) {
         const suggestionsBox = document.getElementById(suggestionsId);
         let debTimer;
@@ -687,17 +701,25 @@
                     suggestionsBox.style.display = 'block';
                     data.features.forEach(feat => {
                         const props = feat.properties;
-                        let addr = props.name || '';
-                        if (props.street) addr += `, ${props.street}`;
-                        if (props.city) addr += `, ${props.city}`;
-                        if (!addr) addr = `${props.district || ''}`;
+                        
+                        // RECTIFIED: Build dynamic, highly informative full address strings
+                        let addrParts = [];
+                        if (props.name) addrParts.push(props.name);
+                        if (props.street && props.street !== props.name) addrParts.push(props.street);
+                        if (props.district) addrParts.push(props.district);
+                        if (props.city && props.city !== props.district) addrParts.push(props.city);
+                        if (props.postcode) addrParts.push(props.postcode);
+                        if (props.state) addrParts.push(props.state);
+                        
+                        const fullAddr = addrParts.join(', ') || props.name || "Location";
+                        
                         const div = document.createElement('div');
                         div.className = 'suggestion-item';
-                        div.textContent = addr || props.name || "Location";
+                        div.textContent = fullAddr;
                         div.addEventListener('click', () => {
                             const [lon, lat] = feat.geometry.coordinates;
                             const coords = { lat, lon };
-                            inputEl.value = addr;
+                            inputEl.value = fullAddr;
                             onSelectCallback(coords, isPickup);
                             suggestionsBox.innerHTML = '';
                             suggestionsBox.style.display = 'none';
