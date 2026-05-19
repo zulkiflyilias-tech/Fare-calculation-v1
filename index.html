@@ -29,7 +29,7 @@
         #search-panel {
             height: 65vh;
             background: white;
-            padding: 16px;
+            padding: 12px 14px;
             box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
             z-index: 10;
             box-sizing: border-box;
@@ -39,25 +39,13 @@
             flex-direction: column;
             overflow: hidden; 
         }
-        .header-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-        }
-        h2 {
-            margin: 0;
-            font-size: 16px;
-            font-weight: 700;
-            color: #111;
-        }
         
         .routing-wrapper {
             position: relative;
             display: flex;
             flex-direction: column;
-            gap: 8px;
-            margin-bottom: 12px;
+            gap: 6px;
+            margin-bottom: 8px;
         }
         .input-container {
             position: relative;
@@ -66,10 +54,10 @@
         }
         input {
             width: 100%;
-            padding: 12px 64px 12px 12px;
+            padding: 10px 64px 10px 12px;
             border: 1px solid #e0e0e0;
             border-radius: 8px;
-            font-size: 14px;
+            font-size: 13px;
             box-sizing: border-box;
             background-color: #f9f9f9;
             transition: all 0.2s ease;
@@ -126,8 +114,8 @@
             background: white;
             border: 1px solid #e0e0e0;
             color: #8e24aa;
-            width: 26px;
-            height: 26px;
+            width: 24px;
+            height: 24px;
             border-radius: 50%;
             cursor: pointer;
             display: flex;
@@ -135,7 +123,7 @@
             justify-content: center;
             box-shadow: 0 2px 6px rgba(0,0,0,0.15);
             transition: all 0.2s ease;
-            font-size: 13px;
+            font-size: 12px;
         }
         .swap-btn:hover {
             transform: scale(1.1) translateY(-45%);
@@ -151,14 +139,14 @@
             background: white;
             border: 1px solid #e0e0e0;
             border-radius: 8px;
-            max-height: 140px; 
+            max-height: 120px; 
             overflow-y: auto;
             z-index: 1000;
             box-shadow: 0 6px 16px rgba(0,0,0,0.1);
             display: none;
         }
         .suggestion-item {
-            padding: 10px;
+            padding: 8px 10px;
             cursor: pointer;
             font-size: 12px;
             line-height: 1.4;
@@ -171,9 +159,8 @@
         #result-card {
             background: #1c1c1e;
             color: white;
-            padding: 14px;
+            padding: 10px 12px;
             border-radius: 12px;
-            margin-top: 4px;
             display: none;
             box-shadow: 0 4px 14px rgba(0,0,0,0.15);
             flex: 1;
@@ -184,12 +171,12 @@
             justify-content: space-between;
             align-items: center;
             background: #2c2c2e;
-            padding: 12px;
+            padding: 8px 10px;
             border-radius: 8px;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
         .fare-header {
-            font-size: 42px;
+            font-size: 38px;
             font-weight: 900;
             color: #39ff14; /* Fluorescent Neon Green */
             line-height: 1;
@@ -202,36 +189,36 @@
             text-align: right;
         }
         .fare-meta-row {
-            font-size: 13px;
+            font-size: 11px;
             color: #e5e5ea;
             font-weight: 600;
             background: #3a3a3c;
-            padding: 4px 8px;
+            padding: 2px 6px;
             border-radius: 4px;
         }
         #invoice-details {
             border-top: 1px dashed #3a3a3c;
-            padding-top: 10px;
+            padding-top: 6px;
         }
         .detail-row {
             display: flex;
             justify-content: space-between;
-            font-size: 12px;
+            font-size: 11px;
             color: #aeaeb2;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
         .detail-row.total-bold {
             color: #fff;
             font-weight: 600;
             border-top: 1px solid #3a3a3c;
-            padding-top: 8px;
+            padding-top: 6px;
             margin-bottom: 0;
-            font-size: 14px;
+            font-size: 12px;
         }
         #error-msg {
             color: #ff3b30;
-            font-size: 13px;
-            margin-top: 8px;
+            font-size: 12px;
+            margin-top: 4px;
             display: none;
             font-weight: 500;
         }
@@ -249,7 +236,7 @@
                 height: 100% !important;
                 border-radius: 0;
                 box-shadow: -4px 0 20px rgba(0,0,0,0.05);
-                padding: 20px;
+                padding: 16px;
             }
         }
     </style>
@@ -260,10 +247,6 @@
     <div id="map"></div>
     
     <div id="search-panel">
-        <div class="header-row">
-            <h2>Fare Estimator</h2>
-        </div>
-        
         <div class="routing-wrapper">
             <div class="input-container">
                 <input type="text" id="pickup" placeholder="Enter Pickup Location..." autocomplete="off" enterkeyhint="search">
