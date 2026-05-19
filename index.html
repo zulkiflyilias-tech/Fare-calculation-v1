@@ -24,14 +24,14 @@
             position: relative;
         }
         #map {
-            height: 50vh; /* Increased to 50% for a much more prominent map view */
+            height: 55vh; /* Enlarged map real estate while preventing viewport bleeding */
             width: 100%;
             z-index: 1;
         }
         #search-panel {
             flex: 1;
             background: white;
-            padding: 16px; 
+            padding: 16px;
             box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
             z-index: 10;
             box-sizing: border-box;
@@ -49,7 +49,7 @@
         }
         h2 {
             margin: 0;
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 700;
             color: #111;
         }
@@ -71,7 +71,7 @@
             padding: 12px 64px 12px 12px;
             border: 1px solid #e0e0e0;
             border-radius: 8px;
-            font-size: 14px;
+            font-size: 13px;
             box-sizing: border-box;
             background-color: #f9f9f9;
             transition: all 0.2s ease;
@@ -81,9 +81,9 @@
         }
         input:focus {
             outline: none;
-            border-color: #ff6d00;
+            border-color: #8e24aa;
             background-color: #fff;
-            box-shadow: 0 0 0 2px rgba(255, 109, 0, 0.1);
+            box-shadow: 0 0 0 2px rgba(142, 36, 170, 0.1);
         }
         
         .action-group {
@@ -109,7 +109,7 @@
         }
         .icon-btn:hover {
             background-color: #f0f0f0;
-            color: #ff6d00;
+            color: #8e24aa;
         }
         .clear-btn {
             display: none;
@@ -127,7 +127,7 @@
         .swap-btn {
             background: white;
             border: 1px solid #e0e0e0;
-            color: #ff6d00;
+            color: #8e24aa;
             width: 26px;
             height: 26px;
             border-radius: 50%;
@@ -137,12 +137,12 @@
             justify-content: center;
             box-shadow: 0 2px 6px rgba(0,0,0,0.15);
             transition: all 0.2s ease;
-            font-size: 14px;
+            font-size: 12px;
         }
         .swap-btn:hover {
             transform: scale(1.1) translateY(-45%);
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-            background-color: #fff3e0;
+            background-color: #fcf5ff;
         }
 
         .suggestions {
@@ -153,7 +153,7 @@
             background: white;
             border: 1px solid #e0e0e0;
             border-radius: 8px;
-            max-height: 150px; 
+            max-height: 140px; 
             overflow-y: auto;
             z-index: 1000;
             box-shadow: 0 6px 16px rgba(0,0,0,0.1);
@@ -173,7 +173,7 @@
         #result-card {
             background: #1c1c1e;
             color: white;
-            padding: 16px;
+            padding: 14px;
             border-radius: 12px;
             margin-top: 4px;
             display: none;
@@ -181,29 +181,35 @@
         }
         .fare-header-row {
             display: flex;
-            justify-content: center; /* Centered content alignment */
+            justify-content: space-between;
             align-items: center;
             margin-bottom: 8px;
+            border-bottom: 1px solid #2c2c2e;
+            padding-bottom: 8px;
         }
         .fare-header {
             font-size: 38px; /* Boosted sizing */
             font-weight: 900;
-            color: #ff6d00; /* High-visibility bright orange */
-            line-height: 1.1;
-            text-align: center;
+            color: #00E676; /* Vibrant Fluorescent Green */
+            line-height: 1;
         }
-        .fare-meta {
-            font-size: 15px; /* Increased font size for easy text scanning */
-            color: #e5e5ea;
+        .fare-meta-column {
             display: flex;
-            justify-content: space-around; /* Spread out for clear readability */
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 4px;
+        }
+        .meta-row-item {
+            font-size: 13px;
             font-weight: 600;
-            margin-bottom: 10px;
-            border-bottom: 1px dashed #3a3a3c;
-            padding-bottom: 10px;
+            color: #aeaeb2;
+            background: #2c2c2e;
+            padding: 2px 8px;
+            border-radius: 4px;
         }
         #invoice-details {
-            margin-top: 6px;
+            margin-top: 4px;
+            padding-top: 2px;
             display: block;
         }
         .detail-row {
@@ -216,10 +222,10 @@
         .detail-row.total-bold {
             color: #fff;
             font-weight: 600;
-            border-top: 1px solid #2c2c2e;
+            border-top: 1px dashed #3a3a3c;
             padding-top: 8px;
             margin-bottom: 0;
-            font-size: 14px;
+            font-size: 13px;
         }
         #error-msg {
             color: #ff3b30;
@@ -234,18 +240,19 @@
                 flex-direction: row-reverse;
             }
             #map {
-                height: 100vh; /* Takes full window vertical capacity on wide screens */
+                height: 100%;
                 flex: 1;
             }
             #search-panel {
-                width: 400px;
-                height: 100vh;
+                width: 380px;
+                height: 100%;
                 border-radius: 0;
                 box-shadow: -4px 0 20px rgba(0,0,0,0.05);
-                padding: 24px 18px;
+                padding: 20px;
             }
             #result-card {
-                margin-top: 14px;
+                margin-top: 12px;
+                padding: 16px;
             }
             .fare-header {
                 font-size: 44px;
@@ -291,10 +298,10 @@
         <div id="result-card">
             <div class="fare-header-row">
                 <div id="total-fare" class="fare-header">RM --</div>
-            </div>
-            <div class="fare-meta">
-                <span id="fare-distance">0 km</span>
-                <span id="fare-duration">0 mins</span>
+                <div class="fare-meta-column">
+                    <span id="fare-distance" class="meta-row-item">0 km</span>
+                    <span id="fare-duration" class="meta-row-item">0 mins</span>
+                </div>
             </div>
             
             <div id="invoice-details">
@@ -321,7 +328,7 @@
 
                 <div class="detail-row total-bold">
                     <span>Rounded Final Total</span>
-                    <span id="calc-grand" style="color: #ff6d00;">RM 0.00</span>
+                    <span id="calc-grand" style="color: #00E676;">RM 0.00</span>
                 </div>
             </div>
         </div>
@@ -365,7 +372,7 @@
 
     document.getElementById('current-loc-btn').addEventListener('click', () => {
         if (!navigator.geolocation) {
-            showError("Compass or location trace features are unsupported by this application shell.");
+            showError("Location features are unsupported by this application shell.");
             return;
         }
         const btn = document.getElementById('current-loc-btn');
@@ -588,7 +595,7 @@
                     if (routeLine) map.removeLayer(routeLine);
                     
                     routeLine = L.geoJSON(feature.geometry, { 
-                        style: { color: '#ff6d00', weight: 5, opacity: 0.85 } 
+                        style: { color: '#8e24aa', weight: 5, opacity: 0.85 } 
                     }).addTo(map);
                     
                     map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
