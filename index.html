@@ -29,7 +29,7 @@
         #search-panel {
             height: 65vh;
             background: white;
-            padding: 12px 14px;
+            padding: 10px 12px;
             box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
             z-index: 10;
             box-sizing: border-box;
@@ -44,8 +44,8 @@
             position: relative;
             display: flex;
             flex-direction: column;
-            gap: 6px;
-            margin-bottom: 8px;
+            gap: 5px;
+            margin-bottom: 6px;
         }
         .input-container {
             position: relative;
@@ -54,7 +54,7 @@
         }
         input {
             width: 100%;
-            padding: 10px 64px 10px 12px;
+            padding: 9px 64px 9px 12px;
             border: 1px solid #e0e0e0;
             border-radius: 8px;
             font-size: 13px;
@@ -159,26 +159,26 @@
         #result-card {
             background: #1c1c1e;
             color: white;
-            padding: 12px;
+            padding: 10px;
             border-radius: 14px;
             display: none;
             box-shadow: 0 4px 20px rgba(0,0,0,0.25);
             flex: 1;
-            overflow-y: auto;
+            overflow-y: auto; /* Fallback internal scrolling if viewport gets packed */
         }
         .fare-display-block {
             display: flex;
             justify-content: space-between;
             align-items: center;
             background: #2c2c2e;
-            padding: 10px 14px;
+            padding: 8px 12px;
             border-radius: 10px;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
         .fare-header {
-            font-size: 42px;
+            font-size: 40px;
             font-weight: 900;
-            color: #39ff14; /* Fluorescent Neon Green */
+            color: #39ff14; 
             line-height: 1;
             letter-spacing: -1px;
         }
@@ -200,7 +200,7 @@
         #invoice-details {
             background: #2c2c2e;
             border-radius: 10px;
-            padding: 8px 14px;
+            padding: 4px 12px;
             display: flex;
             flex-direction: column;
         }
@@ -208,9 +208,9 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 13px; /* Enhanced font size */
+            font-size: 13px; 
             color: #e5e5ea;
-            padding: 8px 0;
+            padding: 7px 0;
             border-bottom: 1px solid #3a3a3c;
         }
         .detail-row:last-of-type {
@@ -220,9 +220,9 @@
             color: #ffffff;
             font-weight: 700;
             border-top: 1px dashed #48484a;
-            margin-top: 4px;
-            padding: 10px 0 4px 0;
-            font-size: 15px; /* Prominent summary size */
+            margin-top: 2px;
+            padding: 9px 0 7px 0;
+            font-size: 15px; 
         }
         #error-msg {
             color: #ff3b30;
@@ -680,23 +680,4 @@
 
         document.getElementById('total-fare').textContent = `RM ${finalDisplayedWholeFare}`;
         document.getElementById('fare-distance').textContent = `${distance.toFixed(1)} km`;
-        document.getElementById('fare-duration').textContent = formatDuration(duration);
-
-        document.getElementById('calc-base-fare').textContent = `RM ${baseFare.toFixed(2)}`;
-        document.getElementById('calc-ride-distance-rate').textContent = `RM ${rideDistanceFare.toFixed(2)}`;
-        document.getElementById('calc-tolls').textContent = `RM ${dynamicTolls.toFixed(2)}`;
-        document.getElementById('calc-incentive').textContent = `RM ${driverIncentive.toFixed(2)}`;
-        document.getElementById('calc-deadhead-km').textContent = `RM ${deadheadCost.toFixed(2)}`;
-        document.getElementById('calc-grand').textContent = `RM ${roundedTotal.toFixed(2)}`;
-
-        document.getElementById('base-fare-row').style.display = baseFare > 0 ? 'flex' : 'none';
-        document.getElementById('distance-fare-row').style.display = rideDistanceFare > 0 ? 'flex' : 'none';
-        document.getElementById('tolls-row').style.display = dynamicTolls > 0 ? 'flex' : 'none';
-        document.getElementById('incentive-row').style.display = driverIncentive > 0 ? 'flex' : 'none';
-        document.getElementById('deadhead-km-row').style.display = deadheadCost > 0 ? 'flex' : 'none';
-
-        document.getElementById('result-card').style.display = 'block';
-    }
-</script>
-</body>
-</html>
+        document.getElementById('fare-duration').textContent = formatDuration(duration
