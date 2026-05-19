@@ -24,14 +24,14 @@
             position: relative;
         }
         #map {
-            height: 30vh; /* Reduced from 35vh to maximize mobile card real estate */
+            height: 30vh; 
             width: 100%;
             z-index: 1;
         }
         #search-panel {
             flex: 1;
             background: white;
-            padding: 12px 16px; /* Optimized padding */
+            padding: 12px 16px; 
             box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
             z-index: 10;
             box-sizing: border-box;
@@ -46,30 +46,6 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 8px;
-        }
-        h2 {
-            margin: 0;
-            font-size: 16px;
-            font-weight: 700;
-            color: #111;
-        }
-
-        .registry-trigger-btn {
-            background-color: #8e24aa;
-            color: white;
-            border: none;
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-        .registry-trigger-btn:hover {
-            background-color: #7b1fa2;
         }
         
         .routing-wrapper {
@@ -191,7 +167,7 @@
         #result-card {
             background: #1c1c1e;
             color: white;
-            padding: 12px 14px;
+            padding: 16px;
             border-radius: 12px;
             margin-top: 4px;
             display: none;
@@ -199,44 +175,46 @@
         }
         .fare-header-row {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2px;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: flex-start;
+            margin-bottom: 8px;
         }
         .fare-header {
-            font-size: 28px;
-            font-weight: 800;
-            color: #b388ff;
-            line-height: 1.1;
+            font-size: 42px;
+            font-weight: 900;
+            color: #39ff14; /* Fluorescent neon green */
+            line-height: 1.0;
+            text-shadow: 0 0 10px rgba(57, 255, 20, 0.3);
         }
         .fare-meta {
-            font-size: 12px;
+            font-size: 14px;
             color: #e5e5ea;
             display: flex;
-            justify-content: space-between;
+            gap: 12px;
             font-weight: 500;
-            margin-bottom: 4px;
+            margin-top: 4px;
         }
         #invoice-details {
-            margin-top: 6px;
+            margin-top: 12px;
             border-top: 1px dashed #3a3a3c;
-            padding-top: 6px;
+            padding-top: 12px;
             display: block;
         }
         .detail-row {
             display: flex;
             justify-content: space-between;
-            font-size: 12px;
+            font-size: 15px; /* Bigger itemised details */
             color: #aeaeb2;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
         }
         .detail-row.total-bold {
             color: #fff;
             font-weight: 600;
             border-top: 1px solid #2c2c2e;
-            padding-top: 6px;
+            padding-top: 10px;
             margin-bottom: 0;
-            font-size: 13px;
+            font-size: 16px;
         }
         #error-msg {
             color: #ff3b30;
@@ -244,116 +222,6 @@
             margin-top: 6px;
             display: none;
             font-weight: 500;
-        }
-
-        #registry-backdrop {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0,0,0,0.5);
-            z-index: 2000;
-            display: none;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-        #registry-drawer {
-            position: fixed;
-            bottom: -100%;
-            left: 0;
-            width: 100%;
-            height: 80vh;
-            background: white;
-            z-index: 2001;
-            border-top-left-radius: 20px;
-            border-top-right-radius: 20px;
-            box-shadow: 0 -8px 32px rgba(0,0,0,0.15);
-            transition: bottom 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            display: flex;
-            flex-direction: column;
-            box-sizing: border-box;
-        }
-        .drawer-header {
-            padding: 16px 20px;
-            border-bottom: 1px solid #eee;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #fafafa;
-            border-top-left-radius: 20px;
-            border-top-right-radius: 20px;
-        }
-        .drawer-header h3 {
-            margin: 0;
-            font-size: 16px;
-            font-weight: 700;
-            color: #111;
-        }
-        .close-drawer-btn {
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: #888;
-            line-height: 1;
-        }
-        .drawer-content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 16px;
-        }
-        
-        .registry-table-wrapper {
-            overflow-x: auto;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-        }
-        .registry-table {
-            width: 100%;
-            border-collapse: collapse;
-            text-align: left;
-            font-size: 12px;
-            min-width: 650px;
-        }
-        .registry-table th {
-            background-color: #1c1c1e;
-            color: white;
-            font-weight: 600;
-            padding: 10px 12px;
-            text-transform: uppercase;
-            font-size: 10px;
-            letter-spacing: 0.5px;
-        }
-        .registry-table td {
-            padding: 10px 12px;
-            border-bottom: 1px solid #eee;
-            line-height: 1.4;
-            vertical-align: top;
-        }
-        .registry-table tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-        .registry-table tr:hover {
-            background-color: #fdf7ff;
-        }
-        .badge {
-            display: inline-block;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 10px;
-            font-weight: 600;
-        }
-        .badge-open { background-color: #efe5fd; color: #4a148c; }
-        .badge-closed { background-color: #e3f2fd; color: #0d47a1; }
-        .hwy-code {
-            font-family: monospace;
-            background: #f1f1f1;
-            padding: 1px 4px;
-            border-radius: 4px;
-            font-size: 11px;
-            color: #c2185b;
-            font-weight: bold;
         }
 
         @media(min-width: 768px) {
@@ -373,25 +241,10 @@
             }
             #result-card {
                 margin-top: 10px;
-                padding: 16px;
+                padding: 18px;
             }
             .fare-header {
-                font-size: 32px;
-            }
-            #registry-drawer {
-                width: 700px;
-                height: 100vh;
-                right: -700px;
-                left: auto;
-                bottom: 0;
-                border-radius: 0;
-                border-top-left-radius: 20px;
-                border-bottom-left-radius: 20px;
-                transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            }
-            .drawer-header {
-                border-top-left-radius: 20px;
-                border-top-right-radius: 0;
+                font-size: 48px;
             }
         }
     </style>
@@ -403,9 +256,7 @@
     
     <div id="search-panel">
         <div class="header-row">
-            <h2>Fare Estimator</h2>
-            <button class="registry-trigger-btn" onclick="toggleRegistry(true)">🗺️ Toll Registry</button>
-        </div>
+            </div>
         
         <div class="routing-wrapper">
             <div class="input-container">
@@ -435,10 +286,11 @@
         <div id="result-card">
             <div class="fare-header-row">
                 <div id="total-fare" class="fare-header">RM --</div>
-            </div>
-            <div class="fare-meta">
-                <span id="fare-distance">0 km</span>
-                <span id="fare-duration">0 mins</span>
+                <div class="fare-meta">
+                    <span id="fare-distance">0 km</span>
+                    <span>•</span>
+                    <span id="fare-duration">0 mins</span>
+                </div>
             </div>
             
             <div id="invoice-details">
@@ -451,7 +303,7 @@
                     <span id="calc-ride-distance-rate">RM 0.00</span>
                 </div>
                 <div class="detail-row" id="tolls-row">
-                    <span id="toll-type-label">Tolls (Est.)</span>
+                    <span id="toll-type-label">Tolls</span>
                     <span id="calc-tolls">RM 0.00</span>
                 </div>
                 <div class="detail-row" id="incentive-row">
@@ -465,61 +317,8 @@
 
                 <div class="detail-row total-bold">
                     <span>Rounded Final Total</span>
-                    <span id="calc-grand" style="color: #b388ff;">RM 0.00</span>
+                    <span id="calc-grand" style="color: #39ff14;">RM 0.00</span>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="registry-backdrop" onclick="toggleRegistry(false)"></div>
-    <div id="registry-drawer">
-        <div class="drawer-header">
-            <h3>Official Highway Toll Rates Registry</h3>
-            <button class="close-drawer-btn" onclick="toggleRegistry(false)">&times;</button>
-        </div>
-        <div class="drawer-content">
-            <div class="registry-table-wrapper">
-                <table class="registry-table">
-                    <thead>
-                        <tr>
-                            <th>Operator / Concession</th>
-                            <th>Code</th>
-                            <th>Highway Network</th>
-                            <th>System</th>
-                            <th>Class 1 Base Rates & Key Plazas</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td style="font-weight: 600;">PLUS Malaysia Berhad</td>
-                            <td><span class="hwy-code">E1,E2,E3,E6,E15</span></td>
-                            <td>North-South Expressway (NSE), NKVE, ELITE, Federal Hwy Route 2</td>
-                            <td><span class="badge badge-closed">Closed & Open</span></td>
-                            <td>Main Axis Link: ~RM0.136/km. Key Entries: Jalan Duta, Sungai Besi, Bukit Raja.</td>
-                        </tr>
-                        <tr>
-                            <td style="font-weight: 600;">ProLintas (SILK)</td>
-                            <td><span class="hwy-code">E18</span></td>
-                            <td>Kajang SILK Highway</td>
-                            <td><span class="badge badge-open">Open System</span></td>
-                            <td>Sg. Ramal, Bukit Kajang, Sg. Long, Sg. Balak: RM1.80 flat per plaza.</td>
-                        </tr>
-                        <tr>
-                            <td style="font-weight: 600;">ANIH Berhad</td>
-                            <td><span class="hwy-code">E8</span></td>
-                            <td>KL-Karak Highway & East Coast Expressway (LPT1)</td>
-                            <td><span class="badge badge-open">Open & Closed</span></td>
-                            <td>Gombak: RM6.00, Bentong: RM3.50. LPT1 System: ~RM0.12/km.</td>
-                        </tr>
-                        <tr>
-                            <td style="font-weight: 600;">Prolintas (DASH)</td>
-                            <td><span class="hwy-code">E31</span></td>
-                            <td>Damansara-Shah Alam Elevated Expressway</td>
-                            <td><span class="badge badge-open">Open System</span></td>
-                            <td>Denai Alam, RRIM (Kwasa Damansara), Sri Damansara: RM2.30 flat.</td>
-                        </tr>
-                    </tbody>
-                </table>
             </div>
         </div>
     </div>
@@ -539,30 +338,6 @@
     let pickupMarker = null, dropoffMarker = null, routeLine = null;
     let pickupCoords = null, dropoffCoords = null;
     let currentRouteTimeout = null;
-
-    function toggleRegistry(open) {
-        const backdrop = document.getElementById('registry-backdrop');
-        const drawer = document.getElementById('registry-drawer');
-        const isResponsiveDesktop = window.innerWidth >= 768;
-        
-        if (open) {
-            backdrop.style.display = 'block';
-            setTimeout(() => { backdrop.style.opacity = '1'; }, 10);
-            if(isResponsiveDesktop) {
-                drawer.style.right = '0px';
-            } else {
-                drawer.style.bottom = '0px';
-            }
-        } else {
-            backdrop.style.opacity = '0';
-            if(isResponsiveDesktop) {
-                drawer.style.right = '-700px';
-            } else {
-                drawer.style.bottom = '-100%';
-            }
-            setTimeout(() => { backdrop.style.display = 'none'; }, 300);
-        }
-    }
 
     setupAutocomplete('pickup', 'pickup-suggestions', 'clear-pickup', (coords) => {
         pickupCoords = coords;
@@ -842,69 +617,46 @@
         const rideDistanceFare = chargeableDistance * perKmRate;
         
         let dynamicTolls = 0;
-        let tollSystemLabel = "PLUS Tolls (Est.)";
+        let tollSystemLabel = "Tolls"; // Set strictly to "Tolls" as requested
 
         const pickupText = document.getElementById('pickup').value.toLowerCase();
         const dropoffText = document.getElementById('dropoff').value.toLowerCase();
 
         const isKlangKaparOrigin = pickupText.includes('meru') || pickupText.includes('kapar') || pickupText.includes('bukit raja') || pickupText.includes('klang');
         const isKlangKaparDest = dropoffText.includes('meru') || dropoffText.includes('kapar') || dropoffText.includes('bukit raja') || dropoffText.includes('klang');
-
         const isJohorBahruDest = dropoffText.includes('holiday plaza') || dropoffText.includes('jb sentral') || dropoffText.includes('skudai') || dropoffText.includes('r&f mall') || dropoffText.includes('johor');
         const isJohorBahruOrigin = pickupText.includes('holiday plaza') || pickupText.includes('jb sentral') || pickupText.includes('skudai') || pickupText.includes('r&f mall') || pickupText.includes('johor');
-
         const isGentingDest = dropoffText.includes('genting') || dropoffText.includes('premium outlet') || dropoffText.includes('ghpo') || dropoffText.includes('gohtong');
         const isGentingOrigin = pickupText.includes('genting') || pickupText.includes('premium outlet') || pickupText.includes('ghpo') || pickupText.includes('gohtong');
-
         const isKelantanDest = dropoffText.includes('pengkalan kubor') || dropoffText.includes('kota bharu') || dropoffText.includes('kubor') || dropoffText.includes('kelantan');
         const isKelantanOrigin = pickupText.includes('pengkalan kubor') || pickupText.includes('kota bharu') || pickupText.includes('kubor') || pickupText.includes('kelantan');
-
         const isBangiKajangDest = dropoffText.includes('bangi') || dropoffText.includes('pelangi') || dropoffText.includes('kajang') || dropoffText.includes('reko');
         const isBangiKajangOrigin = pickupText.includes('bangi') || pickupText.includes('pelangi') || pickupText.includes('kajang') || pickupText.includes('reko');
-
-        const isEastCoastDest = dropoffText.includes('kuantan') || dropoffText.includes('pahang') || dropoffText.includes('terengganu') || dropoffText.includes('maran') || dropoffText.includes('temerloh') || dropoffText.includes('gebeng');
-        const isEastCoastOrigin = pickupText.includes('kuantan') || pickupText.includes('pahang') || pickupText.includes('terengganu') || pickupText.includes('maran') || pickupText.includes('temerloh') || pickupText.includes('gebeng');
-
-        const isDamansaraDest = dropoffText.includes('the curve') || dropoffText.includes('mutiara damansara') || dropoffText.includes('one utama') || dropoffText.includes('pj') || dropoffText.includes('damansara');
-        const isDamansaraOrigin = pickupText.includes('the curve') || pickupText.includes('mutiara damansara') || pickupText.includes('one utama') || pickupText.includes('pj') || pickupText.includes('damansara');
         const isPuncakPerdanaDest = dropoffText.includes('puncak perdana') || dropoffText.includes('uitm puncak') || dropoffText.includes('subang dua');
         const isPuncakPerdanaOrigin = pickupText.includes('puncak perdana') || pickupText.includes('uitm puncak') || pickupText.includes('subang dua');
-
         const isKLCenterDest = dropoffText.includes('klcc') || dropoffText.includes('kuala lumpur') || dropoffText.includes('kl tower') || dropoffText.includes('bintang') || dropoffText.includes('sentral');
         const isKLCenterOrigin = pickupText.includes('klcc') || pickupText.includes('kuala lumpur') || pickupText.includes('kl tower') || pickupText.includes('bintang') || pickupText.includes('sentral');
-
+        const isDamansaraDest = dropoffText.includes('the curve') || dropoffText.includes('mutiara damansara') || dropoffText.includes('one utama') || dropoffText.includes('pj') || dropoffText.includes('damansara');
+        const isDamansaraOrigin = pickupText.includes('the curve') || pickupText.includes('mutiara damansara') || pickupText.includes('one utama') || pickupText.includes('pj') || pickupText.includes('damansara');
         const isSerembanDest = dropoffText.includes('seremban') || dropoffText.includes('tuanku jaafar') || dropoffText.includes('senawang') || dropoffText.includes('nilai');
         const isSerembanOrigin = pickupText.includes('seremban') || pickupText.includes('tuanku jaafar') || pickupText.includes('senawang') || pickupText.includes('nilai');
 
         if ((isKlangKaparOrigin && isJohorBahruDest) || (isJohorBahruOrigin && isKlangKaparDest)) {
             dynamicTolls = 37.31; 
-            tollSystemLabel = "PLUS Tolls (Actual)";
         } else if ((isKlangKaparOrigin && isSerembanDest) || (isSerembanOrigin && isKlangKaparDest)) {
             dynamicTolls = 9.30; 
-            tollSystemLabel = "PLUS Tolls (NKVE-ELITE)";
         } else if ((isPuncakPerdanaOrigin && isKLCenterDest) || (isKLCenterOrigin && isPuncakPerdanaDest)) {
             dynamicTolls = 5.00; 
-            tollSystemLabel = "DASH + SPRINT/DUKE Toll";
         } else if ((isKlangKaparOrigin && isDamansaraDest) || (isDamansaraOrigin && isKlangKaparDest) || (isDamansaraOrigin && isPuncakPerdanaDest) || (isPuncakPerdanaOrigin && isDamansaraDest)) {
             dynamicTolls = 2.30; 
-            tollSystemLabel = "DASH Toll (Actual)";
         } else if ((isKlangKaparOrigin && isGentingDest) || (isGentingOrigin && isKlangKaparDest)) {
             dynamicTolls = 12.10; 
-            tollSystemLabel = "PLUS + Karak Tolls";
         } else if ((isKlangKaparOrigin && isKelantanDest) || (isKelantanOrigin && isKlangKaparDest)) {
             dynamicTolls = 24.30; 
-            tollSystemLabel = "PLUS + LPT Tolls";
         } else if ((isKlangKaparOrigin && isBangiKajangDest) || (isBangiKajangOrigin && isKlangKaparDest)) {
             dynamicTolls = 6.91; 
-            tollSystemLabel = "PLUS Tolls (Actual)";
         } else if (routeHasTolls) {
             dynamicTolls = distance <= 45 ? 2.50 : 3.50 + ((distance - 45) * 0.095);
-            
-            if ((isEastCoastDest || isEastCoastOrigin || (dropoffCoords && dropoffCoords.lon > 101.95)) && !isSerembanDest) {
-                tollSystemLabel = "LPT / East Coast Tolls";
-            } else {
-                tollSystemLabel = "PLUS Tolls (Est.)";
-            }
         }
 
         document.getElementById('toll-type-label').textContent = tollSystemLabel;
