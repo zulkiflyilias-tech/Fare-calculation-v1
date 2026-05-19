@@ -159,10 +159,10 @@
         #result-card {
             background: #1c1c1e;
             color: white;
-            padding: 10px 12px;
-            border-radius: 12px;
+            padding: 12px;
+            border-radius: 14px;
             display: none;
-            box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.25);
             flex: 1;
             overflow-y: auto;
         }
@@ -171,12 +171,12 @@
             justify-content: space-between;
             align-items: center;
             background: #2c2c2e;
-            padding: 8px 10px;
-            border-radius: 8px;
-            margin-bottom: 8px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            margin-bottom: 10px;
         }
         .fare-header {
-            font-size: 38px;
+            font-size: 42px;
             font-weight: 900;
             color: #39ff14; /* Fluorescent Neon Green */
             line-height: 1;
@@ -193,27 +193,36 @@
             color: #e5e5ea;
             font-weight: 600;
             background: #3a3a3c;
-            padding: 2px 6px;
+            padding: 3px 8px;
             border-radius: 4px;
         }
+        
         #invoice-details {
-            border-top: 1px dashed #3a3a3c;
-            padding-top: 6px;
+            background: #2c2c2e;
+            border-radius: 10px;
+            padding: 8px 14px;
+            display: flex;
+            flex-direction: column;
         }
         .detail-row {
             display: flex;
             justify-content: space-between;
-            font-size: 11px;
-            color: #aeaeb2;
-            margin-bottom: 4px;
+            align-items: center;
+            font-size: 13px; /* Enhanced font size */
+            color: #e5e5ea;
+            padding: 8px 0;
+            border-bottom: 1px solid #3a3a3c;
+        }
+        .detail-row:last-of-type {
+            border-bottom: none;
         }
         .detail-row.total-bold {
-            color: #fff;
-            font-weight: 600;
-            border-top: 1px solid #3a3a3c;
-            padding-top: 6px;
-            margin-bottom: 0;
-            font-size: 12px;
+            color: #ffffff;
+            font-weight: 700;
+            border-top: 1px dashed #48484a;
+            margin-top: 4px;
+            padding: 10px 0 4px 0;
+            font-size: 15px; /* Prominent summary size */
         }
         #error-msg {
             color: #ff3b30;
@@ -291,7 +300,7 @@
                     <span id="calc-ride-distance-rate">RM 0.00</span>
                 </div>
                 <div class="detail-row" id="tolls-row">
-                    <span id="toll-type-label">Tolls (Est.)</span>
+                    <span>Toll</span>
                     <span id="calc-tolls">RM 0.00</span>
                 </div>
                 <div class="detail-row" id="incentive-row">
@@ -605,7 +614,6 @@
         const rideDistanceFare = chargeableDistance * perKmRate;
         
         let dynamicTolls = 0;
-        let tollSystemLabel = "PLUS Tolls (Est.)";
 
         const pickupText = document.getElementById('pickup').value.toLowerCase();
         const dropoffText = document.getElementById('dropoff').value.toLowerCase();
@@ -641,36 +649,21 @@
 
         if ((isKlangKaparOrigin && isJohorBahruDest) || (isJohorBahruOrigin && isKlangKaparDest)) {
             dynamicTolls = 37.31; 
-            tollSystemLabel = "PLUS Tolls (Actual)";
         } else if ((isKlangKaparOrigin && isSerembanDest) || (isSerembanOrigin && isKlangKaparDest)) {
             dynamicTolls = 9.30; 
-            tollSystemLabel = "PLUS Tolls (NKVE-ELITE)";
         } else if ((isPuncakPerdanaOrigin && isKLCenterDest) || (isKLCenterOrigin && isPuncakPerdanaDest)) {
             dynamicTolls = 5.00; 
-            tollSystemLabel = "DASH + SPRINT/DUKE Toll";
         } else if ((isKlangKaparOrigin && isDamansaraDest) || (isDamansaraOrigin && isKlangKaparDest) || (isDamansaraOrigin && isPuncakPerdanaDest) || (isPuncakPerdanaOrigin && isDamansaraDest)) {
             dynamicTolls = 2.30; 
-            tollSystemLabel = "DASH Toll (Actual)";
         } else if ((isKlangKaparOrigin && isGentingDest) || (isGentingOrigin && isKlangKaparDest)) {
             dynamicTolls = 12.10; 
-            tollSystemLabel = "PLUS + Karak Tolls";
         } else if ((isKlangKaparOrigin && isKelantanDest) || (isKelantanOrigin && isKlangKaparDest)) {
             dynamicTolls = 24.30; 
-            tollSystemLabel = "PLUS + LPT Tolls";
         } else if ((isKlangKaparOrigin && isBangiKajangDest) || (isBangiKajangOrigin && isKlangKaparDest)) {
             dynamicTolls = 6.91; 
-            tollSystemLabel = "PLUS Tolls (Actual)";
         } else if (routeHasTolls) {
             dynamicTolls = distance <= 45 ? 2.50 : 3.50 + ((distance - 45) * 0.095);
-            
-            if ((isEastCoastDest || isEastCoastOrigin || (dropoffCoords && dropoffCoords.lon > 101.95)) && !isSerembanDest) {
-                tollSystemLabel = "LPT / East Coast Tolls";
-            } else {
-                tollSystemLabel = "PLUS Tolls (Est.)";
-            }
         }
-
-        document.getElementById('toll-type-label').textContent = tollSystemLabel;
 
         const driverIncentive = (duration / 60) * 12.00;
 
