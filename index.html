@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rideshare MY - Professional Fare Estimator</title>
+    <title>Rideshare MY - OSRM Tested Fare Estimator</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body {
@@ -262,7 +262,7 @@
     
     <div id="search-panel">
         <div class="header-row">
-            <h2>Fare Estimator</h2>
+            <h2>Fare Estimator (OSRM Backend)</h2>
         </div>
         
         <div class="routing-wrapper">
@@ -339,8 +339,6 @@
         attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0="; 
-
     let pickupMarker = null, dropoffMarker = null, routeLine = null;
     let pickupCoords = null, dropoffCoords = null;
     let currentRouteTimeout = null;
@@ -367,7 +365,7 @@
 
     document.getElementById('current-loc-btn').addEventListener('click', () => {
         if (!navigator.geolocation) {
-            showError("Compass or location trace features are unsupported by this application shell.");
+            showError("Location features are unsupported by this application shell.");
             return;
         }
         const btn = document.getElementById('current-loc-btn');
@@ -522,6 +520,7 @@
         });
     }
 
+    // NEW METHOD: Testing standard OSRM Routing Engine instead of ORS API
     function checkAndProcessRoute() {
         if (!pickupCoords || !dropoffCoords) return;
         
@@ -529,30 +528,29 @@
         if(currentRouteTimeout) clearTimeout(currentRouteTimeout);
         
         currentRouteTimeout = setTimeout(() => {
-            const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${ORS_API_KEY}&start=${pickupCoords.lon},${pickupCoords.lat}&end=${dropoffCoords.lon},${dropoffCoords.lat}&extra_info=tollways`;
+            // OSRM expects coordinates structured as lon,lat;lon,lat
+            const url = `https://router.project-osrm.org/route/v1/driving/${pickupCoords.lon},${pickupCoords.lat};${dropoffCoords.lon},${dropoffCoords.lat}?overview=full&geometries=geojson`;
 
             fetch(url)
                 .then(res => {
-                    if (!res.ok) throw new Error('API route payload evaluation drop.');
+                    if (!res.ok) throw new Error('OSRM network routing assessment error.');
                     return res.json();
                 })
                 .then(data => {
-                    if (!data.features || data.features.length === 0) {
+                    if (!data.routes || data.routes.length === 0) {
                         showError("No valid drivable geometry found matching those vectors.");
                         return;
                     }
 
-                    const feature = data.features[0];
-                    const summary = feature.properties.summary;
+                    const route = data.routes[0];
                     
-                    const distanceKm = summary.distance / 1000;
-                    const baseDurationMins = summary.duration / 60;
+                    // Convert OSRM values: distance is returned in meters, duration in seconds
+                    const distanceKm = route.distance / 1000;
+                    const baseDurationMins = route.duration / 60;
 
+                    // OSRM demo doesn't easily append discrete toll tags, so we logically evaluate toll tracking by length
                     let routeHasTolls = false;
-                    const extras = feature.properties.extras;
-                    if (extras && extras.tollways && extras.tollways.values) {
-                        routeHasTolls = extras.tollways.values.some(valueArray => valueArray[2] === 1);
-                    } else if (distanceKm > 50) {
+                    if (distanceKm > 50) {
                         routeHasTolls = true;
                     }
 
@@ -589,7 +587,7 @@
 
                     if (routeLine) map.removeLayer(routeLine);
                     
-                    routeLine = L.geoJSON(feature.geometry, { 
+                    routeLine = L.geoJSON(route.geometry, { 
                         style: { color: '#8e24aa', weight: 5, opacity: 0.85 } 
                     }).addTo(map);
                     
@@ -598,8 +596,8 @@
                     processCalculations(distanceKm, correctedDurationMins, routeHasTolls);
                 })
                 .catch(err => {
-                    console.error("ORS Infrastructure Error:", err);
-                    showError("API connectivity fault or quota restriction triggered.");
+                    console.error("OSRM Infrastructure Error:", err);
+                    showError("OSRM demo engine connection timed out or is completely overloaded.");
                 });
         }, 250);
     }
@@ -707,7 +705,6 @@
         document.getElementById('fare-distance').textContent = `${distance.toFixed(1)} km`;
         document.getElementById('fare-duration').textContent = formatDuration(duration);
 
-        // Update elements text value
         document.getElementById('calc-base-fare').textContent = `RM ${baseFare.toFixed(2)}`;
         document.getElementById('calc-ride-distance-rate').textContent = `RM ${rideDistanceFare.toFixed(2)}`;
         document.getElementById('calc-tolls').textContent = `RM ${dynamicTolls.toFixed(2)}`;
@@ -715,7 +712,6 @@
         document.getElementById('calc-deadhead-km').textContent = `RM ${deadheadCost.toFixed(2)}`;
         document.getElementById('calc-grand').textContent = `RM ${roundedTotal.toFixed(2)}`;
 
-        // DYNAMIC RENDERING: Hide row completely if calculated item value equals RM 0.00
         document.getElementById('base-fare-row').style.display = baseFare > 0 ? 'flex' : 'none';
         document.getElementById('distance-fare-row').style.display = rideDistanceFare > 0 ? 'flex' : 'none';
         document.getElementById('tolls-row').style.display = dynamicTolls > 0 ? 'flex' : 'none';
