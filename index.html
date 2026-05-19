@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rideshare MY - OSRM Tested Fare Estimator</title>
+    <title>Rideshare MY - Professional Fare Estimator</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body {
@@ -24,14 +24,14 @@
             position: relative;
         }
         #map {
-            height: 42vh; 
+            height: 50vh; /* Increased to 50% for a much more prominent map view */
             width: 100%;
             z-index: 1;
         }
         #search-panel {
             flex: 1;
             background: white;
-            padding: 10px 14px; 
+            padding: 16px; 
             box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
             z-index: 10;
             box-sizing: border-box;
@@ -45,11 +45,11 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 6px;
+            margin-bottom: 12px;
         }
         h2 {
             margin: 0;
-            font-size: 15px;
+            font-size: 18px;
             font-weight: 700;
             color: #111;
         }
@@ -58,8 +58,8 @@
             position: relative;
             display: flex;
             flex-direction: column;
-            gap: 6px;
-            margin-bottom: 6px;
+            gap: 8px;
+            margin-bottom: 12px;
         }
         .input-container {
             position: relative;
@@ -68,10 +68,10 @@
         }
         input {
             width: 100%;
-            padding: 9px 64px 9px 12px;
+            padding: 12px 64px 12px 12px;
             border: 1px solid #e0e0e0;
             border-radius: 8px;
-            font-size: 13px;
+            font-size: 14px;
             box-sizing: border-box;
             background-color: #f9f9f9;
             transition: all 0.2s ease;
@@ -81,9 +81,9 @@
         }
         input:focus {
             outline: none;
-            border-color: #8e24aa;
+            border-color: #ff6d00;
             background-color: #fff;
-            box-shadow: 0 0 0 2px rgba(142, 36, 170, 0.1);
+            box-shadow: 0 0 0 2px rgba(255, 109, 0, 0.1);
         }
         
         .action-group {
@@ -109,7 +109,7 @@
         }
         .icon-btn:hover {
             background-color: #f0f0f0;
-            color: #8e24aa;
+            color: #ff6d00;
         }
         .clear-btn {
             display: none;
@@ -127,9 +127,9 @@
         .swap-btn {
             background: white;
             border: 1px solid #e0e0e0;
-            color: #8e24aa;
-            width: 24px;
-            height: 24px;
+            color: #ff6d00;
+            width: 26px;
+            height: 26px;
             border-radius: 50%;
             cursor: pointer;
             display: flex;
@@ -137,12 +137,12 @@
             justify-content: center;
             box-shadow: 0 2px 6px rgba(0,0,0,0.15);
             transition: all 0.2s ease;
-            font-size: 12px;
+            font-size: 14px;
         }
         .swap-btn:hover {
             transform: scale(1.1) translateY(-45%);
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-            background-color: #fcf5ff;
+            background-color: #fff3e0;
         }
 
         .suggestions {
@@ -153,7 +153,7 @@
             background: white;
             border: 1px solid #e0e0e0;
             border-radius: 8px;
-            max-height: 140px; 
+            max-height: 150px; 
             overflow-y: auto;
             z-index: 1000;
             box-shadow: 0 6px 16px rgba(0,0,0,0.1);
@@ -173,7 +173,7 @@
         #result-card {
             background: #1c1c1e;
             color: white;
-            padding: 10px 14px;
+            padding: 16px;
             border-radius: 12px;
             margin-top: 4px;
             display: none;
@@ -181,30 +181,29 @@
         }
         .fare-header-row {
             display: flex;
-            justify-content: center; 
+            justify-content: center; /* Centered content alignment */
             align-items: center;
-            margin-bottom: 2px;
+            margin-bottom: 8px;
         }
         .fare-header {
-            font-size: 34px; 
-            font-weight: 800;
-            color: #ffd60a; 
+            font-size: 38px; /* Boosted sizing */
+            font-weight: 900;
+            color: #ff6d00; /* High-visibility bright orange */
             line-height: 1.1;
             text-align: center;
         }
         .fare-meta {
-            font-size: 14px; 
-            color: #f2f2f7; 
+            font-size: 15px; /* Increased font size for easy text scanning */
+            color: #e5e5ea;
             display: flex;
-            justify-content: center; 
-            gap: 24px; 
+            justify-content: space-around; /* Spread out for clear readability */
             font-weight: 600;
-            margin-bottom: 6px;
+            margin-bottom: 10px;
             border-bottom: 1px dashed #3a3a3c;
-            padding-bottom: 6px;
+            padding-bottom: 10px;
         }
         #invoice-details {
-            margin-top: 2px;
+            margin-top: 6px;
             display: block;
         }
         .detail-row {
@@ -212,15 +211,15 @@
             justify-content: space-between;
             font-size: 12px;
             color: #aeaeb2;
-            margin-bottom: 4px;
+            margin-bottom: 5px;
         }
         .detail-row.total-bold {
             color: #fff;
             font-weight: 600;
             border-top: 1px solid #2c2c2e;
-            padding-top: 5px;
+            padding-top: 8px;
             margin-bottom: 0;
-            font-size: 13px;
+            font-size: 14px;
         }
         #error-msg {
             color: #ff3b30;
@@ -235,22 +234,21 @@
                 flex-direction: row-reverse;
             }
             #map {
-                height: 100%;
+                height: 100vh; /* Takes full window vertical capacity on wide screens */
                 flex: 1;
             }
             #search-panel {
-                width: 380px;
-                height: 100%;
+                width: 400px;
+                height: 100vh;
                 border-radius: 0;
                 box-shadow: -4px 0 20px rgba(0,0,0,0.05);
-                padding: 16px;
+                padding: 24px 18px;
             }
             #result-card {
-                margin-top: 10px;
-                padding: 16px;
+                margin-top: 14px;
             }
             .fare-header {
-                font-size: 42px;
+                font-size: 44px;
             }
         }
     </style>
@@ -262,7 +260,7 @@
     
     <div id="search-panel">
         <div class="header-row">
-            <h2>Fare Estimator (OSRM Backend)</h2>
+            <h2>Fare Estimator</h2>
         </div>
         
         <div class="routing-wrapper">
@@ -323,7 +321,7 @@
 
                 <div class="detail-row total-bold">
                     <span>Rounded Final Total</span>
-                    <span id="calc-grand" style="color: #ffd60a;">RM 0.00</span>
+                    <span id="calc-grand" style="color: #ff6d00;">RM 0.00</span>
                 </div>
             </div>
         </div>
@@ -338,6 +336,8 @@
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
+
+    const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0="; 
 
     let pickupMarker = null, dropoffMarker = null, routeLine = null;
     let pickupCoords = null, dropoffCoords = null;
@@ -365,7 +365,7 @@
 
     document.getElementById('current-loc-btn').addEventListener('click', () => {
         if (!navigator.geolocation) {
-            showError("Location features are unsupported by this application shell.");
+            showError("Compass or location trace features are unsupported by this application shell.");
             return;
         }
         const btn = document.getElementById('current-loc-btn');
@@ -520,7 +520,6 @@
         });
     }
 
-    // NEW METHOD: Testing standard OSRM Routing Engine instead of ORS API
     function checkAndProcessRoute() {
         if (!pickupCoords || !dropoffCoords) return;
         
@@ -528,29 +527,30 @@
         if(currentRouteTimeout) clearTimeout(currentRouteTimeout);
         
         currentRouteTimeout = setTimeout(() => {
-            // OSRM expects coordinates structured as lon,lat;lon,lat
-            const url = `https://router.project-osrm.org/route/v1/driving/${pickupCoords.lon},${pickupCoords.lat};${dropoffCoords.lon},${dropoffCoords.lat}?overview=full&geometries=geojson`;
+            const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${ORS_API_KEY}&start=${pickupCoords.lon},${pickupCoords.lat}&end=${dropoffCoords.lon},${dropoffCoords.lat}&extra_info=tollways`;
 
             fetch(url)
                 .then(res => {
-                    if (!res.ok) throw new Error('OSRM network routing assessment error.');
+                    if (!res.ok) throw new Error('API route payload evaluation drop.');
                     return res.json();
                 })
                 .then(data => {
-                    if (!data.routes || data.routes.length === 0) {
+                    if (!data.features || data.features.length === 0) {
                         showError("No valid drivable geometry found matching those vectors.");
                         return;
                     }
 
-                    const route = data.routes[0];
+                    const feature = data.features[0];
+                    const summary = feature.properties.summary;
                     
-                    // Convert OSRM values: distance is returned in meters, duration in seconds
-                    const distanceKm = route.distance / 1000;
-                    const baseDurationMins = route.duration / 60;
+                    const distanceKm = summary.distance / 1000;
+                    const baseDurationMins = summary.duration / 60;
 
-                    // OSRM demo doesn't easily append discrete toll tags, so we logically evaluate toll tracking by length
                     let routeHasTolls = false;
-                    if (distanceKm > 50) {
+                    const extras = feature.properties.extras;
+                    if (extras && extras.tollways && extras.tollways.values) {
+                        routeHasTolls = extras.tollways.values.some(valueArray => valueArray[2] === 1);
+                    } else if (distanceKm > 50) {
                         routeHasTolls = true;
                     }
 
@@ -587,8 +587,8 @@
 
                     if (routeLine) map.removeLayer(routeLine);
                     
-                    routeLine = L.geoJSON(route.geometry, { 
-                        style: { color: '#8e24aa', weight: 5, opacity: 0.85 } 
+                    routeLine = L.geoJSON(feature.geometry, { 
+                        style: { color: '#ff6d00', weight: 5, opacity: 0.85 } 
                     }).addTo(map);
                     
                     map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
@@ -596,8 +596,8 @@
                     processCalculations(distanceKm, correctedDurationMins, routeHasTolls);
                 })
                 .catch(err => {
-                    console.error("OSRM Infrastructure Error:", err);
-                    showError("OSRM demo engine connection timed out or is completely overloaded.");
+                    console.error("ORS Infrastructure Error:", err);
+                    showError("API connectivity fault or quota restriction triggered.");
                 });
         }, 250);
     }
@@ -705,6 +705,7 @@
         document.getElementById('fare-distance').textContent = `${distance.toFixed(1)} km`;
         document.getElementById('fare-duration').textContent = formatDuration(duration);
 
+        // Update elements text value
         document.getElementById('calc-base-fare').textContent = `RM ${baseFare.toFixed(2)}`;
         document.getElementById('calc-ride-distance-rate').textContent = `RM ${rideDistanceFare.toFixed(2)}`;
         document.getElementById('calc-tolls').textContent = `RM ${dynamicTolls.toFixed(2)}`;
@@ -712,6 +713,7 @@
         document.getElementById('calc-deadhead-km').textContent = `RM ${deadheadCost.toFixed(2)}`;
         document.getElementById('calc-grand').textContent = `RM ${roundedTotal.toFixed(2)}`;
 
+        // DYNAMIC RENDERING: Hide row completely if calculated item value equals RM 0.00
         document.getElementById('base-fare-row').style.display = baseFare > 0 ? 'flex' : 'none';
         document.getElementById('distance-fare-row').style.display = rideDistanceFare > 0 ? 'flex' : 'none';
         document.getElementById('tolls-row').style.display = dynamicTolls > 0 ? 'flex' : 'none';
