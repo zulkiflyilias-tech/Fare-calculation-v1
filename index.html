@@ -11,25 +11,23 @@
             padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background-color: #f8f9fa;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            overflow: hidden; 
             color: #212529;
+            height: 100vh;
+            overflow: hidden;
         }
         #container {
             display: flex;
             flex-direction: column;
-            height: 100%;
-            position: relative;
+            height: 100vh;
+            width: 100vw;
         }
         #map {
-            height: 55vh; /* Enlarged map real estate while preventing viewport bleeding */
+            height: 35vh;
             width: 100%;
             z-index: 1;
         }
         #search-panel {
-            flex: 1;
+            height: 65vh;
             background: white;
             padding: 16px;
             box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
@@ -39,7 +37,7 @@
             border-top-right-radius: 16px;
             display: flex;
             flex-direction: column;
-            overflow-y: auto;
+            overflow: hidden; 
         }
         .header-row {
             display: flex;
@@ -71,7 +69,7 @@
             padding: 12px 64px 12px 12px;
             border: 1px solid #e0e0e0;
             border-radius: 8px;
-            font-size: 13px;
+            font-size: 14px;
             box-sizing: border-box;
             background-color: #f9f9f9;
             transition: all 0.2s ease;
@@ -137,7 +135,7 @@
             justify-content: center;
             box-shadow: 0 2px 6px rgba(0,0,0,0.15);
             transition: all 0.2s ease;
-            font-size: 12px;
+            font-size: 13px;
         }
         .swap-btn:hover {
             transform: scale(1.1) translateY(-45%);
@@ -178,59 +176,62 @@
             margin-top: 4px;
             display: none;
             box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+            flex: 1;
+            overflow-y: auto;
         }
-        .fare-header-row {
+        .fare-display-block {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 8px;
-            border-bottom: 1px solid #2c2c2e;
-            padding-bottom: 8px;
+            background: #2c2c2e;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 12px;
         }
         .fare-header {
-            font-size: 38px; /* Boosted sizing */
+            font-size: 42px;
             font-weight: 900;
-            color: #00E676; /* Vibrant Fluorescent Green */
+            color: #39ff14; /* Fluorescent Neon Green */
             line-height: 1;
+            letter-spacing: -1px;
         }
-        .fare-meta-column {
+        .meta-rows-container {
             display: flex;
             flex-direction: column;
-            align-items: flex-end;
             gap: 4px;
+            text-align: right;
         }
-        .meta-row-item {
+        .fare-meta-row {
             font-size: 13px;
+            color: #e5e5ea;
             font-weight: 600;
-            color: #aeaeb2;
-            background: #2c2c2e;
-            padding: 2px 8px;
+            background: #3a3a3c;
+            padding: 4px 8px;
             border-radius: 4px;
         }
         #invoice-details {
-            margin-top: 4px;
-            padding-top: 2px;
-            display: block;
+            border-top: 1px dashed #3a3a3c;
+            padding-top: 10px;
         }
         .detail-row {
             display: flex;
             justify-content: space-between;
             font-size: 12px;
             color: #aeaeb2;
-            margin-bottom: 5px;
+            margin-bottom: 6px;
         }
         .detail-row.total-bold {
             color: #fff;
             font-weight: 600;
-            border-top: 1px dashed #3a3a3c;
+            border-top: 1px solid #3a3a3c;
             padding-top: 8px;
             margin-bottom: 0;
-            font-size: 13px;
+            font-size: 14px;
         }
         #error-msg {
             color: #ff3b30;
-            font-size: 12px;
-            margin-top: 6px;
+            font-size: 13px;
+            margin-top: 8px;
             display: none;
             font-weight: 500;
         }
@@ -240,22 +241,15 @@
                 flex-direction: row-reverse;
             }
             #map {
-                height: 100%;
+                height: 100% !important;
                 flex: 1;
             }
             #search-panel {
-                width: 380px;
-                height: 100%;
+                width: 400px;
+                height: 100% !important;
                 border-radius: 0;
                 box-shadow: -4px 0 20px rgba(0,0,0,0.05);
                 padding: 20px;
-            }
-            #result-card {
-                margin-top: 12px;
-                padding: 16px;
-            }
-            .fare-header {
-                font-size: 44px;
             }
         }
     </style>
@@ -296,11 +290,11 @@
         <div id="error-msg"></div>
 
         <div id="result-card">
-            <div class="fare-header-row">
+            <div class="fare-display-block">
                 <div id="total-fare" class="fare-header">RM --</div>
-                <div class="fare-meta-column">
-                    <span id="fare-distance" class="meta-row-item">0 km</span>
-                    <span id="fare-duration" class="meta-row-item">0 mins</span>
+                <div class="meta-rows-container">
+                    <div id="fare-distance" class="fare-meta-row">0.0 km</div>
+                    <div id="fare-duration" class="fare-meta-row">0 mins</div>
                 </div>
             </div>
             
@@ -328,7 +322,7 @@
 
                 <div class="detail-row total-bold">
                     <span>Rounded Final Total</span>
-                    <span id="calc-grand" style="color: #00E676;">RM 0.00</span>
+                    <span id="calc-grand" style="color: #39ff14;">RM 0.00</span>
                 </div>
             </div>
         </div>
@@ -372,7 +366,7 @@
 
     document.getElementById('current-loc-btn').addEventListener('click', () => {
         if (!navigator.geolocation) {
-            showError("Location features are unsupported by this application shell.");
+            showError("Compass or location trace features are unsupported by this application shell.");
             return;
         }
         const btn = document.getElementById('current-loc-btn');
@@ -712,7 +706,6 @@
         document.getElementById('fare-distance').textContent = `${distance.toFixed(1)} km`;
         document.getElementById('fare-duration').textContent = formatDuration(duration);
 
-        // Update elements text value
         document.getElementById('calc-base-fare').textContent = `RM ${baseFare.toFixed(2)}`;
         document.getElementById('calc-ride-distance-rate').textContent = `RM ${rideDistanceFare.toFixed(2)}`;
         document.getElementById('calc-tolls').textContent = `RM ${dynamicTolls.toFixed(2)}`;
@@ -720,7 +713,6 @@
         document.getElementById('calc-deadhead-km').textContent = `RM ${deadheadCost.toFixed(2)}`;
         document.getElementById('calc-grand').textContent = `RM ${roundedTotal.toFixed(2)}`;
 
-        // DYNAMIC RENDERING: Hide row completely if calculated item value equals RM 0.00
         document.getElementById('base-fare-row').style.display = baseFare > 0 ? 'flex' : 'none';
         document.getElementById('distance-fare-row').style.display = rideDistanceFare > 0 ? 'flex' : 'none';
         document.getElementById('tolls-row').style.display = dynamicTolls > 0 ? 'flex' : 'none';
