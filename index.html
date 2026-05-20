@@ -31,7 +31,7 @@
         #search-panel {
             flex: 1;
             background: white;
-            padding: 16px; 
+            padding: 16px 16px 32px 16px; /* Added substantial bottom padding to prevent navigation-bar cutting */
             box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
             z-index: 10;
             box-sizing: border-box;
@@ -40,6 +40,7 @@
             display: flex;
             flex-direction: column;
             overflow-y: auto;
+            -webkit-overflow-scrolling: touch; /* Smooth scrolling for iOS browsers */
         }
         
         .routing-wrapper {
@@ -165,6 +166,7 @@
             padding: 16px;
             border-radius: 12px;
             margin-top: 8px;
+            margin-bottom: 16px; /* Space underneath the card elements inside scroll panel */
             display: none;
             box-shadow: 0 4px 14px rgba(0,0,0,0.15);
         }
@@ -248,6 +250,7 @@
             #result-card {
                 margin-top: 12px;
                 padding: 20px;
+                margin-bottom: 0;
             }
             .fare-header {
                 font-size: 48px;
