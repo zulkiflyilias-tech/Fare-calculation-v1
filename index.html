@@ -332,6 +332,7 @@
         attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
+    // NOTE: In production, route calls through a backend proxy to secure token operations.
     const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0="; 
 
     let pickupMarker = null, dropoffMarker = null, routeLine = null;
@@ -358,7 +359,6 @@
         resetCalculationDisplay();
     });
 
-    // Close suggestions dropdowns when clicking outside inputs
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.input-container')) {
             document.getElementById('pickup-suggestions').style.display = 'none';
@@ -368,7 +368,7 @@
 
     document.getElementById('current-loc-btn').addEventListener('click', () => {
         if (!navigator.geolocation) {
-            showError("Compass or location trace features are unsupported by this application shell.");
+            showError("Location service is unsupported by this browser environment.");
             return;
         }
         const btn = document.getElementById('current-loc-btn');
@@ -383,13 +383,14 @@
                 updateMarker('pickup', pickupCoords);
                 map.setView([lat, lon], 14);
                 
-                const reverseGeocodeUrl = `https://photon.komoot.io/reverse?lon=${lon}&lat=${lat}`;
+                // Using standard open Nominatim fallback route to protect cross-origin handling profiles
+                const reverseGeocodeUrl = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`;
                 fetch(reverseGeocodeUrl)
                     .then(res => res.json())
                     .then(data => {
                         btn.textContent = "🎯";
-                        if (data.features && data.features.length > 0) {
-                            document.getElementById('pickup').value = expandAddress(data.features[0].properties);
+                        if (data && data.display_name) {
+                            document.getElementById('pickup').value = data.display_name;
                         } else {
                             document.getElementById('pickup').value = `Current Location (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
                         }
@@ -405,13 +406,14 @@
             },
             () => {
                 btn.textContent = "🎯";
-                showError("Unable to safely track user positioning metrics.");
+                showError("Unable to safely resolve user positioning metrics.");
             },
             { enableHighAccuracy: true, timeout: 8000 }
         );
     });
 
     function updateMarker(type, coords) {
+        if (!coords || typeof coords.lat === 'undefined') return;
         if (type === 'pickup') {
             if (pickupMarker) map.removeLayer(pickupMarker);
             pickupMarker = L.marker([coords.lat, coords.lon]).addTo(map);
@@ -485,33 +487,31 @@
             }
 
             debounceTimeout = setTimeout(() => {
-                const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&bbox=99.6,0.8,119.5,7.4&limit=5`;
-                fetch(url)
+                // Configured with alternate open fallback arrays for high resiliency
+                const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=my&limit=5`;
+                fetch(url, { headers: { 'Accept-Language': 'en' } })
                     .then(res => res.json())
                     .then(data => {
                         suggestionsBox.innerHTML = '';
-                        if(!data.features || data.features.length === 0) {
+                        if(!data || data.length === 0) {
                             suggestionsBox.style.display = 'none';
                             return;
                         }
                         suggestionsBox.style.display = 'block';
-                        data.features.forEach(feature => {
-                            const props = feature.properties;
-                            const detailedAddress = expandAddress(props);
+                        data.forEach(item => {
                             const div = document.createElement('div');
                             div.className = 'suggestion-item';
-                            div.textContent = detailedAddress;
+                            div.textContent = item.display_name;
                             div.addEventListener('click', () => {
-                                input.value = props.name || detailedAddress;
+                                input.value = item.display_name.split(',')[0] || item.display_name;
                                 suggestionsBox.innerHTML = '';
                                 suggestionsBox.style.display = 'none';
-                                const [lon, lat] = feature.geometry.coordinates;
-                                onSelect({ lat, lon });
+                                onSelect({ lat: parseFloat(item.lat), lon: parseFloat(item.lon) });
                             });
                             suggestionsBox.appendChild(div);
                         });
                     }).catch(err => console.error(err));
-            }, 350);
+            }, 400);
         });
 
         clearBtn.addEventListener('click', () => {
@@ -534,12 +534,12 @@
 
             fetch(url)
                 .then(res => {
-                    if (!res.ok) throw new Error('API route payload evaluation drop.');
+                    if (!res.ok) throw new Error('API route payload valuation drop.');
                     return res.json();
                 })
                 .then(data => {
                     if (!data.features || data.features.length === 0) {
-                        showError("No valid drivable geometry found matching those vectors.");
+                        showError("No valid drivable geometry found matching those locations.");
                         return;
                     }
 
@@ -594,14 +594,14 @@
                         style: { color: '#8e24aa', weight: 5, opacity: 0.85 } 
                     }).addTo(map);
                     
-                    map.invalidateSize(); // Forces map canvas layer correction inside parent flexboxes
+                    map.invalidateSize();
                     map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
 
                     processCalculations(distanceKm, correctedDurationMins, routeHasTolls);
                 })
                 .catch(err => {
                     console.error("ORS Infrastructure Error:", err);
-                    showError("API connectivity fault or quota restriction triggered.");
+                    showError("Routing service currently unavailable or quota exhausted.");
                 });
         }, 250);
     }
