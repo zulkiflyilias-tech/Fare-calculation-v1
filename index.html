@@ -326,18 +326,38 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
+    // Initialize map focused safely on central Malaysia (Klang Valley baseline)
     const map = L.map('map').setView([3.1390, 101.6869], 11);
     
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    // NOTE: In production, route calls through a backend proxy to secure token operations.
+    // NOTE: In Production, routing requests should ideally bypass client execution 
+    // and go through an authentication proxy server to mask the API Key infrastructure.
     const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0="; 
 
     let pickupMarker = null, dropoffMarker = null, routeLine = null;
     let pickupCoords = null, dropoffCoords = null;
     let currentRouteTimeout = null;
+
+    // Define Geospatial Bounding Boxes for Zone Validation [minLat, minLon, maxLat, maxLon]
+    const REGIONAL_BOUNDS = {
+        klangKapar: [3.00, 101.35, 3.18, 101.52],
+        johorBahru: [1.40, 103.60, 1.60, 103.85],
+        genting:     [3.35, 101.75, 3.45, 101.85],
+        kelantan:   [5.90, 102.10, 6.30, 102.40],
+        bangiKajang:[2.90, 101.70, 3.02, 101.85],
+        puncakPerdana:[3.10, 101.45, 3.16, 101.55],
+        klCenter:   [3.10, 101.65, 3.17, 101.75],
+        damansara:  [3.11, 101.58, 3.17, 101.65],
+        seremban:   [2.65, 101.85, 2.78, 102.00]
+    };
+
+    function inBoundingBox(coords, bbox) {
+        if (!coords) return false;
+        return coords.lat >= bbox[0] && coords.lon >= bbox[1] && coords.lat <= bbox[2] && coords.lon <= bbox[3];
+    }
 
     setupAutocomplete('pickup', 'pickup-suggestions', 'clear-pickup', (coords) => {
         pickupCoords = coords;
@@ -368,7 +388,7 @@
 
     document.getElementById('current-loc-btn').addEventListener('click', () => {
         if (!navigator.geolocation) {
-            showError("Location service is unsupported by this browser environment.");
+            showError("Location tracing options are unsupported by this environment device.");
             return;
         }
         const btn = document.getElementById('current-loc-btn');
@@ -383,14 +403,13 @@
                 updateMarker('pickup', pickupCoords);
                 map.setView([lat, lon], 14);
                 
-                // Using standard open Nominatim fallback route to protect cross-origin handling profiles
-                const reverseGeocodeUrl = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`;
+                const reverseGeocodeUrl = `https://photon.komoot.io/reverse?lon=${lon}&lat=${lat}`;
                 fetch(reverseGeocodeUrl)
                     .then(res => res.json())
                     .then(data => {
                         btn.textContent = "🎯";
-                        if (data && data.display_name) {
-                            document.getElementById('pickup').value = data.display_name;
+                        if (data.features && data.features.length > 0) {
+                            document.getElementById('pickup').value = expandAddress(data.features[0].properties);
                         } else {
                             document.getElementById('pickup').value = `Current Location (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
                         }
@@ -406,14 +425,13 @@
             },
             () => {
                 btn.textContent = "🎯";
-                showError("Unable to safely resolve user positioning metrics.");
+                showError("Unable to safely resolve user positioning metric context.");
             },
             { enableHighAccuracy: true, timeout: 8000 }
         );
     });
 
     function updateMarker(type, coords) {
-        if (!coords || typeof coords.lat === 'undefined') return;
         if (type === 'pickup') {
             if (pickupMarker) map.removeLayer(pickupMarker);
             pickupMarker = L.marker([coords.lat, coords.lon]).addTo(map);
@@ -487,31 +505,34 @@
             }
 
             debounceTimeout = setTimeout(() => {
-                // Configured with alternate open fallback arrays for high resiliency
-                const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=my&limit=5`;
-                fetch(url, { headers: { 'Accept-Language': 'en' } })
+                // Focus search target window safely onto dynamic bounds parameters of Malaysia
+                const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&bbox=99.6,0.8,119.5,7.4&limit=5`;
+                fetch(url)
                     .then(res => res.json())
                     .then(data => {
                         suggestionsBox.innerHTML = '';
-                        if(!data || data.length === 0) {
+                        if(!data.features || data.features.length === 0) {
                             suggestionsBox.style.display = 'none';
                             return;
                         }
                         suggestionsBox.style.display = 'block';
-                        data.forEach(item => {
+                        data.features.forEach(feature => {
+                            const props = feature.properties;
+                            const detailedAddress = expandAddress(props);
                             const div = document.createElement('div');
                             div.className = 'suggestion-item';
-                            div.textContent = item.display_name;
+                            div.textContent = detailedAddress;
                             div.addEventListener('click', () => {
-                                input.value = item.display_name.split(',')[0] || item.display_name;
+                                input.value = props.name || detailedAddress;
                                 suggestionsBox.innerHTML = '';
                                 suggestionsBox.style.display = 'none';
-                                onSelect({ lat: parseFloat(item.lat), lon: parseFloat(item.lon) });
+                                const [lon, lat] = feature.geometry.coordinates;
+                                onSelect({ lat, lon });
                             });
                             suggestionsBox.appendChild(div);
                         });
                     }).catch(err => console.error(err));
-            }, 400);
+            }, 350);
         });
 
         clearBtn.addEventListener('click', () => {
@@ -534,12 +555,12 @@
 
             fetch(url)
                 .then(res => {
-                    if (!res.ok) throw new Error('API route payload valuation drop.');
+                    if (!res.ok) throw new Error('API route payload evaluation dropped.');
                     return res.json();
                 })
                 .then(data => {
                     if (!data.features || data.features.length === 0) {
-                        showError("No valid drivable geometry found matching those locations.");
+                        showError("No valid drivable geometry found matching those coordinate vectors.");
                         return;
                     }
 
@@ -557,6 +578,7 @@
                         routeHasTolls = true;
                     }
 
+                    // Compute dynamic traffic modifier based on time tables
                     const now = new Date();
                     const currentHour = now.getHours();
                     const isWeekend = (now.getDay() === 0 || now.getDay() === 6);
@@ -594,14 +616,20 @@
                         style: { color: '#8e24aa', weight: 5, opacity: 0.85 } 
                     }).addTo(map);
                     
-                    map.invalidateSize();
-                    map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+                    // Display UI element layout state visibility adjustments
+                    document.getElementById('result-card').style.display = 'block';
+
+                    // Frame execution logic into requestAnimationFrame to assure container sizing has drawn fully
+                    requestAnimationFrame(() => {
+                        map.invalidateSize();
+                        map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+                    });
 
                     processCalculations(distanceKm, correctedDurationMins, routeHasTolls);
                 })
                 .catch(err => {
                     console.error("ORS Infrastructure Error:", err);
-                    showError("Routing service currently unavailable or quota exhausted.");
+                    showError("API connectivity fault or quota restriction triggered.");
                 });
         }, 250);
     }
@@ -627,41 +655,28 @@
         let dynamicTolls = 0;
         let tollSystemLabel = "Tolls"; 
 
-        const pickupText = document.getElementById('pickup').value.toLowerCase();
-        const dropoffText = document.getElementById('dropoff').value.toLowerCase();
+        // Geospatial point comparison checks replacing arbitrary string inspection patterns
+        const originInZone = (zoneKey) => inBoundingBox(pickupCoords, REGIONAL_BOUNDS[zoneKey]);
+        const destInZone = (zoneKey) => inBoundingBox(dropoffCoords, REGIONAL_BOUNDS[zoneKey]);
 
-        const isKlangKaparOrigin = pickupText.includes('meru') || pickupText.includes('kapar') || pickupText.includes('bukit raja') || pickupText.includes('klang');
-        const isKlangKaparDest = dropoffText.includes('meru') || dropoffText.includes('kapar') || dropoffText.includes('bukit raja') || dropoffText.includes('klang');
-        const isJohorBahruDest = dropoffText.includes('holiday plaza') || dropoffText.includes('jb sentral') || dropoffText.includes('skudai') || dropoffText.includes('r&f mall') || dropoffText.includes('johor');
-        const isJohorBahruOrigin = pickupText.includes('holiday plaza') || pickupText.includes('jb sentral') || pickupText.includes('skudai') || pickupText.includes('r&f mall') || pickupText.includes('johor');
-        const isGentingDest = dropoffText.includes('genting') || dropoffText.includes('premium outlet') || dropoffText.includes('ghpo') || dropoffText.includes('gohtong');
-        const isGentingOrigin = pickupText.includes('genting') || pickupText.includes('premium outlet') || pickupText.includes('ghpo') || pickupText.includes('gohtong');
-        const isKelantanDest = dropoffText.includes('pengkalan kubor') || dropoffText.includes('kota bharu') || dropoffText.includes('kubor') || dropoffText.includes('kelantan');
-        const isKelantanOrigin = pickupText.includes('pengkalan kubor') || pickupText.includes('kota bharu') || pickupText.includes('kubor') || pickupText.includes('kelantan');
-        const isBangiKajangDest = dropoffText.includes('bangi') || dropoffText.includes('pelangi') || dropoffText.includes('kajang') || dropoffText.includes('reko');
-        const isBangiKajangOrigin = pickupText.includes('bangi') || pickupText.includes('pelangi') || pickupText.includes('kajang') || pickupText.includes('reko');
-        const isPuncakPerdanaDest = dropoffText.includes('puncak perdana') || dropoffText.includes('uitm puncak') || dropoffText.includes('subang dua');
-        const isPuncakPerdanaOrigin = pickupText.includes('puncak perdana') || pickupText.includes('uitm puncak') || pickupText.includes('subang dua');
-        const isKLCenterDest = dropoffText.includes('klcc') || dropoffText.includes('kuala lumpur') || dropoffText.includes('kl tower') || dropoffText.includes('bintang') || dropoffText.includes('sentral');
-        const isKLCenterOrigin = pickupText.includes('klcc') || pickupText.includes('kuala lumpur') || pickupText.includes('kl tower') || pickupText.includes('bintang') || pickupText.includes('sentral');
-        const isDamansaraDest = dropoffText.includes('the curve') || dropoffText.includes('mutiara damansara') || dropoffText.includes('one utama') || dropoffText.includes('pj') || dropoffText.includes('damansara');
-        const isDamansaraOrigin = pickupText.includes('the curve') || pickupText.includes('mutiara damansara') || pickupText.includes('one utama') || pickupText.includes('pj') || pickupText.includes('damansara');
-        const isSerembanDest = dropoffText.includes('seremban') || dropoffText.includes('tuanku jaafar') || dropoffText.includes('senawang') || dropoffText.includes('nilai');
-        const isSerembanOrigin = pickupText.includes('seremban') || pickupText.includes('tuanku jaafar') || pickupText.includes('senawang') || pickupText.includes('nilai');
+        const matchRoute = (zoneA, zoneB) => {
+            return (originInZone(zoneA) && destInZone(zoneB)) || (originInZone(zoneB) && destInZone(zoneA));
+        };
 
-        if ((isKlangKaparOrigin && isJohorBahruDest) || (isJohorBahruOrigin && isKlangKaparDest)) {
+        // Precision regional calculation assignments
+        if (matchRoute('klangKapar', 'johorBahru')) {
             dynamicTolls = 37.31; 
-        } else if ((isKlangKaparOrigin && isSerembanDest) || (isSerembanOrigin && isKlangKaparDest)) {
+        } else if (matchRoute('klangKapar', 'seremban')) {
             dynamicTolls = 9.30; 
-        } else if ((isPuncakPerdanaOrigin && isKLCenterDest) || (isKLCenterOrigin && isPuncakPerdanaDest)) {
+        } else if (matchRoute('puncakPerdana', 'klCenter')) {
             dynamicTolls = 5.00; 
-        } else if ((isKlangKaparOrigin && isDamansaraDest) || (isDamansaraOrigin && isKlangKaparDest) || (isDamansaraOrigin && isPuncakPerdanaDest) || (isPuncakPerdanaOrigin && isDamansaraDest)) {
+        } else if (matchRoute('klangKapar', 'damansara') || matchRoute('damansara', 'puncakPerdana')) {
             dynamicTolls = 2.30; 
-        } else if ((isKlangKaparOrigin && isGentingDest) || (isGentingOrigin && isKlangKaparDest)) {
+        } else if (matchRoute('klangKapar', 'genting')) {
             dynamicTolls = 12.10; 
-        } else if ((isKlangKaparOrigin && isKelantanDest) || (isKelantanOrigin && isKlangKaparDest)) {
+        } else if (matchRoute('klangKapar', 'kelantan')) {
             dynamicTolls = 24.30; 
-        } else if ((isKlangKaparOrigin && isBangiKajangDest) || (isBangiKajangOrigin && isKlangKaparDest)) {
+        } else if (matchRoute('klangKapar', 'bangiKajang')) {
             dynamicTolls = 6.91; 
         } else if (routeHasTolls) {
             dynamicTolls = distance <= 45 ? 2.50 : 3.50 + ((distance - 45) * 0.095);
@@ -698,8 +713,6 @@
         document.getElementById('tolls-row').style.display = dynamicTolls > 0 ? 'flex' : 'none';
         document.getElementById('incentive-row').style.display = driverIncentive > 0 ? 'flex' : 'none';
         document.getElementById('deadhead-km-row').style.display = deadheadCost > 0 ? 'flex' : 'none';
-
-        document.getElementById('result-card').style.display = 'block';
     }
 </script>
 </body>
