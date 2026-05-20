@@ -24,14 +24,14 @@
             position: relative;
         }
         #map {
-            height: 35vh; 
+            height: 33vh; /* Reduced by 2% from 35vh */
             width: 100%;
             z-index: 1;
         }
         #search-panel {
             flex: 1;
             background: white;
-            padding: 16px 16px 32px 16px; /* Added substantial bottom padding to prevent navigation-bar cutting */
+            padding: 16px 16px 32px 16px; 
             box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
             z-index: 10;
             box-sizing: border-box;
@@ -40,7 +40,7 @@
             display: flex;
             flex-direction: column;
             overflow-y: auto;
-            -webkit-overflow-scrolling: touch; /* Smooth scrolling for iOS browsers */
+            -webkit-overflow-scrolling: touch; 
         }
         
         .routing-wrapper {
@@ -166,7 +166,7 @@
             padding: 16px;
             border-radius: 12px;
             margin-top: 8px;
-            margin-bottom: 16px; /* Space underneath the card elements inside scroll panel */
+            margin-bottom: 16px; 
             display: none;
             box-shadow: 0 4px 14px rgba(0,0,0,0.15);
         }
