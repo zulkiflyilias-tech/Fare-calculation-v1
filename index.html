@@ -24,14 +24,14 @@
             position: relative;
         }
         #map {
-            height: 30vh; 
+            height: 35vh; 
             width: 100%;
             z-index: 1;
         }
         #search-panel {
             flex: 1;
             background: white;
-            padding: 12px 16px; 
+            padding: 16px; 
             box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
             z-index: 10;
             box-sizing: border-box;
@@ -41,18 +41,18 @@
             flex-direction: column;
             overflow-y: auto;
         }
-        .header-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
+        .header-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #8e24aa;
+            margin: 0 0 12px 0;
         }
         
         .routing-wrapper {
             position: relative;
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 8px;
             margin-bottom: 8px;
         }
         .input-container {
@@ -62,10 +62,10 @@
         }
         input {
             width: 100%;
-            padding: 10px 64px 10px 12px;
+            padding: 12px 64px 12px 12px;
             border: 1px solid #e0e0e0;
             border-radius: 8px;
-            font-size: 13px;
+            font-size: 14px;
             box-sizing: border-box;
             background-color: #f9f9f9;
             transition: all 0.2s ease;
@@ -94,7 +94,7 @@
             color: #757575;
             font-size: 14px;
             cursor: pointer;
-            padding: 4px;
+            padding: 6px;
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -107,7 +107,7 @@
         }
         .clear-btn {
             display: none;
-            font-size: 16px;
+            font-size: 18px;
             color: #aaa;
         }
         
@@ -122,8 +122,8 @@
             background: white;
             border: 1px solid #e0e0e0;
             color: #8e24aa;
-            width: 24px;
-            height: 24px;
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
             cursor: pointer;
             display: flex;
@@ -131,7 +131,7 @@
             justify-content: center;
             box-shadow: 0 2px 6px rgba(0,0,0,0.15);
             transition: all 0.2s ease;
-            font-size: 12px;
+            font-size: 14px;
         }
         .swap-btn:hover {
             transform: scale(1.1) translateY(-45%);
@@ -147,16 +147,16 @@
             background: white;
             border: 1px solid #e0e0e0;
             border-radius: 8px;
-            max-height: 150px; 
+            max-height: 180px; 
             overflow-y: auto;
             z-index: 1000;
             box-shadow: 0 6px 16px rgba(0,0,0,0.1);
             display: none;
         }
         .suggestion-item {
-            padding: 10px;
+            padding: 12px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 13px;
             line-height: 1.4;
             border-bottom: 1px solid #f5f5f5;
         }
@@ -169,42 +169,32 @@
             color: white;
             padding: 16px;
             border-radius: 12px;
-            margin-top: 4px;
+            margin-top: 8px;
             display: none;
             box-shadow: 0 4px 14px rgba(0,0,0,0.15);
         }
-        
-        /* Two Columns Header Restructuring */
         .fare-header-row {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-        }
-        .fare-left-col {
-            flex: 1;
-        }
-        .fare-right-col {
-            display: flex;
             flex-direction: column;
-            align-items: flex-end;
-            justify-content: center;
-            gap: 4px;
-            text-align: right;
+            justify-content: flex-start;
+            align-items: flex-start;
+            margin-bottom: 8px;
         }
         .fare-header {
             font-size: 42px;
             font-weight: 900;
-            color: #39ff14; /* Fluorescent neon green */
+            color: #39ff14; 
             line-height: 1.0;
             text-shadow: 0 0 10px rgba(57, 255, 20, 0.3);
         }
-        .meta-item {
-            font-size: 15px;
+        .fare-meta {
+            font-size: 14px;
             color: #e5e5ea;
-            font-weight: 600;
+            display: flex;
+            gap: 12px;
+            font-weight: 500;
+            margin-top: 6px;
         }
-        
         #invoice-details {
             margin-top: 12px;
             border-top: 1px dashed #3a3a3c;
@@ -214,7 +204,7 @@
         .detail-row {
             display: flex;
             justify-content: space-between;
-            font-size: 15px;
+            font-size: 15px; 
             color: #aeaeb2;
             margin-bottom: 8px;
         }
@@ -228,8 +218,8 @@
         }
         #error-msg {
             color: #ff3b30;
-            font-size: 12px;
-            margin-top: 6px;
+            font-size: 13px;
+            margin-top: 8px;
             display: none;
             font-weight: 500;
         }
@@ -243,15 +233,15 @@
                 flex: 1;
             }
             #search-panel {
-                width: 380px;
+                width: 400px;
                 height: 100%;
                 border-radius: 0;
                 box-shadow: -4px 0 20px rgba(0,0,0,0.05);
-                padding: 16px;
+                padding: 24px 20px;
             }
             #result-card {
-                margin-top: 10px;
-                padding: 18px;
+                margin-top: 12px;
+                padding: 20px;
             }
             .fare-header {
                 font-size: 48px;
@@ -265,7 +255,7 @@
     <div id="map"></div>
     
     <div id="search-panel">
-        <div class="header-row"></div>
+        <h1 class="header-title">Rideshare MY Estimates</h1>
         
         <div class="routing-wrapper">
             <div class="input-container">
@@ -294,12 +284,11 @@
 
         <div id="result-card">
             <div class="fare-header-row">
-                <div class="fare-left-col">
-                    <div id="total-fare" class="fare-header">RM --</div>
-                </div>
-                <div class="fare-right-col">
-                    <div id="fare-distance" class="meta-item">0 km</div>
-                    <div id="fare-duration" class="meta-item">0 mins</div>
+                <div id="total-fare" class="fare-header">RM --</div>
+                <div class="fare-meta">
+                    <span id="fare-distance">0 km</span>
+                    <span>•</span>
+                    <span id="fare-duration">0 mins</span>
                 </div>
             </div>
             
@@ -367,6 +356,14 @@
         dropoffCoords = null;
         if (dropoffMarker) { map.removeLayer(dropoffMarker); dropoffMarker = null; }
         resetCalculationDisplay();
+    });
+
+    // Close suggestions dropdowns when clicking outside inputs
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.input-container')) {
+            document.getElementById('pickup-suggestions').style.display = 'none';
+            document.getElementById('dropoff-suggestions').style.display = 'none';
+        }
     });
 
     document.getElementById('current-loc-btn').addEventListener('click', () => {
@@ -597,6 +594,7 @@
                         style: { color: '#8e24aa', weight: 5, opacity: 0.85 } 
                     }).addTo(map);
                     
+                    map.invalidateSize(); // Forces map canvas layer correction inside parent flexboxes
                     map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
 
                     processCalculations(distanceKm, correctedDurationMins, routeHasTolls);
@@ -627,7 +625,7 @@
         const rideDistanceFare = chargeableDistance * perKmRate;
         
         let dynamicTolls = 0;
-        let tollSystemLabel = "Tolls";
+        let tollSystemLabel = "Tolls"; 
 
         const pickupText = document.getElementById('pickup').value.toLowerCase();
         const dropoffText = document.getElementById('dropoff').value.toLowerCase();
@@ -688,7 +686,6 @@
         document.getElementById('fare-distance').textContent = `${distance.toFixed(1)} km`;
         document.getElementById('fare-duration').textContent = formatDuration(duration);
 
-        // Update element text values
         document.getElementById('calc-base-fare').textContent = `RM ${baseFare.toFixed(2)}`;
         document.getElementById('calc-ride-distance-rate').textContent = `RM ${rideDistanceFare.toFixed(2)}`;
         document.getElementById('calc-tolls').textContent = `RM ${dynamicTolls.toFixed(2)}`;
@@ -696,7 +693,6 @@
         document.getElementById('calc-deadhead-km').textContent = `RM ${deadheadCost.toFixed(2)}`;
         document.getElementById('calc-grand').textContent = `RM ${roundedTotal.toFixed(2)}`;
 
-        // Dynamic Visibility Control logic
         document.getElementById('base-fare-row').style.display = baseFare > 0 ? 'flex' : 'none';
         document.getElementById('distance-fare-row').style.display = rideDistanceFare > 0 ? 'flex' : 'none';
         document.getElementById('tolls-row').style.display = dynamicTolls > 0 ? 'flex' : 'none';
