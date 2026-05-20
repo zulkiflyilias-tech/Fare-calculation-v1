@@ -134,7 +134,7 @@
             font-size: 14px;
         }
         .swap-btn:hover {
-            transform: scale(1.1) translateY(-45%);
+            transform: scale(1.1) translateY(-50%);
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
             background-color: #fcf5ff;
         }
@@ -268,7 +268,7 @@
             </div>
             
             <div class="swap-container">
-                <button class="swap-btn" id="swap-locations-btn" title="Swap locations" onclick="executeLocationSwap()">⇅</button>
+                <button class="swap-btn" id="swap-locations-btn" title="Swap locations">⇅</button>
             </div>
             
             <div class="input-container">
@@ -326,22 +326,20 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-    // Initialize map focused safely on central Malaysia (Klang Valley baseline)
     const map = L.map('map').setView([3.1390, 101.6869], 11);
     
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    // NOTE: In Production, routing requests should ideally bypass client execution 
-    // and go through an authentication proxy server to mask the API Key infrastructure.
+    // SECURITY WARNING: In production environments, replace this client variable 
+    // with a call to your backend endpoint (e.g., /api/get-route) to hide your keys.
     const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0="; 
 
     let pickupMarker = null, dropoffMarker = null, routeLine = null;
     let pickupCoords = null, dropoffCoords = null;
     let currentRouteTimeout = null;
 
-    // Define Geospatial Bounding Boxes for Zone Validation [minLat, minLon, maxLat, maxLon]
     const REGIONAL_BOUNDS = {
         klangKapar: [3.00, 101.35, 3.18, 101.52],
         johorBahru: [1.40, 103.60, 1.60, 103.85],
@@ -386,9 +384,11 @@
         }
     });
 
+    document.getElementById('swap-locations-btn').addEventListener('click', executeLocationSwap);
+
     document.getElementById('current-loc-btn').addEventListener('click', () => {
         if (!navigator.geolocation) {
-            showError("Location tracing options are unsupported by this environment device.");
+            showError("Location features are not supported on this browser version.");
             return;
         }
         const btn = document.getElementById('current-loc-btn');
@@ -425,7 +425,7 @@
             },
             () => {
                 btn.textContent = "🎯";
-                showError("Unable to safely resolve user positioning metric context.");
+                showError("Unable to acquire high accuracy location payload.");
             },
             { enableHighAccuracy: true, timeout: 8000 }
         );
@@ -444,6 +444,7 @@
     function executeLocationSwap() {
         const pickupInput = document.getElementById('pickup');
         const dropoffInput = document.getElementById('dropoff');
+        
         const tempText = pickupInput.value;
         const tempCoords = pickupCoords;
         
@@ -471,7 +472,7 @@
         if (props.district) parts.push(props.district);
         if (props.city || props.town) parts.push(props.city || props.town);
         if (props.state) parts.push(props.state);
-        return parts.length > 0 ? parts.join(', ') : 'Target Location Coordinates';
+        return parts.length > 0 ? parts.join(', ') : 'Target Coordinates';
     }
 
     function resetCalculationDisplay() {
@@ -505,7 +506,6 @@
             }
 
             debounceTimeout = setTimeout(() => {
-                // Focus search target window safely onto dynamic bounds parameters of Malaysia
                 const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&bbox=99.6,0.8,119.5,7.4&limit=5`;
                 fetch(url)
                     .then(res => res.json())
@@ -555,12 +555,12 @@
 
             fetch(url)
                 .then(res => {
-                    if (!res.ok) throw new Error('API route payload evaluation dropped.');
+                    if (!res.ok) throw new Error('API routing failed.');
                     return res.json();
                 })
                 .then(data => {
                     if (!data.features || data.features.length === 0) {
-                        showError("No valid drivable geometry found matching those coordinate vectors.");
+                        showError("No valid route found between these locations.");
                         return;
                     }
 
@@ -578,7 +578,6 @@
                         routeHasTolls = true;
                     }
 
-                    // Compute dynamic traffic modifier based on time tables
                     const now = new Date();
                     const currentHour = now.getHours();
                     const isWeekend = (now.getDay() === 0 || now.getDay() === 6);
@@ -616,20 +615,20 @@
                         style: { color: '#8e24aa', weight: 5, opacity: 0.85 } 
                     }).addTo(map);
                     
-                    // Display UI element layout state visibility adjustments
                     document.getElementById('result-card').style.display = 'block';
 
-                    // Frame execution logic into requestAnimationFrame to assure container sizing has drawn fully
-                    requestAnimationFrame(() => {
+                    setTimeout(() => {
                         map.invalidateSize();
-                        map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
-                    });
+                        if (routeLine) {
+                            map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+                        }
+                    }, 100);
 
                     processCalculations(distanceKm, correctedDurationMins, routeHasTolls);
                 })
                 .catch(err => {
-                    console.error("ORS Infrastructure Error:", err);
-                    showError("API connectivity fault or quota restriction triggered.");
+                    console.error("Routing Error:", err);
+                    showError("Routing service error or credit exhaustion encountered.");
                 });
         }, 250);
     }
@@ -655,7 +654,6 @@
         let dynamicTolls = 0;
         let tollSystemLabel = "Tolls"; 
 
-        // Geospatial point comparison checks replacing arbitrary string inspection patterns
         const originInZone = (zoneKey) => inBoundingBox(pickupCoords, REGIONAL_BOUNDS[zoneKey]);
         const destInZone = (zoneKey) => inBoundingBox(dropoffCoords, REGIONAL_BOUNDS[zoneKey]);
 
@@ -663,7 +661,6 @@
             return (originInZone(zoneA) && destInZone(zoneB)) || (originInZone(zoneB) && destInZone(zoneA));
         };
 
-        // Precision regional calculation assignments
         if (matchRoute('klangKapar', 'johorBahru')) {
             dynamicTolls = 37.31; 
         } else if (matchRoute('klangKapar', 'seremban')) {
