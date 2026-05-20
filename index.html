@@ -41,12 +41,6 @@
             flex-direction: column;
             overflow-y: auto;
         }
-        .header-title {
-            font-size: 16px;
-            font-weight: 700;
-            color: #8e24aa;
-            margin: 0 0 12px 0;
-        }
         
         .routing-wrapper {
             position: relative;
@@ -54,6 +48,7 @@
             flex-direction: column;
             gap: 8px;
             margin-bottom: 8px;
+            margin-top: 8px;
         }
         .input-container {
             position: relative;
@@ -175,10 +170,13 @@
         }
         .fare-header-row {
             display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .fare-left-col {
+            display: flex;
             flex-direction: column;
-            justify-content: flex-start;
-            align-items: flex-start;
-            margin-bottom: 8px;
         }
         .fare-header {
             font-size: 42px;
@@ -187,13 +185,21 @@
             line-height: 1.0;
             text-shadow: 0 0 10px rgba(57, 255, 20, 0.3);
         }
-        .fare-meta {
-            font-size: 14px;
-            color: #e5e5ea;
+        .fare-right-col {
             display: flex;
-            gap: 12px;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 4px;
+        }
+        .meta-distance {
+            font-size: 16px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+        .meta-duration {
+            font-size: 14px;
             font-weight: 500;
-            margin-top: 6px;
+            color: #aeaeb2;
         }
         #invoice-details {
             margin-top: 12px;
@@ -246,6 +252,12 @@
             .fare-header {
                 font-size: 48px;
             }
+            .meta-distance {
+                font-size: 18px;
+            }
+            .meta-duration {
+                font-size: 15px;
+            }
         }
     </style>
 </head>
@@ -255,8 +267,6 @@
     <div id="map"></div>
     
     <div id="search-panel">
-        <h1 class="header-title">Rideshare MY Estimates</h1>
-        
         <div class="routing-wrapper">
             <div class="input-container">
                 <input type="text" id="pickup" placeholder="Enter Pickup Location..." autocomplete="off" enterkeyhint="search">
@@ -284,11 +294,12 @@
 
         <div id="result-card">
             <div class="fare-header-row">
-                <div id="total-fare" class="fare-header">RM --</div>
-                <div class="fare-meta">
-                    <span id="fare-distance">0 km</span>
-                    <span>•</span>
-                    <span id="fare-duration">0 mins</span>
+                <div class="fare-left-col">
+                    <div id="total-fare" class="fare-header">RM --</div>
+                </div>
+                <div class="fare-right-col">
+                    <span id="fare-distance" class="meta-distance">0 km</span>
+                    <span id="fare-duration" class="meta-duration">0 mins</span>
                 </div>
             </div>
             
@@ -332,8 +343,6 @@
         attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    // SECURITY WARNING: In production environments, replace this client variable 
-    // with a call to your backend endpoint (e.g., /api/get-route) to hide your keys.
     const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0="; 
 
     let pickupMarker = null, dropoffMarker = null, routeLine = null;
