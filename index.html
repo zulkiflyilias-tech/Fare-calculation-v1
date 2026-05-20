@@ -173,12 +173,24 @@
             display: none;
             box-shadow: 0 4px 14px rgba(0,0,0,0.15);
         }
+        
+        /* Two Columns Header Restructuring */
         .fare-header-row {
             display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .fare-left-col {
+            flex: 1;
+        }
+        .fare-right-col {
+            display: flex;
             flex-direction: column;
-            justify-content: flex-start;
-            align-items: flex-start;
-            margin-bottom: 8px;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 4px;
+            text-align: right;
         }
         .fare-header {
             font-size: 42px;
@@ -187,14 +199,12 @@
             line-height: 1.0;
             text-shadow: 0 0 10px rgba(57, 255, 20, 0.3);
         }
-        .fare-meta {
-            font-size: 14px;
+        .meta-item {
+            font-size: 15px;
             color: #e5e5ea;
-            display: flex;
-            gap: 12px;
-            font-weight: 500;
-            margin-top: 4px;
+            font-weight: 600;
         }
+        
         #invoice-details {
             margin-top: 12px;
             border-top: 1px dashed #3a3a3c;
@@ -204,7 +214,7 @@
         .detail-row {
             display: flex;
             justify-content: space-between;
-            font-size: 15px; /* Bigger itemised details */
+            font-size: 15px;
             color: #aeaeb2;
             margin-bottom: 8px;
         }
@@ -255,8 +265,7 @@
     <div id="map"></div>
     
     <div id="search-panel">
-        <div class="header-row">
-            </div>
+        <div class="header-row"></div>
         
         <div class="routing-wrapper">
             <div class="input-container">
@@ -285,11 +294,12 @@
 
         <div id="result-card">
             <div class="fare-header-row">
-                <div id="total-fare" class="fare-header">RM --</div>
-                <div class="fare-meta">
-                    <span id="fare-distance">0 km</span>
-                    <span>•</span>
-                    <span id="fare-duration">0 mins</span>
+                <div class="fare-left-col">
+                    <div id="total-fare" class="fare-header">RM --</div>
+                </div>
+                <div class="fare-right-col">
+                    <div id="fare-distance" class="meta-item">0 km</div>
+                    <div id="fare-duration" class="meta-item">0 mins</div>
                 </div>
             </div>
             
@@ -617,7 +627,7 @@
         const rideDistanceFare = chargeableDistance * perKmRate;
         
         let dynamicTolls = 0;
-        let tollSystemLabel = "Tolls"; // Set strictly to "Tolls" as requested
+        let tollSystemLabel = "Tolls";
 
         const pickupText = document.getElementById('pickup').value.toLowerCase();
         const dropoffText = document.getElementById('dropoff').value.toLowerCase();
@@ -678,7 +688,7 @@
         document.getElementById('fare-distance').textContent = `${distance.toFixed(1)} km`;
         document.getElementById('fare-duration').textContent = formatDuration(duration);
 
-        // Update elements text value
+        // Update element text values
         document.getElementById('calc-base-fare').textContent = `RM ${baseFare.toFixed(2)}`;
         document.getElementById('calc-ride-distance-rate').textContent = `RM ${rideDistanceFare.toFixed(2)}`;
         document.getElementById('calc-tolls').textContent = `RM ${dynamicTolls.toFixed(2)}`;
@@ -686,7 +696,7 @@
         document.getElementById('calc-deadhead-km').textContent = `RM ${deadheadCost.toFixed(2)}`;
         document.getElementById('calc-grand').textContent = `RM ${roundedTotal.toFixed(2)}`;
 
-        // DYNAMIC RENDERING: Hide row completely if calculated item value equals RM 0.00
+        // Dynamic Visibility Control logic
         document.getElementById('base-fare-row').style.display = baseFare > 0 ? 'flex' : 'none';
         document.getElementById('distance-fare-row').style.display = rideDistanceFare > 0 ? 'flex' : 'none';
         document.getElementById('tolls-row').style.display = dynamicTolls > 0 ? 'flex' : 'none';
