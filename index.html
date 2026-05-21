@@ -2,10 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>Rideshare MY - Professional Fare Estimator & Toll Registry</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
+        * {
+            box-sizing: border-box;
+        }
         body {
             margin: 0;
             padding: 0;
@@ -24,7 +27,7 @@
             position: relative;
         }
         #map {
-            height: 33vh; /* Reduced by 2% from 35vh */
+            height: 33vh; 
             width: 100%;
             z-index: 1;
         }
@@ -169,12 +172,17 @@
             margin-bottom: 16px; 
             display: none;
             box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        #result-card:hover {
+            background: #2c2c2e;
         }
         .fare-header-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 12px;
+            margin-bottom: 4px;
         }
         .fare-left-col {
             display: flex;
@@ -186,6 +194,7 @@
             color: #39ff14; 
             line-height: 1.0;
             text-shadow: 0 0 10px rgba(57, 255, 20, 0.3);
+            transition: transform 0.1s ease;
         }
         .fare-right-col {
             display: flex;
@@ -207,7 +216,8 @@
             margin-top: 12px;
             border-top: 1px dashed #3a3a3c;
             padding-top: 12px;
-            display: block;
+            display: none;
+            transition: display 0.2s;
         }
         .detail-row {
             display: flex;
@@ -230,6 +240,16 @@
             margin-top: 8px;
             display: none;
             font-weight: 500;
+        }
+
+        /* hint text */
+        .tap-hint {
+            font-size: 12px;
+            color: #aeaeb2;
+            text-align: right;
+            margin-top: 6px;
+            letter-spacing: 0.3px;
+            display: block;
         }
 
         @media(min-width: 768px) {
@@ -305,6 +325,7 @@
                     <span id="fare-duration" class="meta-duration">0 mins</span>
                 </div>
             </div>
+            <div class="tap-hint" id="tapHint">👇 Tap fare to show invoice details</div>
             
             <div id="invoice-details">
                 <div class="detail-row" id="base-fare-row">
@@ -628,7 +649,13 @@
                     }).addTo(map);
                     
                     document.getElementById('result-card').style.display = 'block';
-
+                    
+                    // ensure invoice details are hidden on new route
+                    const invoiceDiv = document.getElementById('invoice-details');
+                    invoiceDiv.style.display = 'none';
+                    const hintSpan = document.getElementById('tapHint');
+                    if (hintSpan) hintSpan.style.display = 'block';
+                    
                     setTimeout(() => {
                         map.invalidateSize();
                         if (routeLine) {
@@ -723,6 +750,65 @@
         document.getElementById('incentive-row').style.display = driverIncentive > 0 ? 'flex' : 'none';
         document.getElementById('deadhead-km-row').style.display = deadheadCost > 0 ? 'flex' : 'none';
     }
+    
+    // ========== INVOICE TOGGLE LOGIC: Click total fare container shows/hides details ==========
+    const resultCard = document.getElementById('result-card');
+    const invoiceDetails = document.getElementById('invoice-details');
+    const tapHint = document.getElementById('tapHint');
+    
+    if (resultCard) {
+        resultCard.addEventListener('click', (e) => {
+            // Prevent toggling if user accidentally clicks on any interactive child that might conflict, but we allow main toggle.
+            // Stop propagation not necessary, but ensure that if the click originated from within invoice-details (like detail row) it still toggles? 
+            // requirement: clicking total fare shows invoice details; clicking again hides. Fine.
+            // We'll also ensure map markers etc unaffected.
+            e.stopPropagation(); // avoid weird bubbling
+            if (invoiceDetails.style.display === 'none' || invoiceDetails.style.display === '') {
+                invoiceDetails.style.display = 'block';
+                if (tapHint) tapHint.style.display = 'none';
+            } else {
+                invoiceDetails.style.display = 'none';
+                if (tapHint) tapHint.style.display = 'block';
+            }
+        });
+    }
+    
+    // ensure initial state whenever result card appears but invoice hidden (already hidden by CSS default)
+    // also on new route, reset invoice hidden via checkAndProcessRoute.
+    // Additional double-check: when resetting calculation, no effect needed, but we also want to reset hint on any new fare.
+    // Override the processCalculations final step to ensure invoice starts hidden on fresh route.
+    const originalProcess = processCalculations;
+    window.processCalculations = function(distance, duration, routeHasTolls) {
+        originalProcess(distance, duration, routeHasTolls);
+        if (invoiceDetails) {
+            invoiceDetails.style.display = 'none';
+        }
+        if (tapHint) {
+            tapHint.style.display = 'block';
+        }
+    }.bind(this);
+    
+    // rebind the function reference for processCalculations to ensure overriding works
+    window.processCalculations = window.processCalculations;
+    // replace the old reference
+    processCalculations = window.processCalculations;
+    
+    // Additionally if result-card reappears manually via route, state consistency
+    const originalResetDisplay = resetCalculationDisplay;
+    window.resetCalculationDisplay = function() {
+        originalResetDisplay();
+        if (invoiceDetails) invoiceDetails.style.display = 'none';
+        if (tapHint) tapHint.style.display = 'block';
+    }.bind(this);
+    resetCalculationDisplay = window.resetCalculationDisplay;
+    
+    // ensure that on any new valid route, invoice hidden via routing flow
+    const originalCheck = checkAndProcessRoute;
+    window.checkAndProcessRoute = function() {
+        originalCheck();
+    }.bind(this);
+    checkAndProcessRoute = window.checkAndProcessRoute;
+    
 </script>
 </body>
 </html>
