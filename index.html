@@ -240,22 +240,23 @@
         .exclude-toggle {
             background: rgba(255,255,255,0.12);
             border: none;
-            border-radius: 20px;
-            padding: 4px 10px;
-            font-size: 11px;
-            font-weight: 600;
+            border-radius: 24px;
+            padding: 4px 12px;
+            font-size: 13px;
+            font-weight: 700;
             cursor: pointer;
-            color: #ff9f4a;
             transition: all 0.2s;
             margin-left: 10px;
+            min-width: 52px;
+            letter-spacing: 0.5px;
         }
         .exclude-toggle.excluded {
-            color: #ff3b30;
+            color: #ff6b6b;
             background: rgba(255,59,48,0.2);
         }
         .exclude-toggle.included {
-            color: #34c759;
-            background: rgba(52,199,89,0.15);
+            color: #39ff14;
+            background: rgba(57,255,20,0.15);
         }
         .toll-manual-group {
             display: inline-flex;
@@ -418,11 +419,11 @@
                     <span class="toll-badge">✍️ Manual toll override</span>
                 </div>
                 <div class="detail-row" id="base-fare-row">
-                    <span>Base Fare <button class="exclude-toggle included" data-item="base">✓ Include</button></span>
+                    <span>Base Fare <button class="exclude-toggle included" data-item="base">+</button></span>
                     <span id="calc-base-fare">RM 5.00</span>
                 </div>
                 <div class="detail-row" id="distance-fare-row">
-                    <span>Distance Fare <button class="exclude-toggle included" data-item="distance">✓ Include</button></span>
+                    <span>Distance Fare <button class="exclude-toggle included" data-item="distance">+</button></span>
                     <span id="calc-ride-distance-rate">RM 0.00</span>
                 </div>
                 <div class="detail-row" id="tolls-row" style="flex-wrap: wrap;">
@@ -433,16 +434,16 @@
                             <button id="apply-manual-toll" class="manual-toll-apply">Apply</button>
                             <button id="reset-auto-toll" class="reset-toll-btn">↺ Auto</button>
                         </div>
-                        <button class="exclude-toggle included" data-item="tolls" id="toll-exclude-btn">✓ Include</button>
+                        <button class="exclude-toggle included" data-item="tolls" id="toll-exclude-btn">+</button>
                     </span>
                     <span id="calc-tolls">RM 0.00</span>
                 </div>
                 <div class="detail-row" id="incentive-row">
-                    <span>Traffic Adjust & Incentive <button class="exclude-toggle included" data-item="incentive">✓ Include</button></span>
+                    <span>Traffic Adjust & Incentive <button class="exclude-toggle included" data-item="incentive">+</button></span>
                     <span id="calc-incentive">RM 0.00</span>
                 </div>
                 <div class="detail-row" id="deadhead-km-row">
-                    <span>Out-of-Zone Surcharge <button class="exclude-toggle included" data-item="deadhead">✓ Include</button></span>
+                    <span>Out-of-Zone Surcharge <button class="exclude-toggle included" data-item="deadhead">+</button></span>
                     <span id="calc-deadhead-km">RM 0.00</span>
                 </div>
 
@@ -450,7 +451,7 @@
                     <span>Final Total (exclusions applied)</span>
                     <span id="calc-grand" style="color: #39ff14;">RM 0.00</span>
                 </div>
-                <div class="tap-hint" style="margin-top:6px; font-size:10px;">💡 Click ✓/Exclude to toggle item & recalc</div>
+                <div class="tap-hint" style="margin-top:6px; font-size:10px;">💡 Tap + / - to include/exclude items</div>
             </div>
         </div>
     </div>
@@ -526,15 +527,15 @@
             tollDisplaySpan.textContent = `RM ${autoToll.toFixed(2)}`;
         }
         
-        // Update toggle button text styles
+        // Update toggle button text: + when included, - when excluded
         document.querySelectorAll('.exclude-toggle').forEach(btn => {
             const item = btn.getAttribute('data-item');
             if (excludedItems.has(item)) {
-                btn.textContent = `✗ Exclude`;
+                btn.textContent = `-`;
                 btn.classList.add('excluded');
                 btn.classList.remove('included');
             } else {
-                btn.textContent = `✓ Include`;
+                btn.textContent = `+`;
                 btn.classList.add('included');
                 btn.classList.remove('excluded');
             }
@@ -583,9 +584,6 @@
         let autoToll = computeTollFromRoute(distance, routeHasTolls, pickupCoords, dropoffCoords);
         if (autoToll < 0) autoToll = 0;
         currentAutoToll = autoToll;
-        // If currentManualToll is still null after new route, keep auto. If user had manual, retain but we might reset? Better keep manual across new route? 
-        // For consistency if user wants fresh start we keep, but they can click "Auto" reset.
-        // However if route changes drastically, we still respect currentManualToll override.
         
         const driverIncentive = (duration / 60) * 12.00;
         let deadheadCost = 0;
