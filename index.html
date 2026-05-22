@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Rideshare MY - Professional Fare Estimator & Toll Registry</title>
+    <title>Rideshare MY - Pro Fare Estimator & Smart Toll Registry</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         * {
@@ -225,6 +225,7 @@
             font-size: 15px; 
             color: #aeaeb2;
             margin-bottom: 8px;
+            align-items: center;
         }
         .detail-row.total-bold {
             color: #fff;
@@ -233,6 +234,74 @@
             padding-top: 10px;
             margin-bottom: 0;
             font-size: 16px;
+        }
+        .exclude-toggle {
+            background: rgba(255,255,255,0.12);
+            border: none;
+            border-radius: 20px;
+            padding: 4px 10px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            color: #ff9f4a;
+            transition: all 0.2s;
+            margin-left: 10px;
+        }
+        .exclude-toggle.excluded {
+            color: #ff3b30;
+            background: rgba(255,59,48,0.2);
+        }
+        .exclude-toggle.included {
+            color: #34c759;
+            background: rgba(52,199,89,0.15);
+        }
+        .toll-manual-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+        .toll-manual-input {
+            background: #2c2c2e;
+            border: 1px solid #48484a;
+            border-radius: 12px;
+            padding: 5px 8px;
+            width: 85px;
+            color: white;
+            font-size: 13px;
+            text-align: right;
+        }
+        .toll-manual-input:focus {
+            outline: none;
+            border-color: #39ff14;
+        }
+        .toll-badge {
+            font-size: 11px;
+            background: #3a3a3c;
+            padding: 2px 8px;
+            border-radius: 30px;
+            color: #ddd;
+        }
+        .manual-toll-apply {
+            background: none;
+            border: 1px solid #8e24aa;
+            border-radius: 20px;
+            padding: 3px 10px;
+            font-size: 11px;
+            color: #c084fc;
+            cursor: pointer;
+        }
+        .reset-toll-btn {
+            background: none;
+            border: none;
+            color: #ff9f4a;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .invoice-controls {
+            margin-bottom: 10px;
+            text-align: right;
         }
         #error-msg {
             color: #ff3b30;
@@ -261,7 +330,7 @@
                 flex: 1;
             }
             #search-panel {
-                width: 400px;
+                width: 450px;
                 height: 100%;
                 border-radius: 0;
                 box-shadow: -4px 0 20px rgba(0,0,0,0.05);
@@ -325,34 +394,45 @@
                     <span id="fare-duration" class="meta-duration">0 mins</span>
                 </div>
             </div>
-            <div class="tap-hint" id="tapHint">👇 Tap fare to show invoice details</div>
+            <div class="tap-hint" id="tapHint">👇 Tap fare card to show/hide invoice</div>
             
             <div id="invoice-details">
+                <div class="invoice-controls">
+                    <span class="toll-badge" style="background:#2c2c2e;">✍️ Manual toll entry active</span>
+                </div>
                 <div class="detail-row" id="base-fare-row">
-                    <span>Base Fare</span>
+                    <span>Base Fare <button class="exclude-toggle included" data-item="base">✓ Exclude</button></span>
                     <span id="calc-base-fare">RM 5.00</span>
                 </div>
                 <div class="detail-row" id="distance-fare-row">
-                    <span>Distance Fare</span>
+                    <span>Distance Fare <button class="exclude-toggle included" data-item="distance">✓ Exclude</button></span>
                     <span id="calc-ride-distance-rate">RM 0.00</span>
                 </div>
                 <div class="detail-row" id="tolls-row">
-                    <span id="toll-type-label">Tolls</span>
+                    <span>Tolls 
+                        <div class="toll-manual-group" style="display: inline-flex; margin-left: 8px;">
+                            <input type="number" id="manual-toll-input" step="0.1" placeholder="RM" class="toll-manual-input" value="">
+                            <button id="apply-manual-toll" class="manual-toll-apply">Apply</button>
+                            <button id="reset-auto-toll" class="reset-toll-btn">↺ Auto</button>
+                        </div>
+                        <button class="exclude-toggle included" data-item="tolls" id="toll-exclude-btn">✓ Exclude</button>
+                    </span>
                     <span id="calc-tolls">RM 0.00</span>
                 </div>
                 <div class="detail-row" id="incentive-row">
-                    <span>Traffic Adjust & Incentive</span>
+                    <span>Traffic Adjust & Incentive <button class="exclude-toggle included" data-item="incentive">✓ Exclude</button></span>
                     <span id="calc-incentive">RM 0.00</span>
                 </div>
                 <div class="detail-row" id="deadhead-km-row">
-                    <span>Out-of-Zone Surcharge</span>
+                    <span>Out-of-Zone Surcharge <button class="exclude-toggle included" data-item="deadhead">✓ Exclude</button></span>
                     <span id="calc-deadhead-km">RM 0.00</span>
                 </div>
 
                 <div class="detail-row total-bold">
-                    <span>Rounded Final Total</span>
+                    <span>Final Total (exclusions applied)</span>
                     <span id="calc-grand" style="color: #39ff14;">RM 0.00</span>
                 </div>
+                <div class="tap-hint" style="margin-top:6px; font-size:10px;">💡 Click ✓/Exclude to toggle item & recalc</div>
             </div>
         </div>
     </div>
@@ -362,7 +442,6 @@
 
 <script>
     const map = L.map('map').setView([3.1390, 101.6869], 11);
-    
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
@@ -372,6 +451,20 @@
     let pickupMarker = null, dropoffMarker = null, routeLine = null;
     let pickupCoords = null, dropoffCoords = null;
     let currentRouteTimeout = null;
+    
+    // State for invoice dynamic toggles & manual toll
+    let excludedItems = new Set();   // 'base', 'distance', 'tolls', 'incentive', 'deadhead'
+    let currentAutoToll = 0;
+    let currentManualToll = null;    // null = use auto, otherwise number
+    let lastRawComponents = {        // store latest calculated values
+        baseFare: 5,
+        rideDistanceFare: 0,
+        autoToll: 0,
+        driverIncentive: 0,
+        deadheadCost: 0,
+        distanceKm: 0,
+        durationMins: 0
+    };
 
     const REGIONAL_BOUNDS = {
         klangKapar: [3.00, 101.35, 3.18, 101.52],
@@ -390,6 +483,174 @@
         return coords.lat >= bbox[0] && coords.lon >= bbox[1] && coords.lat <= bbox[2] && coords.lon <= bbox[3];
     }
 
+    // refresh final fare based on toggles & manual toll
+    function refreshFinalFare() {
+        let { baseFare, rideDistanceFare, autoToll, driverIncentive, deadheadCost } = lastRawComponents;
+        let effectiveToll = (currentManualToll !== null) ? currentManualToll : autoToll;
+        
+        let sum = 0;
+        if (!excludedItems.has('base')) sum += baseFare;
+        if (!excludedItems.has('distance')) sum += rideDistanceFare;
+        if (!excludedItems.has('tolls')) sum += effectiveToll;
+        if (!excludedItems.has('incentive')) sum += driverIncentive;
+        if (!excludedItems.has('deadhead')) sum += deadheadCost;
+        
+        const roundedTotal = Math.max(0, Math.round(sum * 10) / 10);
+        const finalWhole = Math.round(roundedTotal);
+        document.getElementById('total-fare').textContent = `RM ${finalWhole}`;
+        document.getElementById('calc-grand').textContent = `RM ${roundedTotal.toFixed(2)}`;
+        
+        // update toll display line depending on manual vs auto
+        const tollDisplaySpan = document.getElementById('calc-tolls');
+        if (currentManualToll !== null) {
+            tollDisplaySpan.textContent = `RM ${currentManualToll.toFixed(2)} (Manual)`;
+        } else {
+            tollDisplaySpan.textContent = `RM ${autoToll.toFixed(2)}`;
+        }
+        
+        // Update toggle button text styles
+        document.querySelectorAll('.exclude-toggle').forEach(btn => {
+            const item = btn.getAttribute('data-item');
+            if (excludedItems.has(item)) {
+                btn.textContent = `✗ Excluded`;
+                btn.classList.add('excluded');
+                btn.classList.remove('included');
+            } else {
+                btn.textContent = `✓ Include`;
+                btn.classList.add('included');
+                btn.classList.remove('excluded');
+            }
+        });
+        const tollExcludeBtn = document.getElementById('toll-exclude-btn');
+        if (tollExcludeBtn) {
+            if (excludedItems.has('tolls')) {
+                tollExcludeBtn.textContent = `✗ Excluded`;
+                tollExcludeBtn.classList.add('excluded');
+                tollExcludeBtn.classList.remove('included');
+            } else {
+                tollExcludeBtn.textContent = `✓ Include`;
+                tollExcludeBtn.classList.add('included');
+                tollExcludeBtn.classList.remove('excluded');
+            }
+        }
+    }
+    
+    function updateAllComponentDisplays() {
+        const { baseFare, rideDistanceFare, autoToll, driverIncentive, deadheadCost, distanceKm, durationMins } = lastRawComponents;
+        document.getElementById('calc-base-fare').textContent = `RM ${baseFare.toFixed(2)}`;
+        document.getElementById('calc-ride-distance-rate').textContent = `RM ${rideDistanceFare.toFixed(2)}`;
+        document.getElementById('calc-incentive').textContent = `RM ${driverIncentive.toFixed(2)}`;
+        document.getElementById('calc-deadhead-km').textContent = `RM ${deadheadCost.toFixed(2)}`;
+        document.getElementById('fare-distance').textContent = `${distanceKm.toFixed(1)} km`;
+        document.getElementById('fare-duration').textContent = formatDuration(durationMins);
+        // toll handled in refresh
+        refreshFinalFare();
+    }
+    
+    function computeTollFromRoute(distanceKm, routeHasTolls, pickupCoords, dropoffCoords) {
+        const originInZone = (zoneKey) => inBoundingBox(pickupCoords, REGIONAL_BOUNDS[zoneKey]);
+        const destInZone = (zoneKey) => inBoundingBox(dropoffCoords, REGIONAL_BOUNDS[zoneKey]);
+        const matchRoute = (zoneA, zoneB) => (originInZone(zoneA) && destInZone(zoneB)) || (originInZone(zoneB) && destInZone(zoneA));
+        if (matchRoute('klangKapar', 'johorBahru')) return 37.31;
+        if (matchRoute('klangKapar', 'seremban')) return 9.30;
+        if (matchRoute('puncakPerdana', 'klCenter')) return 5.00;
+        if (matchRoute('klangKapar', 'damansara') || matchRoute('damansara', 'puncakPerdana')) return 2.30;
+        if (matchRoute('klangKapar', 'genting')) return 12.10;
+        if (matchRoute('klangKapar', 'kelantan')) return 24.30;
+        if (matchRoute('klangKapar', 'bangiKajang')) return 6.91;
+        if (routeHasTolls) return distanceKm <= 45 ? 2.50 : 3.50 + ((distanceKm - 45) * 0.095);
+        return 0;
+    }
+
+    function formatDuration(totalMins) {
+        if (totalMins < 60) return `${totalMins} mins`;
+        const hours = Math.floor(totalMins / 60);
+        const mins = totalMins % 60;
+        return mins > 0 ? `${hours} hr ${mins} mins` : `${hours} hr`;
+    }
+
+    function processCalculations(distance, duration, routeHasTolls, fromRouteRefresh = true) {
+        const baseFare = 5.00;
+        const perKmRate = 1.25;
+        const chargeableDistance = Math.max(0, distance - 1);
+        const rideDistanceFare = chargeableDistance * perKmRate;
+        
+        let autoToll = computeTollFromRoute(distance, routeHasTolls, pickupCoords, dropoffCoords);
+        if (autoToll < 0) autoToll = 0;
+        currentAutoToll = autoToll;
+        if (currentManualToll === null) {
+            // no manual set, use auto
+        } 
+        const effectiveTollDisplay = (currentManualToll !== null) ? currentManualToll : autoToll;
+        
+        const driverIncentive = (duration / 60) * 12.00;
+        let deadheadCost = 0;
+        if (distance > 12) {
+            const boundaryKm = Math.min(distance, 350);
+            const dynamicScalePct = ((boundaryKm - 12) / (350 - 12)) * 0.45;
+            deadheadCost = rideDistanceFare * dynamicScalePct;
+        }
+        
+        lastRawComponents = {
+            baseFare, rideDistanceFare, autoToll, driverIncentive, deadheadCost,
+            distanceKm: distance, durationMins: duration
+        };
+        
+        updateAllComponentDisplays();
+        
+        // show result card
+        document.getElementById('result-card').style.display = 'block';
+        const invoiceDiv = document.getElementById('invoice-details');
+        invoiceDiv.style.display = 'none';
+        document.getElementById('tapHint').style.display = 'block';
+        
+        // reset manual toll if flag not? Keep manual overrides, but if new route, optionally keep manual? user expectation: new route resets manual toll? Keep consistent but allow reset auto button.
+        // However, to improve UX, we retain manual toll only if user explicitly applied before route? Fine.
+        // But ensure manual toll input does not break.
+        const manualInput = document.getElementById('manual-toll-input');
+        if (manualInput) manualInput.value = '';
+    }
+    
+    // apply manual toll
+    function applyManualToll() {
+        const inputVal = document.getElementById('manual-toll-input').value;
+        if (inputVal === null || inputVal === '') {
+            currentManualToll = null;
+            refreshFinalFare();
+            return;
+        }
+        let num = parseFloat(inputVal);
+        if (isNaN(num)) num = 0;
+        if (num < 0) num = 0;
+        currentManualToll = num;
+        refreshFinalFare();
+    }
+    
+    function resetToAutoToll() {
+        currentManualToll = null;
+        document.getElementById('manual-toll-input').value = '';
+        refreshFinalFare();
+    }
+    
+    function setupExcludeButtons() {
+        document.querySelectorAll('.exclude-toggle').forEach(btn => {
+            btn.removeEventListener('click', handleExcludeClick);
+            btn.addEventListener('click', handleExcludeClick);
+        });
+    }
+    
+    function handleExcludeClick(e) {
+        e.stopPropagation();
+        const item = this.getAttribute('data-item');
+        if (excludedItems.has(item)) {
+            excludedItems.delete(item);
+        } else {
+            excludedItems.add(item);
+        }
+        refreshFinalFare();
+    }
+    
+    // autocomplete and routing (unchanged core, integrate toll manual hooks)
     setupAutocomplete('pickup', 'pickup-suggestions', 'clear-pickup', (coords) => {
         pickupCoords = coords;
         updateMarker('pickup', coords);
@@ -418,16 +679,13 @@
     });
 
     document.getElementById('swap-locations-btn').addEventListener('click', executeLocationSwap);
-
     document.getElementById('current-loc-btn').addEventListener('click', () => {
         if (!navigator.geolocation) {
-            showError("Location features are not supported on this browser version.");
+            showError("Location not supported.");
             return;
         }
         const btn = document.getElementById('current-loc-btn');
         btn.textContent = "⏳";
-        document.getElementById('error-msg').style.display = 'none';
-
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 const lat = position.coords.latitude;
@@ -435,21 +693,18 @@
                 pickupCoords = { lat, lon };
                 updateMarker('pickup', pickupCoords);
                 map.setView([lat, lon], 14);
-                
-                const reverseGeocodeUrl = `https://photon.komoot.io/reverse?lon=${lon}&lat=${lat}`;
-                fetch(reverseGeocodeUrl)
+                fetch(`https://photon.komoot.io/reverse?lon=${lon}&lat=${lat}`)
                     .then(res => res.json())
                     .then(data => {
                         btn.textContent = "🎯";
-                        if (data.features && data.features.length > 0) {
+                        if (data.features && data.features.length) {
                             document.getElementById('pickup').value = expandAddress(data.features[0].properties);
                         } else {
                             document.getElementById('pickup').value = `Current Location (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
                         }
                         document.getElementById('clear-pickup').style.display = 'block';
                         checkAndProcessRoute();
-                    })
-                    .catch(() => {
+                    }).catch(() => {
                         btn.textContent = "🎯";
                         document.getElementById('pickup').value = `Current Location (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
                         document.getElementById('clear-pickup').style.display = 'block';
@@ -458,9 +713,8 @@
             },
             () => {
                 btn.textContent = "🎯";
-                showError("Unable to acquire high accuracy location payload.");
-            },
-            { enableHighAccuracy: true, timeout: 8000 }
+                showError("Geolocation failed.");
+            }
         );
     });
 
@@ -477,23 +731,18 @@
     function executeLocationSwap() {
         const pickupInput = document.getElementById('pickup');
         const dropoffInput = document.getElementById('dropoff');
-        
         const tempText = pickupInput.value;
         const tempCoords = pickupCoords;
-        
         pickupInput.value = dropoffInput.value;
         pickupCoords = dropoffCoords;
         dropoffInput.value = tempText;
         dropoffCoords = tempCoords;
-        
         document.getElementById('clear-pickup').style.display = pickupInput.value ? 'block' : 'none';
         document.getElementById('clear-dropoff').style.display = dropoffInput.value ? 'block' : 'none';
-        
         if (pickupCoords) updateMarker('pickup', pickupCoords);
         else if (pickupMarker) { map.removeLayer(pickupMarker); pickupMarker = null; }
         if (dropoffCoords) updateMarker('dropoff', dropoffCoords);
         else if (dropoffMarker) { map.removeLayer(dropoffMarker); dropoffMarker = null; }
-        
         if (pickupCoords && dropoffCoords) checkAndProcessRoute();
         else resetCalculationDisplay();
     }
@@ -505,7 +754,7 @@
         if (props.district) parts.push(props.district);
         if (props.city || props.town) parts.push(props.city || props.town);
         if (props.state) parts.push(props.state);
-        return parts.length > 0 ? parts.join(', ') : 'Target Coordinates';
+        return parts.length > 0 ? parts.join(', ') : 'Location';
     }
 
     function resetCalculationDisplay() {
@@ -526,48 +775,34 @@
         const suggestionsBox = document.getElementById(suggestionsId);
         const clearBtn = document.getElementById(clearBtnId);
         let debounceTimeout;
-
         input.addEventListener('input', () => {
             clearTimeout(debounceTimeout);
             const query = input.value.trim();
             clearBtn.style.display = query.length > 0 ? 'block' : 'none';
-
-            if (query.length < 3) { 
-                suggestionsBox.innerHTML = ''; 
-                suggestionsBox.style.display = 'none';
-                return; 
-            }
-
+            if (query.length < 3) { suggestionsBox.innerHTML = ''; suggestionsBox.style.display = 'none'; return; }
             debounceTimeout = setTimeout(() => {
                 const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&bbox=99.6,0.8,119.5,7.4&limit=5`;
-                fetch(url)
-                    .then(res => res.json())
-                    .then(data => {
-                        suggestionsBox.innerHTML = '';
-                        if(!data.features || data.features.length === 0) {
+                fetch(url).then(res => res.json()).then(data => {
+                    suggestionsBox.innerHTML = '';
+                    if(!data.features || data.features.length === 0) { suggestionsBox.style.display = 'none'; return; }
+                    suggestionsBox.style.display = 'block';
+                    data.features.forEach(feature => {
+                        const addr = expandAddress(feature.properties);
+                        const div = document.createElement('div');
+                        div.className = 'suggestion-item';
+                        div.textContent = addr;
+                        div.addEventListener('click', () => {
+                            input.value = feature.properties.name || addr;
+                            suggestionsBox.innerHTML = '';
                             suggestionsBox.style.display = 'none';
-                            return;
-                        }
-                        suggestionsBox.style.display = 'block';
-                        data.features.forEach(feature => {
-                            const props = feature.properties;
-                            const detailedAddress = expandAddress(props);
-                            const div = document.createElement('div');
-                            div.className = 'suggestion-item';
-                            div.textContent = detailedAddress;
-                            div.addEventListener('click', () => {
-                                input.value = props.name || detailedAddress;
-                                suggestionsBox.innerHTML = '';
-                                suggestionsBox.style.display = 'none';
-                                const [lon, lat] = feature.geometry.coordinates;
-                                onSelect({ lat, lon });
-                            });
-                            suggestionsBox.appendChild(div);
+                            const [lon, lat] = feature.geometry.coordinates;
+                            onSelect({ lat, lon });
                         });
-                    }).catch(err => console.error(err));
+                        suggestionsBox.appendChild(div);
+                    });
+                }).catch(err => console.error(err));
             }, 350);
         });
-
         clearBtn.addEventListener('click', () => {
             input.value = '';
             clearBtn.style.display = 'none';
@@ -579,236 +814,62 @@
 
     function checkAndProcessRoute() {
         if (!pickupCoords || !dropoffCoords) return;
-        
         document.getElementById('error-msg').style.display = 'none';
         if(currentRouteTimeout) clearTimeout(currentRouteTimeout);
-        
         currentRouteTimeout = setTimeout(() => {
             const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${ORS_API_KEY}&start=${pickupCoords.lon},${pickupCoords.lat}&end=${dropoffCoords.lon},${dropoffCoords.lat}&extra_info=tollways`;
-
-            fetch(url)
-                .then(res => {
-                    if (!res.ok) throw new Error('API routing failed.');
-                    return res.json();
-                })
-                .then(data => {
-                    if (!data.features || data.features.length === 0) {
-                        showError("No valid route found between these locations.");
-                        return;
-                    }
-
-                    const feature = data.features[0];
-                    const summary = feature.properties.summary;
-                    
-                    const distanceKm = summary.distance / 1000;
-                    const baseDurationMins = summary.duration / 60;
-
-                    let routeHasTolls = false;
-                    const extras = feature.properties.extras;
-                    if (extras && extras.tollways && extras.tollways.values) {
-                        routeHasTolls = extras.tollways.values.some(valueArray => valueArray[2] === 1);
-                    } else if (distanceKm > 50) {
-                        routeHasTolls = true;
-                    }
-
-                    const now = new Date();
-                    const currentHour = now.getHours();
-                    const isWeekend = (now.getDay() === 0 || now.getDay() === 6);
-
-                    let trafficDelayFactor = 1.15; 
-                    if (!isWeekend) {
-                        if ((currentHour >= 7 && currentHour <= 9) || (currentHour >= 17 && currentHour <= 19.5)) {
-                            trafficDelayFactor = 1.55; 
-                        } else if (currentHour >= 12 && currentHour <= 14) {
-                            trafficDelayFactor = 1.25; 
-                        }
-                    } else {
-                        if (currentHour >= 16 && currentHour <= 21) {
-                            trafficDelayFactor = 1.35; 
-                        }
-                    }
-
-                    let distanceImpactModifier = 1.0;
-                    if (distanceKm <= 5) {
-                        distanceImpactModifier = 0.65;
-                    } else if (distanceKm <= 15) {
-                        distanceImpactModifier = 0.85;
-                    } else if (distanceKm > 100) {
-                        distanceImpactModifier = 0.35; 
-                    } else if (distanceKm > 50) {
-                        distanceImpactModifier = 0.60;
-                    }
-
-                    const localizedTrafficWeight = 1 + ((trafficDelayFactor - 1) * distanceImpactModifier);
-                    const correctedDurationMins = Math.max(1, Math.round(baseDurationMins * localizedTrafficWeight));
-
-                    if (routeLine) map.removeLayer(routeLine);
-                    
-                    routeLine = L.geoJSON(feature.geometry, { 
-                        style: { color: '#8e24aa', weight: 5, opacity: 0.85 } 
-                    }).addTo(map);
-                    
-                    document.getElementById('result-card').style.display = 'block';
-                    
-                    // ensure invoice details are hidden on new route
-                    const invoiceDiv = document.getElementById('invoice-details');
-                    invoiceDiv.style.display = 'none';
-                    const hintSpan = document.getElementById('tapHint');
-                    if (hintSpan) hintSpan.style.display = 'block';
-                    
-                    setTimeout(() => {
-                        map.invalidateSize();
-                        if (routeLine) {
-                            map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
-                        }
-                    }, 100);
-
-                    processCalculations(distanceKm, correctedDurationMins, routeHasTolls);
-                })
-                .catch(err => {
-                    console.error("Routing Error:", err);
-                    showError("Routing service error or credit exhaustion encountered.");
-                });
+            fetch(url).then(res => { if (!res.ok) throw new Error('Routing failed'); return res.json(); })
+            .then(data => {
+                if (!data.features || data.features.length === 0) throw new Error('No route');
+                const feature = data.features[0];
+                const summary = feature.properties.summary;
+                const distanceKm = summary.distance / 1000;
+                const baseDurationMins = summary.duration / 60;
+                let routeHasTolls = false;
+                const extras = feature.properties.extras;
+                if (extras && extras.tollways && extras.tollways.values) {
+                    routeHasTolls = extras.tollways.values.some(v => v[2] === 1);
+                } else if (distanceKm > 50) routeHasTolls = true;
+                const now = new Date();
+                const hour = now.getHours();
+                const isWeekend = (now.getDay() === 0 || now.getDay() === 6);
+                let tf = 1.15;
+                if (!isWeekend) { if ((hour>=7&&hour<=9)||(hour>=17&&hour<=19.5)) tf=1.55; else if (hour>=12&&hour<=14) tf=1.25; }
+                else if (hour>=16 && hour<=21) tf=1.35;
+                let dim = 1.0;
+                if (distanceKm<=5) dim=0.65; else if (distanceKm<=15) dim=0.85; else if (distanceKm>100) dim=0.35; else if (distanceKm>50) dim=0.60;
+                const corrDur = Math.max(1, Math.round(baseDurationMins * (1 + ((tf-1)*dim))));
+                if (routeLine) map.removeLayer(routeLine);
+                routeLine = L.geoJSON(feature.geometry, { style: { color: '#8e24aa', weight: 5, opacity: 0.85 } }).addTo(map);
+                document.getElementById('result-card').style.display = 'block';
+                document.getElementById('invoice-details').style.display = 'none';
+                document.getElementById('tapHint').style.display = 'block';
+                setTimeout(() => { map.invalidateSize(); if(routeLine) map.fitBounds(routeLine.getBounds(),{padding:[40,40]}); }, 100);
+                processCalculations(distanceKm, corrDur, routeHasTolls);
+            }).catch(err => { console.error(err); showError("Routing service error."); });
         }, 250);
     }
-
-    function formatDuration(totalMins) {
-        if (totalMins < 60) return `${totalMins} mins`;
-        const hours = Math.floor(totalMins / 60);
-        const mins = totalMins % 60;
-        return mins > 0 ? `${hours} hr ${mins} mins` : `${hours} hr`;
-    }
-
-    function roundToMalaysianCents(value) {
-        return Math.round(value * 10) / 10;
-    }
-
-    function processCalculations(distance, duration, routeHasTolls) {
-        const baseFare = 5.00;
-        const perKmRate = 1.25;
-        
-        const chargeableDistance = Math.max(0, distance - 1);
-        const rideDistanceFare = chargeableDistance * perKmRate;
-        
-        let dynamicTolls = 0;
-        let tollSystemLabel = "Tolls"; 
-
-        const originInZone = (zoneKey) => inBoundingBox(pickupCoords, REGIONAL_BOUNDS[zoneKey]);
-        const destInZone = (zoneKey) => inBoundingBox(dropoffCoords, REGIONAL_BOUNDS[zoneKey]);
-
-        const matchRoute = (zoneA, zoneB) => {
-            return (originInZone(zoneA) && destInZone(zoneB)) || (originInZone(zoneB) && destInZone(zoneA));
-        };
-
-        if (matchRoute('klangKapar', 'johorBahru')) {
-            dynamicTolls = 37.31; 
-        } else if (matchRoute('klangKapar', 'seremban')) {
-            dynamicTolls = 9.30; 
-        } else if (matchRoute('puncakPerdana', 'klCenter')) {
-            dynamicTolls = 5.00; 
-        } else if (matchRoute('klangKapar', 'damansara') || matchRoute('damansara', 'puncakPerdana')) {
-            dynamicTolls = 2.30; 
-        } else if (matchRoute('klangKapar', 'genting')) {
-            dynamicTolls = 12.10; 
-        } else if (matchRoute('klangKapar', 'kelantan')) {
-            dynamicTolls = 24.30; 
-        } else if (matchRoute('klangKapar', 'bangiKajang')) {
-            dynamicTolls = 6.91; 
-        } else if (routeHasTolls) {
-            dynamicTolls = distance <= 45 ? 2.50 : 3.50 + ((distance - 45) * 0.095);
+    
+    // attach manual handlers, exclude toggles, and result card toggling
+    document.getElementById('apply-manual-toll').addEventListener('click', (e) => { e.stopPropagation(); applyManualToll(); });
+    document.getElementById('reset-auto-toll').addEventListener('click', (e) => { e.stopPropagation(); resetToAutoToll(); });
+    const resultCardDiv = document.getElementById('result-card');
+    resultCardDiv.addEventListener('click', (e) => {
+        if(e.target.closest('.exclude-toggle') || e.target.closest('.toll-manual-group') || e.target.closest('#apply-manual-toll') || e.target.closest('#reset-auto-toll')) return;
+        const inv = document.getElementById('invoice-details');
+        const hint = document.getElementById('tapHint');
+        if (inv.style.display === 'none' || inv.style.display === '') {
+            inv.style.display = 'block';
+            if (hint) hint.style.display = 'none';
+        } else {
+            inv.style.display = 'none';
+            if (hint) hint.style.display = 'block';
         }
-
-        document.getElementById('toll-type-label').textContent = tollSystemLabel;
-
-        const driverIncentive = (duration / 60) * 12.00;
-
-        let deadheadCost = 0;
-        if (distance > 12) {
-            const boundaryKm = Math.min(distance, 350);
-            const dynamicScalePct = ((boundaryKm - 12) / (350 - 12)) * 0.45;
-            deadheadCost = rideDistanceFare * dynamicScalePct;
-        }
-
-        const rawTotal = baseFare + rideDistanceFare + dynamicTolls + driverIncentive + deadheadCost;
-        const roundedTotal = Math.max(baseFare, roundToMalaysianCents(rawTotal));
-        const finalDisplayedWholeFare = Math.round(roundedTotal);
-
-        document.getElementById('total-fare').textContent = `RM ${finalDisplayedWholeFare}`;
-        document.getElementById('fare-distance').textContent = `${distance.toFixed(1)} km`;
-        document.getElementById('fare-duration').textContent = formatDuration(duration);
-
-        document.getElementById('calc-base-fare').textContent = `RM ${baseFare.toFixed(2)}`;
-        document.getElementById('calc-ride-distance-rate').textContent = `RM ${rideDistanceFare.toFixed(2)}`;
-        document.getElementById('calc-tolls').textContent = `RM ${dynamicTolls.toFixed(2)}`;
-        document.getElementById('calc-incentive').textContent = `RM ${driverIncentive.toFixed(2)}`;
-        document.getElementById('calc-deadhead-km').textContent = `RM ${deadheadCost.toFixed(2)}`;
-        document.getElementById('calc-grand').textContent = `RM ${roundedTotal.toFixed(2)}`;
-
-        document.getElementById('base-fare-row').style.display = baseFare > 0 ? 'flex' : 'none';
-        document.getElementById('distance-fare-row').style.display = rideDistanceFare > 0 ? 'flex' : 'none';
-        document.getElementById('tolls-row').style.display = dynamicTolls > 0 ? 'flex' : 'none';
-        document.getElementById('incentive-row').style.display = driverIncentive > 0 ? 'flex' : 'none';
-        document.getElementById('deadhead-km-row').style.display = deadheadCost > 0 ? 'flex' : 'none';
-    }
-    
-    // ========== INVOICE TOGGLE LOGIC: Click total fare container shows/hides details ==========
-    const resultCard = document.getElementById('result-card');
-    const invoiceDetails = document.getElementById('invoice-details');
-    const tapHint = document.getElementById('tapHint');
-    
-    if (resultCard) {
-        resultCard.addEventListener('click', (e) => {
-            // Prevent toggling if user accidentally clicks on any interactive child that might conflict, but we allow main toggle.
-            // Stop propagation not necessary, but ensure that if the click originated from within invoice-details (like detail row) it still toggles? 
-            // requirement: clicking total fare shows invoice details; clicking again hides. Fine.
-            // We'll also ensure map markers etc unaffected.
-            e.stopPropagation(); // avoid weird bubbling
-            if (invoiceDetails.style.display === 'none' || invoiceDetails.style.display === '') {
-                invoiceDetails.style.display = 'block';
-                if (tapHint) tapHint.style.display = 'none';
-            } else {
-                invoiceDetails.style.display = 'none';
-                if (tapHint) tapHint.style.display = 'block';
-            }
-        });
-    }
-    
-    // ensure initial state whenever result card appears but invoice hidden (already hidden by CSS default)
-    // also on new route, reset invoice hidden via checkAndProcessRoute.
-    // Additional double-check: when resetting calculation, no effect needed, but we also want to reset hint on any new fare.
-    // Override the processCalculations final step to ensure invoice starts hidden on fresh route.
-    const originalProcess = processCalculations;
-    window.processCalculations = function(distance, duration, routeHasTolls) {
-        originalProcess(distance, duration, routeHasTolls);
-        if (invoiceDetails) {
-            invoiceDetails.style.display = 'none';
-        }
-        if (tapHint) {
-            tapHint.style.display = 'block';
-        }
-    }.bind(this);
-    
-    // rebind the function reference for processCalculations to ensure overriding works
-    window.processCalculations = window.processCalculations;
-    // replace the old reference
-    processCalculations = window.processCalculations;
-    
-    // Additionally if result-card reappears manually via route, state consistency
-    const originalResetDisplay = resetCalculationDisplay;
-    window.resetCalculationDisplay = function() {
-        originalResetDisplay();
-        if (invoiceDetails) invoiceDetails.style.display = 'none';
-        if (tapHint) tapHint.style.display = 'block';
-    }.bind(this);
-    resetCalculationDisplay = window.resetCalculationDisplay;
-    
-    // ensure that on any new valid route, invoice hidden via routing flow
-    const originalCheck = checkAndProcessRoute;
-    window.checkAndProcessRoute = function() {
-        originalCheck();
-    }.bind(this);
-    checkAndProcessRoute = window.checkAndProcessRoute;
-    
+    });
+    setupExcludeButtons();
+    // manual toll input reset auto display
+    window.processCalculations = processCalculations;
+    window.refreshFinalFare = refreshFinalFare;
 </script>
 </body>
 </html>
