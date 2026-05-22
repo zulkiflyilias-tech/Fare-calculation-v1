@@ -226,6 +226,8 @@
             color: #aeaeb2;
             margin-bottom: 8px;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
         }
         .detail-row.total-bold {
             color: #fff;
@@ -256,25 +258,33 @@
             background: rgba(52,199,89,0.15);
         }
         .toll-manual-group {
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
             flex-wrap: wrap;
-            justify-content: flex-end;
+            background: #2c2c2e;
+            padding: 4px 8px;
+            border-radius: 24px;
+            margin-left: 6px;
         }
         .toll-manual-input {
-            background: #2c2c2e;
-            border: 1px solid #48484a;
+            background: #ffffff;
+            border: 1px solid #8e8e93;
             border-radius: 12px;
-            padding: 5px 8px;
-            width: 85px;
-            color: white;
+            padding: 6px 8px;
+            width: 80px;
+            color: #000000;
             font-size: 13px;
             text-align: right;
+            font-weight: 500;
         }
         .toll-manual-input:focus {
             outline: none;
-            border-color: #39ff14;
+            border-color: #8e24aa;
+            box-shadow: 0 0 0 2px rgba(142,36,170,0.3);
+        }
+        .toll-manual-input::placeholder {
+            color: #555;
         }
         .toll-badge {
             font-size: 11px;
@@ -284,20 +294,27 @@
             color: #ddd;
         }
         .manual-toll-apply {
-            background: none;
-            border: 1px solid #8e24aa;
+            background: #3a3a3c;
+            border: none;
             border-radius: 20px;
-            padding: 3px 10px;
+            padding: 4px 12px;
             font-size: 11px;
             color: #c084fc;
             cursor: pointer;
+            font-weight: 600;
+            transition: 0.1s;
+        }
+        .manual-toll-apply:hover {
+            background: #8e24aa;
+            color: white;
         }
         .reset-toll-btn {
             background: none;
             border: none;
             color: #ff9f4a;
-            font-size: 12px;
+            font-size: 11px;
             cursor: pointer;
+            font-weight: 600;
         }
         .invoice-controls {
             margin-bottom: 10px;
@@ -330,7 +347,7 @@
                 flex: 1;
             }
             #search-panel {
-                width: 450px;
+                width: 480px;
                 height: 100%;
                 border-radius: 0;
                 box-shadow: -4px 0 20px rgba(0,0,0,0.05);
@@ -398,33 +415,34 @@
             
             <div id="invoice-details">
                 <div class="invoice-controls">
-                    <span class="toll-badge" style="background:#2c2c2e;">✍️ Manual toll entry active</span>
+                    <span class="toll-badge">✍️ Manual toll override</span>
                 </div>
                 <div class="detail-row" id="base-fare-row">
-                    <span>Base Fare <button class="exclude-toggle included" data-item="base">✓ Exclude</button></span>
+                    <span>Base Fare <button class="exclude-toggle included" data-item="base">✓ Include</button></span>
                     <span id="calc-base-fare">RM 5.00</span>
                 </div>
                 <div class="detail-row" id="distance-fare-row">
-                    <span>Distance Fare <button class="exclude-toggle included" data-item="distance">✓ Exclude</button></span>
+                    <span>Distance Fare <button class="exclude-toggle included" data-item="distance">✓ Include</button></span>
                     <span id="calc-ride-distance-rate">RM 0.00</span>
                 </div>
-                <div class="detail-row" id="tolls-row">
-                    <span>Tolls 
-                        <div class="toll-manual-group" style="display: inline-flex; margin-left: 8px;">
+                <div class="detail-row" id="tolls-row" style="flex-wrap: wrap;">
+                    <span style="display: flex; align-items: center; flex-wrap: wrap; gap: 6px;">
+                        Tolls 
+                        <div class="toll-manual-group">
                             <input type="number" id="manual-toll-input" step="0.1" placeholder="RM" class="toll-manual-input" value="">
                             <button id="apply-manual-toll" class="manual-toll-apply">Apply</button>
                             <button id="reset-auto-toll" class="reset-toll-btn">↺ Auto</button>
                         </div>
-                        <button class="exclude-toggle included" data-item="tolls" id="toll-exclude-btn">✓ Exclude</button>
+                        <button class="exclude-toggle included" data-item="tolls" id="toll-exclude-btn">✓ Include</button>
                     </span>
                     <span id="calc-tolls">RM 0.00</span>
                 </div>
                 <div class="detail-row" id="incentive-row">
-                    <span>Traffic Adjust & Incentive <button class="exclude-toggle included" data-item="incentive">✓ Exclude</button></span>
+                    <span>Traffic Adjust & Incentive <button class="exclude-toggle included" data-item="incentive">✓ Include</button></span>
                     <span id="calc-incentive">RM 0.00</span>
                 </div>
                 <div class="detail-row" id="deadhead-km-row">
-                    <span>Out-of-Zone Surcharge <button class="exclude-toggle included" data-item="deadhead">✓ Exclude</button></span>
+                    <span>Out-of-Zone Surcharge <button class="exclude-toggle included" data-item="deadhead">✓ Include</button></span>
                     <span id="calc-deadhead-km">RM 0.00</span>
                 </div>
 
@@ -512,7 +530,7 @@
         document.querySelectorAll('.exclude-toggle').forEach(btn => {
             const item = btn.getAttribute('data-item');
             if (excludedItems.has(item)) {
-                btn.textContent = `✗ Excluded`;
+                btn.textContent = `✗ Exclude`;
                 btn.classList.add('excluded');
                 btn.classList.remove('included');
             } else {
@@ -521,29 +539,16 @@
                 btn.classList.remove('excluded');
             }
         });
-        const tollExcludeBtn = document.getElementById('toll-exclude-btn');
-        if (tollExcludeBtn) {
-            if (excludedItems.has('tolls')) {
-                tollExcludeBtn.textContent = `✗ Excluded`;
-                tollExcludeBtn.classList.add('excluded');
-                tollExcludeBtn.classList.remove('included');
-            } else {
-                tollExcludeBtn.textContent = `✓ Include`;
-                tollExcludeBtn.classList.add('included');
-                tollExcludeBtn.classList.remove('excluded');
-            }
-        }
     }
     
     function updateAllComponentDisplays() {
-        const { baseFare, rideDistanceFare, autoToll, driverIncentive, deadheadCost, distanceKm, durationMins } = lastRawComponents;
+        const { baseFare, rideDistanceFare, driverIncentive, deadheadCost, distanceKm, durationMins } = lastRawComponents;
         document.getElementById('calc-base-fare').textContent = `RM ${baseFare.toFixed(2)}`;
         document.getElementById('calc-ride-distance-rate').textContent = `RM ${rideDistanceFare.toFixed(2)}`;
         document.getElementById('calc-incentive').textContent = `RM ${driverIncentive.toFixed(2)}`;
         document.getElementById('calc-deadhead-km').textContent = `RM ${deadheadCost.toFixed(2)}`;
         document.getElementById('fare-distance').textContent = `${distanceKm.toFixed(1)} km`;
         document.getElementById('fare-duration').textContent = formatDuration(durationMins);
-        // toll handled in refresh
         refreshFinalFare();
     }
     
@@ -578,10 +583,9 @@
         let autoToll = computeTollFromRoute(distance, routeHasTolls, pickupCoords, dropoffCoords);
         if (autoToll < 0) autoToll = 0;
         currentAutoToll = autoToll;
-        if (currentManualToll === null) {
-            // no manual set, use auto
-        } 
-        const effectiveTollDisplay = (currentManualToll !== null) ? currentManualToll : autoToll;
+        // If currentManualToll is still null after new route, keep auto. If user had manual, retain but we might reset? Better keep manual across new route? 
+        // For consistency if user wants fresh start we keep, but they can click "Auto" reset.
+        // However if route changes drastically, we still respect currentManualToll override.
         
         const driverIncentive = (duration / 60) * 12.00;
         let deadheadCost = 0;
@@ -604,11 +608,13 @@
         invoiceDiv.style.display = 'none';
         document.getElementById('tapHint').style.display = 'block';
         
-        // reset manual toll if flag not? Keep manual overrides, but if new route, optionally keep manual? user expectation: new route resets manual toll? Keep consistent but allow reset auto button.
-        // However, to improve UX, we retain manual toll only if user explicitly applied before route? Fine.
-        // But ensure manual toll input does not break.
+        // reset manual input field placeholder not overwriting value
         const manualInput = document.getElementById('manual-toll-input');
-        if (manualInput) manualInput.value = '';
+        if (manualInput && currentManualToll !== null) {
+            manualInput.value = currentManualToll;
+        } else if (manualInput) {
+            manualInput.value = '';
+        }
     }
     
     // apply manual toll
@@ -650,126 +656,7 @@
         refreshFinalFare();
     }
     
-    // autocomplete and routing (unchanged core, integrate toll manual hooks)
-    setupAutocomplete('pickup', 'pickup-suggestions', 'clear-pickup', (coords) => {
-        pickupCoords = coords;
-        updateMarker('pickup', coords);
-        checkAndProcessRoute();
-    }, () => {
-        pickupCoords = null;
-        if (pickupMarker) { map.removeLayer(pickupMarker); pickupMarker = null; }
-        resetCalculationDisplay();
-    });
-
-    setupAutocomplete('dropoff', 'dropoff-suggestions', 'clear-dropoff', (coords) => {
-        dropoffCoords = coords;
-        updateMarker('dropoff', coords);
-        checkAndProcessRoute();
-    }, () => {
-        dropoffCoords = null;
-        if (dropoffMarker) { map.removeLayer(dropoffMarker); dropoffMarker = null; }
-        resetCalculationDisplay();
-    });
-
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('.input-container')) {
-            document.getElementById('pickup-suggestions').style.display = 'none';
-            document.getElementById('dropoff-suggestions').style.display = 'none';
-        }
-    });
-
-    document.getElementById('swap-locations-btn').addEventListener('click', executeLocationSwap);
-    document.getElementById('current-loc-btn').addEventListener('click', () => {
-        if (!navigator.geolocation) {
-            showError("Location not supported.");
-            return;
-        }
-        const btn = document.getElementById('current-loc-btn');
-        btn.textContent = "⏳";
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
-                pickupCoords = { lat, lon };
-                updateMarker('pickup', pickupCoords);
-                map.setView([lat, lon], 14);
-                fetch(`https://photon.komoot.io/reverse?lon=${lon}&lat=${lat}`)
-                    .then(res => res.json())
-                    .then(data => {
-                        btn.textContent = "🎯";
-                        if (data.features && data.features.length) {
-                            document.getElementById('pickup').value = expandAddress(data.features[0].properties);
-                        } else {
-                            document.getElementById('pickup').value = `Current Location (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
-                        }
-                        document.getElementById('clear-pickup').style.display = 'block';
-                        checkAndProcessRoute();
-                    }).catch(() => {
-                        btn.textContent = "🎯";
-                        document.getElementById('pickup').value = `Current Location (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
-                        document.getElementById('clear-pickup').style.display = 'block';
-                        checkAndProcessRoute();
-                    });
-            },
-            () => {
-                btn.textContent = "🎯";
-                showError("Geolocation failed.");
-            }
-        );
-    });
-
-    function updateMarker(type, coords) {
-        if (type === 'pickup') {
-            if (pickupMarker) map.removeLayer(pickupMarker);
-            pickupMarker = L.marker([coords.lat, coords.lon]).addTo(map);
-        } else {
-            if (dropoffMarker) map.removeLayer(dropoffMarker);
-            dropoffMarker = L.marker([coords.lat, coords.lon]).addTo(map);
-        }
-    }
-
-    function executeLocationSwap() {
-        const pickupInput = document.getElementById('pickup');
-        const dropoffInput = document.getElementById('dropoff');
-        const tempText = pickupInput.value;
-        const tempCoords = pickupCoords;
-        pickupInput.value = dropoffInput.value;
-        pickupCoords = dropoffCoords;
-        dropoffInput.value = tempText;
-        dropoffCoords = tempCoords;
-        document.getElementById('clear-pickup').style.display = pickupInput.value ? 'block' : 'none';
-        document.getElementById('clear-dropoff').style.display = dropoffInput.value ? 'block' : 'none';
-        if (pickupCoords) updateMarker('pickup', pickupCoords);
-        else if (pickupMarker) { map.removeLayer(pickupMarker); pickupMarker = null; }
-        if (dropoffCoords) updateMarker('dropoff', dropoffCoords);
-        else if (dropoffMarker) { map.removeLayer(dropoffMarker); dropoffMarker = null; }
-        if (pickupCoords && dropoffCoords) checkAndProcessRoute();
-        else resetCalculationDisplay();
-    }
-
-    function expandAddress(props) {
-        const parts = [];
-        if (props.name) parts.push(props.name);
-        if (props.street) parts.push(props.street);
-        if (props.district) parts.push(props.district);
-        if (props.city || props.town) parts.push(props.city || props.town);
-        if (props.state) parts.push(props.state);
-        return parts.length > 0 ? parts.join(', ') : 'Location';
-    }
-
-    function resetCalculationDisplay() {
-        if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
-        document.getElementById('result-card').style.display = 'none';
-        document.getElementById('error-msg').style.display = 'none';
-    }
-
-    function showError(msg) {
-        const errorDiv = document.getElementById('error-msg');
-        errorDiv.textContent = msg;
-        errorDiv.style.display = 'block';
-        document.getElementById('result-card').style.display = 'none';
-    }
-
+    // autocomplete and routing 
     function setupAutocomplete(inputId, suggestionsId, clearBtnId, onSelect, onClear) {
         const input = document.getElementById(inputId);
         const suggestionsBox = document.getElementById(suggestionsId);
@@ -812,6 +699,58 @@
         });
     }
 
+    function expandAddress(props) {
+        const parts = [];
+        if (props.name) parts.push(props.name);
+        if (props.street) parts.push(props.street);
+        if (props.district) parts.push(props.district);
+        if (props.city || props.town) parts.push(props.city || props.town);
+        if (props.state) parts.push(props.state);
+        return parts.length > 0 ? parts.join(', ') : 'Location';
+    }
+    
+    function updateMarker(type, coords) {
+        if (type === 'pickup') {
+            if (pickupMarker) map.removeLayer(pickupMarker);
+            pickupMarker = L.marker([coords.lat, coords.lon]).addTo(map);
+        } else {
+            if (dropoffMarker) map.removeLayer(dropoffMarker);
+            dropoffMarker = L.marker([coords.lat, coords.lon]).addTo(map);
+        }
+    }
+
+    function resetCalculationDisplay() {
+        if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+        document.getElementById('result-card').style.display = 'none';
+        document.getElementById('error-msg').style.display = 'none';
+    }
+
+    function showError(msg) {
+        const errorDiv = document.getElementById('error-msg');
+        errorDiv.textContent = msg;
+        errorDiv.style.display = 'block';
+        document.getElementById('result-card').style.display = 'none';
+    }
+
+    function executeLocationSwap() {
+        const pickupInput = document.getElementById('pickup');
+        const dropoffInput = document.getElementById('dropoff');
+        const tempText = pickupInput.value;
+        const tempCoords = pickupCoords;
+        pickupInput.value = dropoffInput.value;
+        pickupCoords = dropoffCoords;
+        dropoffInput.value = tempText;
+        dropoffCoords = tempCoords;
+        document.getElementById('clear-pickup').style.display = pickupInput.value ? 'block' : 'none';
+        document.getElementById('clear-dropoff').style.display = dropoffInput.value ? 'block' : 'none';
+        if (pickupCoords) updateMarker('pickup', pickupCoords);
+        else if (pickupMarker) { map.removeLayer(pickupMarker); pickupMarker = null; }
+        if (dropoffCoords) updateMarker('dropoff', dropoffCoords);
+        else if (dropoffMarker) { map.removeLayer(dropoffMarker); dropoffMarker = null; }
+        if (pickupCoords && dropoffCoords) checkAndProcessRoute();
+        else resetCalculationDisplay();
+    }
+    
     function checkAndProcessRoute() {
         if (!pickupCoords || !dropoffCoords) return;
         document.getElementById('error-msg').style.display = 'none';
@@ -850,12 +789,43 @@
         }, 250);
     }
     
-    // attach manual handlers, exclude toggles, and result card toggling
+    // Event Listeners
     document.getElementById('apply-manual-toll').addEventListener('click', (e) => { e.stopPropagation(); applyManualToll(); });
     document.getElementById('reset-auto-toll').addEventListener('click', (e) => { e.stopPropagation(); resetToAutoToll(); });
+    document.getElementById('swap-locations-btn').addEventListener('click', executeLocationSwap);
+    document.getElementById('current-loc-btn').addEventListener('click', () => {
+        if (!navigator.geolocation) { showError("Geolocation not supported"); return; }
+        const btn = document.getElementById('current-loc-btn');
+        btn.textContent = "⏳";
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                pickupCoords = { lat, lon };
+                updateMarker('pickup', pickupCoords);
+                map.setView([lat, lon], 14);
+                fetch(`https://photon.komoot.io/reverse?lon=${lon}&lat=${lat}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        btn.textContent = "🎯";
+                        if (data.features && data.features.length) document.getElementById('pickup').value = expandAddress(data.features[0].properties);
+                        else document.getElementById('pickup').value = `Current Location (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
+                        document.getElementById('clear-pickup').style.display = 'block';
+                        checkAndProcessRoute();
+                    }).catch(() => {
+                        btn.textContent = "🎯";
+                        document.getElementById('pickup').value = `Current Location (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
+                        document.getElementById('clear-pickup').style.display = 'block';
+                        checkAndProcessRoute();
+                    });
+            },
+            () => { btn.textContent = "🎯"; showError("Location error"); }
+        );
+    });
+    
     const resultCardDiv = document.getElementById('result-card');
     resultCardDiv.addEventListener('click', (e) => {
-        if(e.target.closest('.exclude-toggle') || e.target.closest('.toll-manual-group') || e.target.closest('#apply-manual-toll') || e.target.closest('#reset-auto-toll')) return;
+        if(e.target.closest('.exclude-toggle') || e.target.closest('.toll-manual-group') || e.target.closest('#apply-manual-toll') || e.target.closest('#reset-auto-toll') || e.target.closest('#manual-toll-input')) return;
         const inv = document.getElementById('invoice-details');
         const hint = document.getElementById('tapHint');
         if (inv.style.display === 'none' || inv.style.display === '') {
@@ -866,10 +836,34 @@
             if (hint) hint.style.display = 'block';
         }
     });
+    
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.input-container')) {
+            document.getElementById('pickup-suggestions').style.display = 'none';
+            document.getElementById('dropoff-suggestions').style.display = 'none';
+        }
+    });
+    
+    setupAutocomplete('pickup', 'pickup-suggestions', 'clear-pickup', (coords) => {
+        pickupCoords = coords;
+        updateMarker('pickup', coords);
+        checkAndProcessRoute();
+    }, () => {
+        pickupCoords = null;
+        if (pickupMarker) { map.removeLayer(pickupMarker); pickupMarker = null; }
+        resetCalculationDisplay();
+    });
+    setupAutocomplete('dropoff', 'dropoff-suggestions', 'clear-dropoff', (coords) => {
+        dropoffCoords = coords;
+        updateMarker('dropoff', coords);
+        checkAndProcessRoute();
+    }, () => {
+        dropoffCoords = null;
+        if (dropoffMarker) { map.removeLayer(dropoffMarker); dropoffMarker = null; }
+        resetCalculationDisplay();
+    });
+    
     setupExcludeButtons();
-    // manual toll input reset auto display
-    window.processCalculations = processCalculations;
-    window.refreshFinalFare = refreshFinalFare;
 </script>
 </body>
 </html>
