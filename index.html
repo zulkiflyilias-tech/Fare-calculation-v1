@@ -270,64 +270,12 @@
             transform: scale(1.05);
             filter: brightness(1.1);
         }
-        .toll-manual-group {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            flex-wrap: wrap;
-            background: #2c2c2e;
-            padding: 4px 8px;
-            border-radius: 24px;
-            margin-left: 4px;
-        }
-        .toll-manual-input {
-            background: #ffffff;
-            border: 1px solid #8e8e93;
-            border-radius: 12px;
-            padding: 6px 8px;
-            width: 80px;
-            color: #000000;
-            font-size: 13px;
-            text-align: right;
-            font-weight: 500;
-        }
-        .toll-manual-input:focus {
-            outline: none;
-            border-color: #8e24aa;
-            box-shadow: 0 0 0 2px rgba(142,36,170,0.3);
-        }
-        .toll-manual-input::placeholder {
-            color: #555;
-        }
         .toll-badge {
             font-size: 11px;
             background: #3a3a3c;
             padding: 2px 8px;
             border-radius: 30px;
             color: #ddd;
-        }
-        .manual-toll-apply {
-            background: #3a3a3c;
-            border: none;
-            border-radius: 20px;
-            padding: 4px 12px;
-            font-size: 11px;
-            color: #c084fc;
-            cursor: pointer;
-            font-weight: 600;
-            transition: 0.1s;
-        }
-        .manual-toll-apply:hover {
-            background: #8e24aa;
-            color: white;
-        }
-        .reset-toll-btn {
-            background: none;
-            border: none;
-            color: #ff9f4a;
-            font-size: 11px;
-            cursor: pointer;
-            font-weight: 600;
         }
         .invoice-controls {
             margin-bottom: 10px;
@@ -428,7 +376,7 @@
             
             <div id="invoice-details">
                 <div class="invoice-controls">
-                    <span class="toll-badge">🧾 Class 1 Toll • Manual override available</span>
+                    <span class="toll-badge">🧾 Class 1 Toll (LLM Smart Calculator)</span>
                 </div>
                 <div class="detail-row" id="base-fare-row">
                     <div class="item-label">
@@ -444,15 +392,10 @@
                     </div>
                     <span id="calc-ride-distance-rate">RM 0.00</span>
                 </div>
-                <div class="detail-row" id="tolls-row" style="flex-wrap: wrap;">
-                    <div class="item-label" style="flex-wrap: wrap; gap: 6px;">
+                <div class="detail-row" id="tolls-row">
+                    <div class="item-label">
                         <button class="exclude-toggle included" data-item="tolls" id="toll-exclude-btn">+</button>
                         <span>Tolls (Class 1)</span>
-                        <div class="toll-manual-group">
-                            <input type="number" id="manual-toll-input" step="0.1" placeholder="RM" class="toll-manual-input" value="">
-                            <button id="apply-manual-toll" class="manual-toll-apply">Apply</button>
-                            <button id="reset-auto-toll" class="reset-toll-btn">↺ Auto</button>
-                        </div>
                     </div>
                     <span id="calc-tolls">RM 0.00</span>
                 </div>
@@ -490,10 +433,6 @@
     // ========================
     const TOLL_CLASS1_DATABASE = {
         // Major intercity / expressways - Class 1 (Private Car)
-        // Format: routeIdentifier -> toll amount (RM)
-        // Using bounding box & route matching later, plus distance-based fallback
-        
-        // Specific corridor tolls (actual plaza rates aggregated)
         "PLUS_NORTH_SOUTH": {
             "KLIA_to_Putrajaya": 6.50,
             "KL_to_Seremban": 9.30,
@@ -502,7 +441,7 @@
             "KL_to_Penang": 57.80,
             "KL_to_Singapore_Border": 58.40
         },
-        "LDP": {  // Lebuhraya Damansara-Puchong
+        "LDP": {
             "Puchong_to_KelanaJaya": 2.50,
             "Sunway_to_Damansara": 2.30
         },
@@ -546,7 +485,7 @@
         }
     };
     
-    // Zone-to-Zone specific toll mapping (Class 1) — high precision
+    // Zone-to-Zone specific toll mapping (Class 1)
     const ZONE_TOLL_MATRIX = {
         "klangKapar-johorBahru": 37.31,
         "klangKapar-seremban": 9.30,
@@ -562,10 +501,9 @@
         "seremban-johorBahru": 28.50
     };
     
-    // Distance-based fallback toll for Class 1 when no specific match
+    // Distance-based fallback toll for Class 1
     function getDistanceBasedTollClass1(distanceKm, routeHasTollsFlag) {
         if (!routeHasTollsFlag) return 0;
-        // Class 1 toll rates per km for expressways ~ RM0.11 to RM0.14 per km, plus minimum
         if (distanceKm <= 10) return 1.80;
         if (distanceKm <= 25) return 3.50;
         if (distanceKm <= 50) return 6.20;
@@ -575,7 +513,7 @@
     }
     
     // Advanced Toll Resolver using LLM-extracted data (Class 1)
-    function resolveClass1Toll(pickupCoord, dropoffCoord, distanceKm, routeHasTolls, originZone, destZone, zoneKeyMatch) {
+    function resolveClass1Toll(pickupCoord, dropoffCoord, distanceKm, routeHasTolls, originZone, destZone) {
         // 1. Priority: specific zone matrix match
         if (originZone && destZone) {
             const key1 = `${originZone}-${destZone}`;
@@ -585,13 +523,12 @@
         }
         
         // 2. Corridor based heuristic (major routes)
-        // Using city center detection for Klang Valley heavy corridors
         const isKlangValley = (pickupCoord.lat > 2.9 && pickupCoord.lat < 3.3 && pickupCoord.lon > 101.5 && pickupCoord.lon < 101.9);
         const isJohor = (pickupCoord.lat > 1.3 && pickupCoord.lat < 1.7 && pickupCoord.lon > 103.6 && pickupCoord.lon < 103.9);
         const isPenangArea = (pickupCoord.lat > 5.2 && pickupCoord.lat < 5.5 && pickupCoord.lon > 100.2 && pickupCoord.lon < 100.4);
         
         if (isKlangValley && distanceKm > 40 && distanceKm < 120 && routeHasTolls) {
-            if (distanceKm > 70) return 28.20; // KL-Ipoh like band
+            if (distanceKm > 70) return 28.20;
             return 9.30;
         }
         if (isJohor && distanceKm > 20) return 12.50;
@@ -602,7 +539,6 @@
         
         // 4. Use distance-based enhanced Class 1 toll
         const baseToll = getDistanceBasedTollClass1(distanceKm, routeHasTolls);
-        // Apply small premium for known expensive highways if routeHasTolls
         if (routeHasTolls && distanceKm > 30 && distanceKm < 80) {
             return Math.min(baseToll + 1.2, baseToll * 1.1);
         }
@@ -622,8 +558,6 @@
     let currentRouteTimeout = null;
     
     let excludedItems = new Set();
-    let currentAutoToll = 0;
-    let currentManualToll = null;
     let lastRawComponents = {
         baseFare: 5,
         rideDistanceFare: 0,
@@ -660,12 +594,11 @@
 
     function refreshFinalFare() {
         let { baseFare, rideDistanceFare, autoToll, driverIncentive, deadheadCost } = lastRawComponents;
-        let effectiveToll = (currentManualToll !== null) ? currentManualToll : autoToll;
         
         let sum = 0;
         if (!excludedItems.has('base')) sum += baseFare;
         if (!excludedItems.has('distance')) sum += rideDistanceFare;
-        if (!excludedItems.has('tolls')) sum += effectiveToll;
+        if (!excludedItems.has('tolls')) sum += autoToll;
         if (!excludedItems.has('incentive')) sum += driverIncentive;
         if (!excludedItems.has('deadhead')) sum += deadheadCost;
         
@@ -675,11 +608,7 @@
         document.getElementById('calc-grand').textContent = `RM ${roundedTotal.toFixed(2)}`;
         
         const tollDisplaySpan = document.getElementById('calc-tolls');
-        if (currentManualToll !== null) {
-            tollDisplaySpan.textContent = `RM ${currentManualToll.toFixed(2)} (Manual)`;
-        } else {
-            tollDisplaySpan.textContent = `RM ${autoToll.toFixed(2)}`;
-        }
+        tollDisplaySpan.textContent = `RM ${autoToll.toFixed(2)}`;
         
         document.querySelectorAll('.exclude-toggle').forEach(btn => {
             const item = btn.getAttribute('data-item');
@@ -696,9 +625,10 @@
     }
     
     function updateAllComponentDisplays() {
-        const { baseFare, rideDistanceFare, driverIncentive, deadheadCost, distanceKm, durationMins } = lastRawComponents;
+        const { baseFare, rideDistanceFare, driverIncentive, deadheadCost, distanceKm, durationMins, autoToll } = lastRawComponents;
         document.getElementById('calc-base-fare').textContent = `RM ${baseFare.toFixed(2)}`;
         document.getElementById('calc-ride-distance-rate').textContent = `RM ${rideDistanceFare.toFixed(2)}`;
+        document.getElementById('calc-tolls').textContent = `RM ${autoToll.toFixed(2)}`;
         document.getElementById('calc-incentive').textContent = `RM ${driverIncentive.toFixed(2)}`;
         document.getElementById('calc-deadhead-km').textContent = `RM ${deadheadCost.toFixed(2)}`;
         document.getElementById('fare-distance').textContent = `${distanceKm.toFixed(1)} km`;
@@ -709,7 +639,6 @@
     function computeTollUsingLLMData(distanceKm, routeHasTolls, pickupCoords, dropoffCoords) {
         const originZone = getZoneFromCoords(pickupCoords);
         const destZone = getZoneFromCoords(dropoffCoords);
-        // Use the extracted Class 1 toll calculator
         return resolveClass1Toll(pickupCoords, dropoffCoords, distanceKm, routeHasTolls, originZone, destZone);
     }
 
@@ -729,7 +658,6 @@
         // Use LLM-extracted toll data (Class 1)
         let autoToll = computeTollUsingLLMData(distance, routeHasTolls, pickupCoords, dropoffCoords);
         if (autoToll < 0) autoToll = 0;
-        currentAutoToll = autoToll;
         
         const driverIncentive = (duration / 60) * 12.00;
         let deadheadCost = 0;
@@ -748,29 +676,6 @@
         document.getElementById('result-card').style.display = 'block';
         document.getElementById('invoice-details').style.display = 'none';
         document.getElementById('tapHint').style.display = 'block';
-        
-        const manualInput = document.getElementById('manual-toll-input');
-        if (manualInput && currentManualToll !== null) manualInput.value = currentManualToll;
-        else if (manualInput) manualInput.value = '';
-    }
-    
-    function applyManualToll() {
-        const inputVal = document.getElementById('manual-toll-input').value;
-        if (inputVal === null || inputVal === '') {
-            currentManualToll = null;
-            refreshFinalFare();
-            return;
-        }
-        let num = parseFloat(inputVal);
-        if (isNaN(num)) num = 0;
-        currentManualToll = Math.max(0, num);
-        refreshFinalFare();
-    }
-    
-    function resetToAutoToll() {
-        currentManualToll = null;
-        document.getElementById('manual-toll-input').value = '';
-        refreshFinalFare();
     }
     
     function handleExcludeClick(e) {
@@ -788,7 +693,7 @@
         });
     }
     
-    // ----- Routing and Autocomplete (preserved) -----
+    // ----- Routing and Autocomplete -----
     function setupAutocomplete(inputId, suggestionsId, clearBtnId, onSelect, onClear) {
         const input = document.getElementById(inputId);
         const suggestionsBox = document.getElementById(suggestionsId);
@@ -921,8 +826,6 @@
     }
     
     // Event binding
-    document.getElementById('apply-manual-toll').addEventListener('click', (e) => { e.stopPropagation(); applyManualToll(); });
-    document.getElementById('reset-auto-toll').addEventListener('click', (e) => { e.stopPropagation(); resetToAutoToll(); });
     document.getElementById('swap-locations-btn').addEventListener('click', executeLocationSwap);
     document.getElementById('current-loc-btn').addEventListener('click', () => {
         if (!navigator.geolocation) { showError("Geolocation not supported"); return; }
@@ -956,7 +859,7 @@
     
     const resultCardDiv = document.getElementById('result-card');
     resultCardDiv.addEventListener('click', (e) => {
-        if(e.target.closest('.exclude-toggle') || e.target.closest('.toll-manual-group') || e.target.closest('#apply-manual-toll') || e.target.closest('#reset-auto-toll') || e.target.closest('#manual-toll-input')) return;
+        if(e.target.closest('.exclude-toggle')) return;
         const inv = document.getElementById('invoice-details');
         const hint = document.getElementById('tapHint');
         if (inv.style.display === 'none' || inv.style.display === '') {
