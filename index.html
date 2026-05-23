@@ -421,9 +421,9 @@ const TOLL_DB = {
         NSE:{ operator:"PLUS", name:"North South Expressway", system:"Closed", ratePerKm:0.114 },
         ELITE:{ operator:"PLUS", name:"ELITE", system:"Closed", ratePerKm:0.105 },
         LEKAS:{ operator:"LEKAS", name:"LEKAS Highway", system:"Closed", ratePerKm:0.13 },
-        SKVE:{ operator:"SKVE_OP", name:"SKVE", system:"Closed", ratePerKm:0.134 },
-        WCE:{ operator:"WCE", name:"West Coast Expressway", system:"Closed", ratePerKm:0.16 },
         LPT1:{ operator:"ANIH", name:"LPT1", system:"Closed", ratePerKm:0.13 },
+        WCE:{ operator:"WCE", name:"West Coast Expressway", system:"Closed", ratePerKm:0.16 },
+        SKVE:{ operator:"SKVE_OP", name:"SKVE", system:"Closed", ratePerKm:0.134 },
 
         LDP:{ operator:"LITRAK", name:"LDP", system:"Open", fixedClass1:2.10 },
         SPRINT:{ operator:"PROLINTAS", name:"SPRINT", system:"Open", fixedClass1:2.50 },
@@ -431,15 +431,15 @@ const TOLL_DB = {
         DUKE:{ operator:"PROLINTAS", name:"DUKE", system:"Open", fixedClass1:2.50 },
         DASH:{ operator:"PROLINTAS", name:"DASH", system:"Open", fixedClass1:1.90 },
         SUKE:{ operator:"PROLINTAS", name:"SUKE", system:"Open", fixedClass1:2.30 },
-        GCE:{ operator:"PROLINTAS", name:"Guthrie Corridor (GCE)", system:"Open", fixedClass1:1.90 },
-        SILK:{ operator:"PROLINTAS", name:"SILK", system:"Open", fixedClass1:1.80 },
-        
+        GCE:{ operator:"PROLINTAS", name:"Guthrie Corridor Expressway", system:"Open", fixedClass1:1.90 },
+        SILK:{ operator:"PROLINTAS", name:"SILK Expressway", system:"Open", fixedClass1:1.80 },
+
         KESAS:{ operator:"KESAS", name:"KESAS", system:"Open", fixedClass1:2.30 },
         NPE:{ operator:"IJM", name:"NPE", system:"Open", fixedClass1:2.00 },
         BESRAYA:{ operator:"IJM", name:"BESRAYA", system:"Open", fixedClass1:2.20 },
         
-        NNKSB:{ operator:"GRAND_SEPADU", name:"New North Klang Straits Bypass (NNKSB)", system:"Open", fixedClass1:2.40 },
-        MEX:{ operator:"MEX", name:"MEX Highway", system:"Open", fixedClass1:3.50 },
+        NNKSB:{ operator:"GRAND_SEPADU", name:"New North Klang Straits Bypass", system:"Open", fixedClass1:2.40 },
+        MEX:{ operator:"MEX", name:"Maju Expressway", system:"Open", fixedClass1:3.50 },
         LATAR:{ operator:"LATAR_OP", name:"LATAR", system:"Open", fixedClass1:2.50 },
 
         SMART:{ operator:"SMART", name:"SMART Tunnel", system:"Hybrid", peak:4.00, offpeak:3.00 }
@@ -515,7 +515,6 @@ function calculateActualToll(
         total += toll;
         breakdown.push(`${highway.name} (${highway.system}) - RM ${toll.toFixed(2)}`);
 
-        // LEKAS
         if(originZones.includes("bangiKajang") || destZones.includes("bangiKajang")){
             let lekas = TOLL_DB.highways.LEKAS;
             let lekasToll = distanceKm * lekas.ratePerKm * 0.35;
@@ -523,10 +522,9 @@ function calculateActualToll(
             breakdown.push(`${lekas.name} (${lekas.system}) - RM ${lekasToll.toFixed(2)}`);
         }
 
-        // SKVE
         if(originZones.includes("putrajayaCyberjaya") || destZones.includes("putrajayaCyberjaya")){
             let skve = TOLL_DB.highways.SKVE;
-            let skveToll = distanceKm * skve.ratePerKm * 0.30; // Approx logic adjustment
+            let skveToll = distanceKm * skve.ratePerKm * 0.30;
             total += skveToll;
             breakdown.push(`${skve.name} (${skve.system}) - RM ${skveToll.toFixed(2)}`);
         }
@@ -538,56 +536,42 @@ function calculateActualToll(
     const urbanTrip = distanceKm <= 40;
 
     if(urbanTrip){
-
-        // LDP
         if(originZones.includes("puncakPerdana") || destZones.includes("puncakPerdana")){
             total += TOLL_DB.highways.LDP.fixedClass1;
             breakdown.push(`LDP Open Toll - RM ${TOLL_DB.highways.LDP.fixedClass1.toFixed(2)}`);
-        }
-
-        // GCE
-        if(originZones.includes("puncakPerdana") || destZones.includes("puncakPerdana")){
+            
             total += TOLL_DB.highways.GCE.fixedClass1;
             breakdown.push(`GCE Open Toll - RM ${TOLL_DB.highways.GCE.fixedClass1.toFixed(2)}`);
         }
 
-        // SPRINT
         if(originZones.includes("damansara") || destZones.includes("damansara")){
             total += TOLL_DB.highways.SPRINT.fixedClass1;
             breakdown.push(`SPRINT Open Toll - RM ${TOLL_DB.highways.SPRINT.fixedClass1.toFixed(2)}`);
         }
 
-        // KESAS
         if(originZones.includes("klangKapar") || destZones.includes("klangKapar")){
             total += TOLL_DB.highways.KESAS.fixedClass1;
             breakdown.push(`KESAS Open Toll - RM ${TOLL_DB.highways.KESAS.fixedClass1.toFixed(2)}`);
-        }
-
-        // NNKSB
-        if(originZones.includes("klangKapar") || destZones.includes("klangKapar")){
+            
             total += TOLL_DB.highways.NNKSB.fixedClass1;
             breakdown.push(`NNKSB Open Toll - RM ${TOLL_DB.highways.NNKSB.fixedClass1.toFixed(2)}`);
         }
 
-        // LATAR
         if(originZones.includes("puncakPerdana") || originZones.includes("klangKapar") || destZones.includes("puncakPerdana") || destZones.includes("klangKapar")){
             total += TOLL_DB.highways.LATAR.fixedClass1;
             breakdown.push(`LATAR Open Toll - RM ${TOLL_DB.highways.LATAR.fixedClass1.toFixed(2)}`);
         }
 
-        // MEX
         if(originZones.includes("putrajayaCyberjaya") || destZones.includes("putrajayaCyberjaya")){
             total += TOLL_DB.highways.MEX.fixedClass1;
             breakdown.push(`MEX Open Toll - RM ${TOLL_DB.highways.MEX.fixedClass1.toFixed(2)}`);
         }
 
-        // SILK
         if(originZones.includes("bangiKajang") || destZones.includes("bangiKajang")){
             total += TOLL_DB.highways.SILK.fixedClass1;
             breakdown.push(`SILK Open Toll - RM ${TOLL_DB.highways.SILK.fixedClass1.toFixed(2)}`);
         }
 
-        // SMART
         if(originZones.includes("klCenter") && (destZones.includes("bangiKajang") || destZones.includes("putrajayaCyberjaya"))){
             const hour = new Date().getHours();
             let smartFare =
@@ -784,4 +768,95 @@ function checkAndProcessRoute(){
             let routeHasTolls = false;
 
             if(extras?.tollways?.values){
-                routeHasTolls = extras.tollways.values
+                routeHasTolls = extras.tollways.values.some(v=>v[2]===1);
+            }
+
+            if(routeLine) map.removeLayer(routeLine);
+
+            routeLine = L.geoJSON(
+                feat.geometry,
+                {
+                    style:{
+                        color:'#8e24aa',
+                        weight:5
+                    }
+                }
+            ).addTo(map);
+
+            map.fitBounds(
+                routeLine.getBounds(),
+                {padding:[40,40]}
+            );
+
+            computeFareAndDisplay(
+                distanceKm,
+                durationBase,
+                routeHasTolls
+            );
+        });
+    },350);
+}
+
+// ==========================================================
+// FARE ENGINE
+// ==========================================================
+
+function computeFareAndDisplay(
+    distance,
+    durationMins,
+    routeHasTollsFlag
+){
+    const baseFare = 5.0;
+    const perKmRate = 1.25;
+    const chargeable = Math.max(0,distance - 1);
+    const distanceFare = chargeable * perKmRate;
+
+    const tollObj = calculateActualToll(
+        pickupCoords,
+        dropoffCoords,
+        distance,
+        routeHasTollsFlag
+    );
+
+    const tollCharge = tollObj.total;
+    const incentive = (durationMins / 60) * 12;
+
+    let deadhead = 0;
+    if(distance > 12){
+        let scale = ((Math.min(distance,350)-12)/338) * 0.45;
+        deadhead = distanceFare * scale;
+    }
+
+    let rawTotal = baseFare + distanceFare + tollCharge + incentive + deadhead;
+    let roundedTotal = Math.round(rawTotal * 10) / 10;
+    let finalRound = Math.round(roundedTotal);
+
+    // ======================================================
+    // UI
+    // ======================================================
+    document.getElementById('result-card').style.display='block';
+    document.getElementById('total-fare').innerHTML=`RM ${finalRound}`;
+    document.getElementById('fare-distance').innerHTML=`${distance.toFixed(1)} km`;
+    document.getElementById('fare-duration').innerHTML=
+        durationMins < 60
+        ? `${Math.round(durationMins)} mins`
+        : `${Math.floor(durationMins/60)}h ${Math.round(durationMins%60)}m`;
+
+    document.getElementById('calc-base-fare').innerHTML=`RM ${baseFare.toFixed(2)}`;
+    document.getElementById('calc-ride-distance-rate').innerHTML=`RM ${distanceFare.toFixed(2)}`;
+    document.getElementById('calc-tolls').innerHTML=`RM ${tollCharge.toFixed(2)}`;
+    document.getElementById('calc-incentive').innerHTML=`RM ${incentive.toFixed(2)}`;
+    document.getElementById('calc-deadhead-km').innerHTML=`RM ${deadhead.toFixed(2)}`;
+    document.getElementById('calc-grand').innerHTML=`RM ${roundedTotal.toFixed(2)}`;
+
+    const tollBreakDiv = document.getElementById('toll-breakdown');
+    if(tollObj.breakdown.length){
+        tollBreakDiv.style.display='block';
+        tollBreakDiv.innerHTML = tollObj.breakdown.map(v=>`🛣️ ${v}`).join('<br>');
+    }else{
+        tollBreakDiv.style.display='none';
+    }
+}
+</script>
+</body>
+</html>
