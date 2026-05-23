@@ -396,7 +396,7 @@ let dropoffCoords = null;
 let currentRouteTimeout = null;
 
 // ==========================================================
-// MALAYSIA TOLL DATABASE (COMPLETE)
+// MALAYSIA TOLL DATABASE
 // ==========================================================
 
 const TOLL_DB = {
@@ -406,51 +406,48 @@ const TOLL_DB = {
         LITRAK:{ name:"Lingkaran Trans Kota", system:"Open" },
         PROLINTAS:{ name:"Prolintas", system:"Open" },
         KESAS:{ name:"KESAS", system:"Open" },
-        IJM:{ name:"IJM Corporation", system:"Open" },
+        IJM:{ name:"IJM Expressway", system:"Open" },
         ANIH:{ name:"ANIH Berhad", system:"Hybrid" },
         LEKAS:{ name:"LEKAS", system:"Closed" },
         WCE:{ name:"West Coast Expressway", system:"Closed" },
         SMART:{ name:"SMART Tunnel", system:"Hybrid" },
-        GAMUDA:{ name:"Gamuda Berhad", system:"Closed/Open" },
-        MEX:{ name:"Maju Expressway", system:"Closed" },
-        NKVE:{ name:"New Klang Valley Expressway", system:"Closed" },
-        NNKSB:{ name:"Northern Region", system:"Open" }
+        GRAND_SEPADU:{ name:"Grand Sepadu", system:"Open" },
+        MEX:{ name:"Maju Expressway", system:"Open" },
+        SKVE_OP:{ name:"SKVE Holdings", system:"Closed" },
+        LATAR_OP:{ name:"LATAR", system:"Open" }
     },
 
     highways: {
-
         NSE:{ operator:"PLUS", name:"North South Expressway", system:"Closed", ratePerKm:0.114 },
         ELITE:{ operator:"PLUS", name:"ELITE", system:"Closed", ratePerKm:0.105 },
-        NKVE:{ operator:"PLUS", name:"NKVE", system:"Closed", ratePerKm:0.112 },
         LEKAS:{ operator:"LEKAS", name:"LEKAS Highway", system:"Closed", ratePerKm:0.13 },
+        SKVE:{ operator:"SKVE_OP", name:"SKVE", system:"Closed", ratePerKm:0.134 },
+        WCE:{ operator:"WCE", name:"West Coast Expressway", system:"Closed", ratePerKm:0.16 },
+        LPT1:{ operator:"ANIH", name:"LPT1", system:"Closed", ratePerKm:0.13 },
+
         LDP:{ operator:"LITRAK", name:"LDP", system:"Open", fixedClass1:2.10 },
         SPRINT:{ operator:"PROLINTAS", name:"SPRINT", system:"Open", fixedClass1:2.50 },
         AKLEH:{ operator:"PROLINTAS", name:"AKLEH", system:"Open", fixedClass1:2.50 },
         DUKE:{ operator:"PROLINTAS", name:"DUKE", system:"Open", fixedClass1:2.50 },
         DASH:{ operator:"PROLINTAS", name:"DASH", system:"Open", fixedClass1:1.90 },
         SUKE:{ operator:"PROLINTAS", name:"SUKE", system:"Open", fixedClass1:2.30 },
+        GCE:{ operator:"PROLINTAS", name:"Guthrie Corridor (GCE)", system:"Open", fixedClass1:1.90 },
+        SILK:{ operator:"PROLINTAS", name:"SILK", system:"Open", fixedClass1:1.80 },
+        
         KESAS:{ operator:"KESAS", name:"KESAS", system:"Open", fixedClass1:2.30 },
         NPE:{ operator:"IJM", name:"NPE", system:"Open", fixedClass1:2.00 },
         BESRAYA:{ operator:"IJM", name:"BESRAYA", system:"Open", fixedClass1:2.20 },
-        SMART:{ operator:"SMART", name:"SMART Tunnel", system:"Hybrid", peak:4.00, offpeak:3.00 },
-        LPT1:{ operator:"ANIH", name:"LPT1", system:"Closed", ratePerKm:0.13 },
-        WCE:{ operator:"WCE", name:"West Coast Expressway", system:"Closed", ratePerKm:0.16 },
         
-        // ========== NEW ADDITIONS: NNKSB & OTHER IMPORTANT HIGHWAYS ==========
-        NNKSB:{ operator:"NNKSB", name:"New North Klang Straits Bypass", system:"Open", fixedClass1:2.40 },
-        MEX:{ operator:"MEX", name:"Maju Expressway", system:"Closed", ratePerKm:0.185 },
-        GCE:{ operator:"PROLINTAS", name:"Guthrie Corridor Expressway", system:"Closed", ratePerKm:0.125 },
-        SILK:{ operator:"LITRAK", name:"SILK Highway", system:"Open", fixedClass1:2.30 },
-        KIDEX:{ operator:"GAMUDA", name:"KIDEX (Kinrara-Damansara)", system:"Open", fixedClass1:2.20 },
-        DAMANSARA_PUCHONG:{ operator:"LITRAK", name:"Damansara-Puchong Highway (LDP)", system:"Open", fixedClass1:2.10 }, // alias
-        CHERAS_KAJANG:{ operator:"PROLINTAS", name:"Cheras-Kajang Expressway (CKE)", system:"Open", fixedClass1:2.00 },
-        SOUTH_KLV:{ operator:"ANIH", name:"South Klang Valley Expressway (SKVE)", system:"Closed", ratePerKm:0.14 },
-        SETIAWANGSA_PANTAL:{ operator:"PROLINTAS", name:"Setiawangsa-Pantai Expressway (SPE)", system:"Open", fixedClass1:2.60 }
+        NNKSB:{ operator:"GRAND_SEPADU", name:"New North Klang Straits Bypass (NNKSB)", system:"Open", fixedClass1:2.40 },
+        MEX:{ operator:"MEX", name:"MEX Highway", system:"Open", fixedClass1:3.50 },
+        LATAR:{ operator:"LATAR_OP", name:"LATAR", system:"Open", fixedClass1:2.50 },
+
+        SMART:{ operator:"SMART", name:"SMART Tunnel", system:"Hybrid", peak:4.00, offpeak:3.00 }
     }
 };
 
 // ==========================================================
-// REGIONAL BOUNDS (enhanced for NNKSB / Klang coverage)
+// REGIONAL BOUNDS
 // ==========================================================
 
 const REGIONAL_BOUNDS = {
@@ -463,11 +460,7 @@ const REGIONAL_BOUNDS = {
     klCenter:[3.10,101.65,3.17,101.75],
     damansara:[3.11,101.58,3.17,101.65],
     seremban:[2.65,101.85,2.78,102.00],
-    // enhance for NNKSB & North Klang area
-    northKlangCoast:[3.02,101.38,3.10,101.48],
-    shahAlam:[3.00,101.48,3.12,101.55],
-    putrajaya:[2.88,101.65,2.98,101.72],
-    cyberjaya:[2.90,101.62,2.98,101.68]
+    putrajayaCyberjaya:[2.85,101.60,2.97,101.72]
 };
 
 // ==========================================================
@@ -476,175 +469,166 @@ const REGIONAL_BOUNDS = {
 
 function inBoundingBox(coords,bbox){
     if(!coords) return false;
-    return (coords.lat >= bbox[0] && coords.lon >= bbox[1] &&
-            coords.lat <= bbox[2] && coords.lon <= bbox[3]);
+    return (
+        coords.lat >= bbox[0] &&
+        coords.lon >= bbox[1] &&
+        coords.lat <= bbox[2] &&
+        coords.lon <= bbox[3]
+    );
 }
 
 function getActiveZonesForCoords(coords){
     if(!coords) return [];
-    return Object.keys(REGIONAL_BOUNDS).filter(zone => inBoundingBox(coords, REGIONAL_BOUNDS[zone]));
+    return Object.keys(REGIONAL_BOUNDS)
+        .filter(zone => inBoundingBox(coords,REGIONAL_BOUNDS[zone]));
 }
 
 // ==========================================================
-// ADVANCED TOLL ENGINE WITH NEW HIGHWAYS (NNKSB, MEX, SKVE, SILK, etc)
+// ACTUAL TOLL ENGINE
 // ==========================================================
 
-function calculateActualToll(pickup, dropoff, distanceKm, routeHasTolls){
+function calculateActualToll(
+    pickup,
+    dropoff,
+    distanceKm,
+    routeHasTolls
+){
     let total = 0;
     let breakdown = [];
-    
-    if(!routeHasTolls && distanceKm < 3){
+
+    if(!routeHasTolls){
         return { total:0, breakdown:[] };
     }
-    
+
     const originZones = getActiveZonesForCoords(pickup);
     const destZones = getActiveZonesForCoords(dropoff);
     const isLongDistance = distanceKm > 45;
-    
-    // ---------- CLOSED SYSTEM (Long distance / PLUS + LEKAS etc) ----------
+
+    // ======================================================
+    // CLOSED SYSTEM
+    // ======================================================
     if(isLongDistance){
         let highway = TOLL_DB.highways.NSE;
         let toll = distanceKm * highway.ratePerKm;
-        toll = Math.max(1.80, toll);
+        toll = Math.max(1.80,toll);
+
         total += toll;
         breakdown.push(`${highway.name} (${highway.system}) - RM ${toll.toFixed(2)}`);
-        
-        // NKVE add-on if passing through Klang valley corridor
-        if((originZones.includes("klCenter") && destZones.includes("shahAlam")) ||
-           (destZones.includes("klCenter") && originZones.includes("shahAlam"))){
-            let nkveToll = distanceKm * TOLL_DB.highways.NKVE.ratePerKm * 0.28;
-            if(nkveToll > 0.5){
-                total += nkveToll;
-                breakdown.push(`NKVE (Closed) - RM ${nkveToll.toFixed(2)}`);
-            }
-        }
-        
+
+        // LEKAS
         if(originZones.includes("bangiKajang") || destZones.includes("bangiKajang")){
             let lekas = TOLL_DB.highways.LEKAS;
             let lekasToll = distanceKm * lekas.ratePerKm * 0.35;
             total += lekasToll;
             breakdown.push(`${lekas.name} (${lekas.system}) - RM ${lekasToll.toFixed(2)}`);
         }
-        
-        // MEX highway addition for south corridor
-        if((originZones.includes("putrajaya") || destZones.includes("putrajaya") ||
-            originZones.includes("cyberjaya") || destZones.includes("cyberjaya")) && distanceKm > 18){
-            let mexToll = distanceKm * TOLL_DB.highways.MEX.ratePerKm * 0.4;
-            mexToll = Math.min(8.50, mexToll);
-            total += mexToll;
-            breakdown.push(`MEX Highway (Closed) - RM ${mexToll.toFixed(2)}`);
-        }
-        
-        // SKVE addition for southern corridor
-        if((originZones.includes("bangiKajang") || destZones.includes("seremban")) && distanceKm > 30){
-            let skveToll = distanceKm * TOLL_DB.highways.SOUTH_KLV.ratePerKm * 0.22;
+
+        // SKVE
+        if(originZones.includes("putrajayaCyberjaya") || destZones.includes("putrajayaCyberjaya")){
+            let skve = TOLL_DB.highways.SKVE;
+            let skveToll = distanceKm * skve.ratePerKm * 0.30; // Approx logic adjustment
             total += skveToll;
-            breakdown.push(`SKVE Expressway - RM ${skveToll.toFixed(2)}`);
+            breakdown.push(`${skve.name} (${skve.system}) - RM ${skveToll.toFixed(2)}`);
         }
     }
-    
-    // ---------- OPEN SYSTEM & URBAN TOLLS (including NNKSB) ----------
-    const urbanTrip = distanceKm <= 45;
+
+    // ======================================================
+    // OPEN SYSTEM
+    // ======================================================
+    const urbanTrip = distanceKm <= 40;
+
     if(urbanTrip){
-        // LDP base
-        if(originZones.includes("puncakPerdana") || destZones.includes("puncakPerdana") ||
-           originZones.includes("damansara") || destZones.includes("damansara")){
+
+        // LDP
+        if(originZones.includes("puncakPerdana") || destZones.includes("puncakPerdana")){
             total += TOLL_DB.highways.LDP.fixedClass1;
             breakdown.push(`LDP Open Toll - RM ${TOLL_DB.highways.LDP.fixedClass1.toFixed(2)}`);
         }
-        
+
+        // GCE
+        if(originZones.includes("puncakPerdana") || destZones.includes("puncakPerdana")){
+            total += TOLL_DB.highways.GCE.fixedClass1;
+            breakdown.push(`GCE Open Toll - RM ${TOLL_DB.highways.GCE.fixedClass1.toFixed(2)}`);
+        }
+
         // SPRINT
-        if(originZones.includes("damansara") || destZones.includes("damansara") ||
-           (originZones.includes("klCenter") && destZones.includes("shahAlam"))){
+        if(originZones.includes("damansara") || destZones.includes("damansara")){
             total += TOLL_DB.highways.SPRINT.fixedClass1;
             breakdown.push(`SPRINT Open Toll - RM ${TOLL_DB.highways.SPRINT.fixedClass1.toFixed(2)}`);
         }
-        
+
         // KESAS
-        if(originZones.includes("klangKapar") || destZones.includes("klangKapar") ||
-           originZones.includes("shahAlam") || destZones.includes("shahAlam")){
+        if(originZones.includes("klangKapar") || destZones.includes("klangKapar")){
             total += TOLL_DB.highways.KESAS.fixedClass1;
             breakdown.push(`KESAS Open Toll - RM ${TOLL_DB.highways.KESAS.fixedClass1.toFixed(2)}`);
         }
-        
-        // ========== NEW NORTH KLANG STRAITS BYPASS (NNKSB) ==========
-        if(originZones.includes("northKlangCoast") || destZones.includes("northKlangCoast") ||
-           (originZones.includes("klangKapar") && destZones.includes("shahAlam")) ||
-           (destZones.includes("klangKapar") && originZones.includes("shahAlam"))){
+
+        // NNKSB
+        if(originZones.includes("klangKapar") || destZones.includes("klangKapar")){
             total += TOLL_DB.highways.NNKSB.fixedClass1;
-            breakdown.push(`🌊 New North Klang Straits Bypass (NNKSB) - RM ${TOLL_DB.highways.NNKSB.fixedClass1.toFixed(2)}`);
+            breakdown.push(`NNKSB Open Toll - RM ${TOLL_DB.highways.NNKSB.fixedClass1.toFixed(2)}`);
         }
-        
-        // SILK highway for southern Selangor
-        if((originZones.includes("bangiKajang") || destZones.includes("bangiKajang")) && distanceKm > 5){
+
+        // LATAR
+        if(originZones.includes("puncakPerdana") || originZones.includes("klangKapar") || destZones.includes("puncakPerdana") || destZones.includes("klangKapar")){
+            total += TOLL_DB.highways.LATAR.fixedClass1;
+            breakdown.push(`LATAR Open Toll - RM ${TOLL_DB.highways.LATAR.fixedClass1.toFixed(2)}`);
+        }
+
+        // MEX
+        if(originZones.includes("putrajayaCyberjaya") || destZones.includes("putrajayaCyberjaya")){
+            total += TOLL_DB.highways.MEX.fixedClass1;
+            breakdown.push(`MEX Open Toll - RM ${TOLL_DB.highways.MEX.fixedClass1.toFixed(2)}`);
+        }
+
+        // SILK
+        if(originZones.includes("bangiKajang") || destZones.includes("bangiKajang")){
             total += TOLL_DB.highways.SILK.fixedClass1;
-            breakdown.push(`SILK Highway (Kajang) - RM ${TOLL_DB.highways.SILK.fixedClass1.toFixed(2)}`);
+            breakdown.push(`SILK Open Toll - RM ${TOLL_DB.highways.SILK.fixedClass1.toFixed(2)}`);
         }
-        
-        // GCE (Guthrie) connection
-        if(originZones.includes("shahAlam") || destZones.includes("shahAlam")){
-            let gceToll = distanceKm * 0.08;
-            if(gceToll > 0.8){
-                total += Math.min(2.5, gceToll);
-                breakdown.push(`GCE Expressway - RM ${Math.min(2.5,gceToll).toFixed(2)}`);
-            }
-        }
-        
-        // CHERAS-KAJANG expressway
-        if(originZones.includes("bangiKajang") || destZones.includes("bangiKajang") ||
-           originZones.includes("klCenter")){
-            total += TOLL_DB.highways.CHERAS_KAJANG.fixedClass1;
-            breakdown.push(`Cheras-Kajang Expressway - RM ${TOLL_DB.highways.CHERAS_KAJANG.fixedClass1.toFixed(2)}`);
-        }
-        
-        // SMART tunnel logic (existing upgrade)
-        if(originZones.includes("klCenter") && destZones.includes("bangiKajang")){
+
+        // SMART
+        if(originZones.includes("klCenter") && (destZones.includes("bangiKajang") || destZones.includes("putrajayaCyberjaya"))){
             const hour = new Date().getHours();
-            let smartFare = ((hour >= 7 && hour <= 9) || (hour >= 17 && hour <= 19)) 
-                ? TOLL_DB.highways.SMART.peak : TOLL_DB.highways.SMART.offpeak;
+            let smartFare =
+                ((hour >= 7 && hour <= 9) || (hour >= 17 && hour <= 19))
+                ? TOLL_DB.highways.SMART.peak
+                : TOLL_DB.highways.SMART.offpeak;
             total += smartFare;
             breakdown.push(`SMART Tunnel Hybrid - RM ${smartFare.toFixed(2)}`);
         }
-        
-        // SPE Setiawangsa-Pantai Expressway if crossing KL east-west
-        if((originZones.includes("klCenter") && destZones.includes("damansara")) ||
-           (destZones.includes("klCenter") && originZones.includes("damansara"))){
-            total += TOLL_DB.highways.SETIAWANGSA_PANTAL.fixedClass1;
-            breakdown.push(`SPE Expressway - RM ${TOLL_DB.highways.SETIAWANGSA_PANTAL.fixedClass1.toFixed(2)}`);
-        }
     }
-    
-    // Add small buffer for WCE if long coastal route detected
-    if(distanceKm > 60 && (originZones.includes("klangKapar") || destZones.includes("klangKapar"))){
-        let wcePortion = distanceKm * TOLL_DB.highways.WCE.ratePerKm * 0.2;
-        if(wcePortion > 0.8){
-            total += wcePortion;
-            breakdown.push(`West Coast Expressway (portion) - RM ${wcePortion.toFixed(2)}`);
-        }
-    }
-    
+
     total = Math.round(total * 10) / 10;
-    if(total < 0.1 && routeHasTolls) total = 1.2; // minimal toll for small toll road detection
     return { total, breakdown };
 }
 
 // ==========================================================
-// AUTOCOMPLETE (unchanged, robust)
+// AUTOCOMPLETE
 // ==========================================================
 
-function setupAutocomplete(inputId, suggestionsId, clearBtnId, onSelect, onClear){
+function setupAutocomplete(
+    inputId,
+    suggestionsId,
+    clearBtnId,
+    onSelect,
+    onClear
+){
     const input = document.getElementById(inputId);
     const suggestionsBox = document.getElementById(suggestionsId);
     const clearBtn = document.getElementById(clearBtnId);
     let debounce;
+
     input.addEventListener('input',()=>{
         clearTimeout(debounce);
         const query = input.value.trim();
         clearBtn.style.display = query.length ? 'block':'none';
+
         if(query.length < 3){
             suggestionsBox.style.display='none';
             return;
         }
+
         debounce = setTimeout(()=>{
             fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&bbox=99.6,0.8,119.5,7.4&limit=5`)
             .then(r=>r.json())
@@ -661,6 +645,7 @@ function setupAutocomplete(inputId, suggestionsId, clearBtnId, onSelect, onClear
                     const div = document.createElement('div');
                     div.className='suggestion-item';
                     div.textContent = addr || props.name;
+
                     div.addEventListener('click',()=>{
                         input.value = addr || props.name;
                         suggestionsBox.style.display='none';
@@ -672,6 +657,7 @@ function setupAutocomplete(inputId, suggestionsId, clearBtnId, onSelect, onClear
             });
         },350);
     });
+
     clearBtn.addEventListener('click',()=>{
         input.value='';
         clearBtn.style.display='none';
@@ -680,58 +666,114 @@ function setupAutocomplete(inputId, suggestionsId, clearBtnId, onSelect, onClear
     });
 }
 
-setupAutocomplete('pickup','pickup-suggestions','clear-pickup',
-    (c)=>{ pickupCoords=c; updateMarker('pickup',c); checkAndProcessRoute(); },
-    ()=>{ pickupCoords=null; if(pickupMarker) map.removeLayer(pickupMarker); resetCalc(); }
+// ==========================================================
+// INIT AUTOCOMPLETE
+// ==========================================================
+
+setupAutocomplete(
+    'pickup',
+    'pickup-suggestions',
+    'clear-pickup',
+    (c)=>{
+        pickupCoords=c;
+        updateMarker('pickup',c);
+        checkAndProcessRoute();
+    },
+    ()=>{
+        pickupCoords=null;
+        if(pickupMarker) map.removeLayer(pickupMarker);
+        resetCalc();
+    }
 );
-setupAutocomplete('dropoff','dropoff-suggestions','clear-dropoff',
-    (c)=>{ dropoffCoords=c; updateMarker('dropoff',c); checkAndProcessRoute(); },
-    ()=>{ dropoffCoords=null; if(dropoffMarker) map.removeLayer(dropoffMarker); resetCalc(); }
+
+setupAutocomplete(
+    'dropoff',
+    'dropoff-suggestions',
+    'clear-dropoff',
+    (c)=>{
+        dropoffCoords=c;
+        updateMarker('dropoff',c);
+        checkAndProcessRoute();
+    },
+    ()=>{
+        dropoffCoords=null;
+        if(dropoffMarker) map.removeLayer(dropoffMarker);
+        resetCalc();
+    }
 );
+
+// ==========================================================
+// SWAP
+// ==========================================================
 
 document.getElementById('swap-locations-btn').addEventListener('click',()=>{
     let tempText = document.getElementById('pickup').value;
     let tempCoord = pickupCoords;
+
     document.getElementById('pickup').value = document.getElementById('dropoff').value;
     pickupCoords = dropoffCoords;
+
     document.getElementById('dropoff').value = tempText;
     dropoffCoords = tempCoord;
+
     if(pickupCoords) updateMarker('pickup',pickupCoords);
     if(dropoffCoords) updateMarker('dropoff',dropoffCoords);
     if(pickupCoords && dropoffCoords) checkAndProcessRoute();
 });
 
+// ==========================================================
+// CURRENT LOCATION
+// ==========================================================
+
 document.getElementById('current-loc-btn').addEventListener('click',()=>{
     if(!navigator.geolocation) return;
+
     navigator.geolocation.getCurrentPosition(pos=>{
         const lat = pos.coords.latitude;
         const lon = pos.coords.longitude;
         pickupCoords = {lat,lon};
+
         updateMarker('pickup',pickupCoords);
         map.setView([lat,lon],14);
-        document.getElementById('pickup').value = "📍 Current Location";
+        document.getElementById('pickup').value = "Current Location";
         checkAndProcessRoute();
     });
 });
+
+// ==========================================================
+// MARKERS
+// ==========================================================
 
 function updateMarker(type,coords){
     const marker = type==='pickup' ? pickupMarker : dropoffMarker;
     if(marker) map.removeLayer(marker);
     const newMarker = L.marker([coords.lat,coords.lon]).addTo(map);
+
     if(type==='pickup') pickupMarker = newMarker;
     else dropoffMarker = newMarker;
 }
+
+// ==========================================================
+// RESET
+// ==========================================================
 
 function resetCalc(){
     if(routeLine) map.removeLayer(routeLine);
     document.getElementById('result-card').style.display='none';
 }
 
+// ==========================================================
+// ROUTING
+// ==========================================================
+
 function checkAndProcessRoute(){
     if(!pickupCoords || !dropoffCoords) return;
+
     if(currentRouteTimeout) clearTimeout(currentRouteTimeout);
+
     currentRouteTimeout = setTimeout(()=>{
         const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${ORS_API_KEY}&start=${pickupCoords.lon},${pickupCoords.lat}&end=${dropoffCoords.lon},${dropoffCoords.lat}&extra_info=tollways`;
+
         fetch(url)
         .then(res=>res.json())
         .then(data=>{
@@ -740,52 +782,6 @@ function checkAndProcessRoute(){
             const durationBase = feat.properties.summary.duration / 60;
             const extras = feat.properties.extras;
             let routeHasTolls = false;
-            if(extras?.tollways?.values){
-                routeHasTolls = extras.tollways.values.some(v=>v[2]===1);
-            }
-            if(routeLine) map.removeLayer(routeLine);
-            routeLine = L.geoJSON(feat.geometry, { style:{ color:'#8e24aa', weight:5 } }).addTo(map);
-            map.fitBounds(routeLine.getBounds(), {padding:[40,40]});
-            computeFareAndDisplay(distanceKm, durationBase, routeHasTolls);
-        }).catch(()=>{});
-    },350);
-}
 
-function computeFareAndDisplay(distance, durationMins, routeHasTollsFlag){
-    const baseFare = 5.0;
-    const perKmRate = 1.25;
-    const chargeable = Math.max(0, distance - 1);
-    const distanceFare = chargeable * perKmRate;
-    const tollObj = calculateActualToll(pickupCoords, dropoffCoords, distance, routeHasTollsFlag);
-    const tollCharge = tollObj.total;
-    const incentive = (durationMins / 60) * 12;
-    let deadhead = 0;
-    if(distance > 12){
-        let scale = ((Math.min(distance,350)-12)/338) * 0.45;
-        deadhead = distanceFare * scale;
-    }
-    let rawTotal = baseFare + distanceFare + tollCharge + incentive + deadhead;
-    let roundedTotal = Math.round(rawTotal * 10) / 10;
-    let finalRound = Math.round(roundedTotal);
-    
-    document.getElementById('result-card').style.display='block';
-    document.getElementById('total-fare').innerHTML=`RM ${finalRound}`;
-    document.getElementById('fare-distance').innerHTML=`${distance.toFixed(1)} km`;
-    document.getElementById('fare-duration').innerHTML= durationMins < 60 ? `${Math.round(durationMins)} mins` : `${Math.floor(durationMins/60)}h ${Math.round(durationMins%60)}m`;
-    document.getElementById('calc-base-fare').innerHTML=`RM ${baseFare.toFixed(2)}`;
-    document.getElementById('calc-ride-distance-rate').innerHTML=`RM ${distanceFare.toFixed(2)}`;
-    document.getElementById('calc-tolls').innerHTML=`RM ${tollCharge.toFixed(2)}`;
-    document.getElementById('calc-incentive').innerHTML=`RM ${incentive.toFixed(2)}`;
-    document.getElementById('calc-deadhead-km').innerHTML=`RM ${deadhead.toFixed(2)}`;
-    document.getElementById('calc-grand').innerHTML=`RM ${roundedTotal.toFixed(2)}`;
-    const tollBreakDiv = document.getElementById('toll-breakdown');
-    if(tollObj.breakdown.length){
-        tollBreakDiv.style.display='block';
-        tollBreakDiv.innerHTML = tollObj.breakdown.map(v=>`🛣️ ${v}`).join('<br>');
-    }else{
-        tollBreakDiv.style.display='none';
-    }
-}
-</script>
-</body>
-</html>
+            if(extras?.tollways?.values){
+                routeHasTolls = extras.tollways.values
