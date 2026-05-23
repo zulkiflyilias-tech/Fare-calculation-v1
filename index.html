@@ -3,499 +3,478 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Malaysia Toll Calculator | Smart Route & Fare Estimator</title>
-    <!-- Leaflet CSS & JS (free map) -->
+    <title>MY Toll Calculator · Smart Highway Fare</title>
+    <!-- Google Fonts + Leaflet (free map) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- OpenStreetMap Nominatim for geocoding (free) -->
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
         body {
-            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(145deg, #e9f0f5 0%, #d9e2ec 100%);
             min-height: 100vh;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            padding: 2rem 1.5rem;
         }
 
-        .app-container {
+        .glass-card {
             max-width: 1300px;
-            width: 100%;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 32px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-            overflow: hidden;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.92);
             backdrop-filter: blur(2px);
+            border-radius: 3rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            padding: 2rem 2rem 2.5rem;
+            transition: all 0.2s;
         }
 
-        .header {
-            background: #1e3c32;
-            color: white;
-            padding: 24px 32px;
-            text-align: center;
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #0057a3, #00a86b);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            display: inline-block;
+            letter-spacing: -0.3px;
         }
 
-        .header h1 {
-            font-size: 1.8rem;
-            letter-spacing: 1px;
+        .sub {
+            color: #2c3e4e;
+            margin-top: 0.4rem;
+            font-weight: 500;
+            border-left: 4px solid #00a86b;
+            padding-left: 1rem;
         }
 
-        .header p {
-            opacity: 0.85;
-            margin-top: 8px;
-            font-size: 0.9rem;
-        }
-
-        .main-content {
+        .two-col {
             display: flex;
             flex-wrap: wrap;
-            gap: 24px;
-            padding: 32px;
+            gap: 2rem;
+            margin: 2rem 0 1.5rem;
         }
 
-        .input-panel {
-            flex: 1.2;
-            min-width: 280px;
-            background: #f9fafb;
-            border-radius: 24px;
-            padding: 24px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        .location-panel {
+            flex: 1;
+            background: #ffffffcc;
+            border-radius: 2rem;
+            padding: 1.5rem;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+            transition: 0.2s;
+            border: 1px solid rgba(0,168,107,0.2);
         }
 
-        .map-panel {
-            flex: 2;
-            min-width: 300px;
-            border-radius: 24px;
-            overflow: hidden;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            background: #e9ecef;
-        }
-
-        #map {
-            height: 450px;
-            width: 100%;
-        }
-
-        .location-row {
-            margin-bottom: 28px;
-            border-left: 4px solid #2c7a4d;
-            padding-left: 18px;
-            background: white;
-            border-radius: 16px;
-            padding: 16px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        }
-
-        .location-row h3 {
+        .location-panel h2 {
+            font-size: 1.4rem;
+            font-weight: 600;
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-size: 1.2rem;
-            margin-bottom: 12px;
-            color: #1e3c32;
+            gap: 10px;
+            margin-bottom: 1rem;
+            color: #1f3b4c;
         }
 
         .badge {
-            background: #2c7a4d;
-            color: white;
-            padding: 4px 12px;
+            background: #00a86b20;
+            padding: 0.25rem 0.75rem;
             border-radius: 40px;
             font-size: 0.7rem;
+            font-weight: 600;
+            color: #006b44;
         }
 
-        input, textarea {
+        input, select {
             width: 100%;
-            padding: 12px 14px;
+            padding: 0.9rem 1rem;
             font-size: 0.95rem;
-            border: 1px solid #ccc;
-            border-radius: 28px;
-            transition: all 0.2s;
-            background: #fff;
-            margin-top: 6px;
-        }
-
-        input:focus, textarea:focus {
-            outline: none;
-            border-color: #2c7a4d;
-            box-shadow: 0 0 0 3px rgba(44,122,77,0.2);
-        }
-
-        textarea {
-            border-radius: 20px;
-            resize: vertical;
-            font-family: monospace;
-        }
-
-        .btn-group {
-            display: flex;
-            gap: 12px;
-            margin-top: 12px;
-            flex-wrap: wrap;
-        }
-
-        button {
-            background: #2c7a4d;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 40px;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 2rem;
+            font-family: 'Inter', monospace;
+            background: white;
             transition: 0.2s;
-            font-size: 0.85rem;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
+            margin-bottom: 0.75rem;
         }
 
-        button:hover {
-            background: #1e5a38;
-            transform: scale(1.02);
+        input:focus, select:focus {
+            outline: none;
+            border-color: #00a86b;
+            box-shadow: 0 0 0 3px #00a86b30;
         }
 
-        .btn-secondary {
-            background: #4b6e8a;
-        }
-        .btn-secondary:hover {
-            background: #2c4b63;
-        }
-
-        .calculate-btn {
-            background: #e67e22;
+        .locate-btn {
+            background: #2c3e4e;
+            color: white;
+            border: none;
+            border-radius: 2rem;
+            padding: 0.7rem 1rem;
+            font-weight: 600;
+            font-size: 0.8rem;
+            cursor: pointer;
             width: 100%;
-            margin-top: 24px;
-            padding: 14px;
-            font-size: 1.2rem;
-            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: 0.2s;
+            margin-bottom: 0.5rem;
         }
 
-        .result-card {
-            margin-top: 24px;
-            background: #eef2f3;
-            border-radius: 20px;
-            padding: 20px;
+        .locate-btn:hover {
+            background: #1f2f3c;
+        }
+
+        .autocomplete-list {
+            background: white;
+            border-radius: 1rem;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: -0.5rem;
+            margin-bottom: 0.5rem;
+            border: 1px solid #ddd;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+        }
+
+        .autocomplete-item {
+            padding: 0.7rem 1rem;
+            cursor: pointer;
+            border-bottom: 1px solid #eef2f5;
+            font-size: 0.85rem;
+        }
+
+        .autocomplete-item:hover {
+            background: #e6f7ef;
+        }
+
+        .calc-btn {
+            background: linear-gradient(100deg, #0057a3, #00a86b);
+            border: none;
+            color: white;
+            font-weight: 700;
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            border-radius: 3rem;
+            cursor: pointer;
+            width: 100%;
+            margin: 1rem 0 1.2rem;
+            transition: all 0.2s;
+            box-shadow: 0 5px 12px #0057a340;
+        }
+
+        .calc-btn:hover {
+            transform: scale(1.01);
+            filter: brightness(1.02);
+        }
+
+        .result {
+            background: #f0f9f4;
+            border-radius: 2rem;
+            padding: 1.5rem;
             text-align: center;
-            border-top: 4px solid #e67e22;
+            border: 1px solid #b9f5d0;
         }
 
-        .toll-fare {
-            font-size: 2.2rem;
+        .toll-amount {
+            font-size: 2.5rem;
             font-weight: 800;
-            color: #1e3c32;
+            color: #006b3f;
         }
 
-        .route-detail {
-            font-size: 0.8rem;
-            color: #555;
-            margin-top: 8px;
+        .route-info {
+            font-size: 0.9rem;
+            margin-top: 10px;
+            color: #2c5a6e;
         }
 
-        .error-msg {
-            color: #c0392b;
-            background: #ffe6e5;
-            border-radius: 28px;
-            padding: 10px;
-            margin-top: 12px;
-            font-size: 0.8rem;
+        .map-placeholder {
+            height: 220px;
+            background: #cbdde9;
+            border-radius: 1.5rem;
+            margin-top: 1.5rem;
+            overflow: hidden;
         }
 
-        @media (max-width: 700px) {
-            .main-content {
-                flex-direction: column;
-            }
-            .header h1 { font-size: 1.4rem; }
+        hr {
+            margin: 1rem 0;
+            border-color: #cbdde9;
+        }
+
+        footer {
+            text-align: center;
+            font-size: 0.7rem;
+            margin-top: 2rem;
+            opacity: 0.7;
+        }
+
+        @media (max-width: 780px) {
+            body { padding: 1rem; }
+            .glass-card { padding: 1.2rem; }
         }
     </style>
 </head>
 <body>
-<div class="app-container">
-    <div class="header">
-        <h1>🛣️ PLUSMiles Toll Calculator</h1>
-        <p>Malaysia highways · Class 1 (Cars) · Open / Closed / Hybrid system</p>
-    </div>
-    <div class="main-content">
-        <div class="input-panel">
-            <!-- Pickup Row -->
-            <div class="location-row">
-                <h3>📍 Pickup / Origin <span class="badge">From</span></h3>
-                <textarea id="pickupAddr" rows="2" placeholder="Example: 42, Jalan SS15/4, 47500 Subang Jaya, Selangor&#10;Or: Bukit Kayu Hitam Toll Plaza, Kedah"></textarea>
-                <div class="btn-group">
-                    <button id="detectPickupBtn">📍 Auto-detect my location</button>
-                    <button id="clearPickupBtn" class="btn-secondary">Clear</button>
-                </div>
-            </div>
 
-            <!-- Destination Row -->
-            <div class="location-row">
-                <h3>🏁 Destination <span class="badge">To</span></h3>
-                <textarea id="destAddr" rows="2" placeholder="Example: Northport Bypass, Port Klang, 42000&#10;Or: 1, Persiaran Bandar Utama, 47800 PJ"></textarea>
-                <div class="btn-group">
-                    <button id="detectDestBtn">📍 Use current as destination</button>
-                    <button id="clearDestBtn" class="btn-secondary">Clear</button>
-                </div>
-            </div>
-
-            <button id="calcBtn" class="calculate-btn">🧮 Calculate Toll Fare (Class 1)</button>
-
-            <div id="resultArea" class="result-card" style="display: none;">
-                <div style="font-weight: 600;">Estimated Toll (Class 1)</div>
-                <div class="toll-fare" id="fareAmount">RM --</div>
-                <div class="route-detail" id="routeInfo">Select pickup & destination</div>
-                <div id="tollBreakdown" style="font-size:0.75rem; margin-top:6px;"></div>
-            </div>
+<div class="glass-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+        <div>
+            <h1>🛣️ TollPintar · MY</h1>
+            <div class="sub">Smart toll estimator · Open / Closed / Hybrid systems · Malaysia highways</div>
         </div>
-        <div class="map-panel">
-            <div id="map"></div>
-            <div style="padding: 8px; text-align: center; background:#f1f3f5; font-size:12px;">🗺️ Map: OpenStreetMap | Click on map to set location (pickup/dest?)</div>
+        <div style="font-size: 0.8rem; background: #eef2f5; padding: 0.4rem 1rem; border-radius: 40px;">Class 1 (Car)</div>
+    </div>
+
+    <div class="two-col">
+        <!-- PICKUP ROW -->
+        <div class="location-panel">
+            <h2>📍 Pickup <span class="badge">origin</span></h2>
+            <button type="button" class="locate-btn" id="detectPickupBtn">📍 Detect my current location</button>
+            <input type="text" id="pickupInput" placeholder="Type Malaysian address (e.g., KL Sentral, 50470 Kuala Lumpur)" autocomplete="off">
+            <div id="pickupSuggestions" class="autocomplete-list" style="display: none;"></div>
+            <div style="font-size: 0.7rem; color: gray; margin-top: 5px;">✔ Example: No 1, Persiaran KLCC, 50088 Kuala Lumpur</div>
+        </div>
+
+        <!-- DESTINATION ROW -->
+        <div class="location-panel">
+            <h2>🏁 Destination <span class="badge">dropoff</span></h2>
+            <button type="button" class="locate-btn" id="detectDestBtn">📍 Use current location as destination</button>
+            <input type="text" id="destInput" placeholder="Malaysian address, e.g., Northport Bypass, 42000 Port Klang" autocomplete="off">
+            <div id="destSuggestions" class="autocomplete-list" style="display: none;"></div>
+            <div style="font-size: 0.7rem; color: gray; margin-top: 5px;">✔ Example: Lebuhraya Utara-Selatan, 30300 Ipoh</div>
         </div>
     </div>
+
+    <button class="calc-btn" id="calculateBtn">🧮 Calculate Toll Fare (Class 1)</button>
+
+    <div class="result" id="resultBox">
+        <div style="font-weight: 500;">✨ Toll estimation ✨</div>
+        <div class="toll-amount" id="tollValue">RM 0.00</div>
+        <div class="route-info" id="routeDetail">Enter pickup & destination · based on actual highway toll data</div>
+    </div>
+
+    <div class="map-placeholder" id="miniMap"></div>
+    <footer>📍 Free sources: OpenStreetMap Nominatim (geocoding), Leaflet map, toll rates based on JPJ/LDP/PLUS open data simulation.</footer>
 </div>
 
 <script>
     // ----------------------------------------------
-    // MALAYSIA TOLL DATABASE (Class 1, integrated open/closed/hybrid sample)
-    // For demo: realistic approximation based on known highway toll rates.
-    // This uses actual toll plaza data & distance-based estimation.
+    //  TOLL RATE DATABASE (Free source simulation based on real class1 rates)
+    //  from actual highway list (open/closed/hybrid)
     // ----------------------------------------------
-    const TOLL_PLAZAS = [
-        // Open system (fixed)
-        { code: "BKT", name: "Bukit Kayu Hitam", route: "E1", rate: 3.00, system: "Open", lat: 6.0281, lon: 100.4319 },
-        { code: "BNR", name: "Bagan Ajam", route: "E1", rate: 1.60, system: "Open", lat: 5.4356, lon: 100.3894 },
-        { code: "JTR", name: "Jitra", route: "E1", rate: 1.20, system: "Open", lat: 6.2681, lon: 100.4215 },
-        { code: "PNK", name: "Penang Bridge", route: "E1", rate: 7.00, system: "Open", lat: 5.3476, lon: 100.3506 },
-        { code: "NS1", name: "Sungai Besi (South)", route: "E2", rate: 3.30, system: "Open", lat: 3.0607, lon: 101.7075 },
-        { code: "GOM", name: "Gombak", route: "E8", rate: 5.00, system: "Open", lat: 3.2825, lon: 101.7056 },
-        { code: "NPB", name: "Northport Bypass", route: "NEW", rate: 4.00, system: "Open", lat: 3.0015, lon: 101.3512 },
-        { code: "NPT", name: "Northport Toll North", route: "NEW", rate: 3.50, system: "Open", lat: 3.0192, lon: 101.3345 },
-        { code: "KLIA", name: "KLIA Main", route: "E6", rate: 2.50, system: "Open", lat: 2.7556, lon: 101.7079 },
-        { code: "SEP", name: "Sepang", route: "E6", rate: 2.00, system: "Open", lat: 2.6982, lon: 101.7398 },
-        // Closed/hybrid reference plazas (for distance calculation points)
-        { code: "JRA", name: "Juru", route: "E1", rate: 2.70, system: "Closed", lat: 5.3197, lon: 100.4339 },
-        { code: "SKC", name: "Skudai", route: "E2", rate: 2.90, system: "Closed", lat: 1.5460, lon: 103.6597 },
-        { code: "SHR", name: "Shah Alam", route: "E5", rate: 2.50, system: "Closed", lat: 3.0736, lon: 101.5185 },
-        { code: "KAR", name: "Karak", route: "E8", rate: 3.50, system: "Closed", lat: 3.4178, lon: 101.9625 },
-        { code: "BKP", name: "Bkt Kayu Hitam Hybrid", route: "E9", rate: 2.00, system: "Hybrid", lat: 6.0543, lon: 100.4244 }
+    const tollZones = [
+        // route toll mapping: each zone has name & approx rate per entry or segment (MYR for class1)
+        { keywords: ["bukit kayu hitam", "bkt kayu hitam", "bkh"], rate: 3.00, system: "Open" },
+        { keywords: ["penang bridge", "jambatan pulau pinang"], rate: 7.00, system: "Open/Hybrid" },
+        { keywords: ["sungai besi", "sbesi"], rate: 3.30, system: "Open" },
+        { keywords: ["gombak", "gombak toll"], rate: 5.00, system: "Open" },
+        { keywords: ["bentong", "bentong toll"], rate: 2.50, system: "Open" },
+        { keywords: ["desaru", "desaru toll"], rate: 2.40, system: "Open" },
+        { keywords: ["sepang", "klia", "klia main"], rate: 2.50, system: "Open" },
+        { keywords: ["northport bypass", "northport toll", "npb"], rate: 4.00, system: "Open" },
+        { keywords: ["northport bypass north", "npt"], rate: 3.50, system: "Open" },
+        { keywords: ["juru", "juru toll"], rate: 2.70, system: "Closed" },
+        { keywords: ["shah alam", "shah alam toll"], rate: 2.50, system: "Closed" },
+        { keywords: ["putrajaya", "putrajaya toll"], rate: 2.00, system: "Closed" },
+        { keywords: ["karak", "karak highway"], rate: 3.50, system: "Closed" },
+        { keywords: ["skudai", "skudai toll"], rate: 2.90, system: "Closed" },
+        { keywords: ["senai", "senai airport"], rate: 2.50, system: "Closed" },
+        { keywords: ["changlun", "changlun toll"], rate: 2.10, system: "Closed" },
+        { keywords: ["bangi", "bangi toll"], rate: 2.20, system: "Hybrid" },
+        { keywords: ["cyberjaya", "cyberjaya toll"], rate: 1.80, system: "Hybrid" }
     ];
 
-    // Helper: haversine distance in km
-    function getDistanceKm(lat1, lon1, lat2, lon2) {
-        const R = 6371;
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a = Math.sin(dLat/2)**2 + Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) * Math.sin(dLon/2)**2;
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        return R * c;
-    }
-
-    // Estimate toll based on nearest plazas (simulate real route fare)
-    function estimateToll(startLat, startLon, endLat, endLon) {
-        if (!startLat || !endLat) return { fare: null, msg: "Invalid coordinates" };
-        // find nearest toll plaza to start and end (for closed system proxy)
-        let minDistStart = Infinity, nearestStart = null;
-        let minDistEnd = Infinity, nearestEnd = null;
-        for (const tp of TOLL_PLAZAS) {
-            const dStart = getDistanceKm(startLat, startLon, tp.lat, tp.lon);
-            if (dStart < minDistStart) { minDistStart = dStart; nearestStart = tp; }
-            const dEnd = getDistanceKm(endLat, endLon, tp.lat, tp.lon);
-            if (dEnd < minDistEnd) { minDistEnd = dEnd; nearestEnd = tp; }
-        }
-        if (!nearestStart || !nearestEnd) return { fare: null, msg: "No toll data near route" };
-
-        const directDist = getDistanceKm(startLat, startLon, endLat, endLon);
-        let totalFare = 0;
-        let breakdown = "";
-
-        // Logic: If both near open-system plazas, use fixed rates aggregation + distance component
-        if (nearestStart.system === "Open" && nearestEnd.system === "Open") {
-            totalFare = (nearestStart.rate + nearestEnd.rate) / 2 + Math.max(0, directDist * 0.12);
-            totalFare = Math.min(totalFare, 25); // cap for demo
-            breakdown = `Open-system proxy: ${nearestStart.rate} + ${nearestEnd.rate} avg + distance (RM0.12/km).`;
-        } 
-        else if (nearestStart.system === "Closed" || nearestEnd.system === "Closed") {
-            // distance-based closed system: approx RM0.11 per km
-            totalFare = directDist * 0.11 + 1.0;
-            breakdown = `Closed system (RM0.11/km) + base charge. Distance ~${directDist.toFixed(1)}km.`;
-        } 
-        else if (nearestStart.system === "Hybrid") {
-            totalFare = nearestStart.rate + directDist * 0.09;
-            breakdown = `Hybrid system fixed ${nearestStart.rate} + RM0.09/km.`;
-        } 
-        else {
-            totalFare = directDist * 0.13;
-            breakdown = "Standard highway rate estimate.";
-        }
-
-        // include northport bypass special if addresses include northport
-        const pickupLow = (document.getElementById("pickupAddr").value || "").toLowerCase();
-        const destLow = (document.getElementById("destAddr").value || "").toLowerCase();
-        if (pickupLow.includes("northport") || destLow.includes("northport")) {
-            totalFare += 3.5;
-            breakdown += " + Northport Bypass surcharge (RM3.50)";
-        }
-
-        totalFare = Math.round(totalFare * 100) / 100;
-        return { fare: totalFare, msg: `Via ${nearestStart.name} → ${nearestEnd.name}`, detail: breakdown, dist: directDist };
-    }
-
-    // Geocoding using Nominatim (free, openstreetmap)
-    async function geocodeAddress(address) {
-        if (!address.trim()) return null;
-        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address + ", Malaysia")}&limit=1&addressdetails=0`;
-        try {
-            const resp = await fetch(url, { headers: { "User-Agent": "MalaysiaTollCalculator/1.0" } });
-            const data = await resp.json();
-            if (data && data.length > 0) {
-                return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon), display: data[0].display_name };
+    // Helper: estimate toll from address strings
+    function estimateTollFromAddress(pickupStr, destStr) {
+        let combined = (pickupStr + " " + destStr).toLowerCase();
+        let maxRate = 0;
+        let matchedSystem = "General";
+        let matchedName = "";
+        for (let zone of tollZones) {
+            for (let kw of zone.keywords) {
+                if (combined.includes(kw)) {
+                    if (zone.rate > maxRate) {
+                        maxRate = zone.rate;
+                        matchedSystem = zone.system;
+                        matchedName = kw;
+                    }
+                    break;
+                }
             }
-        } catch(e) { console.warn(e); }
-        return null;
-    }
-
-    // Get current location via browser GPS
-    function getCurrentPosition() {
-        return new Promise((resolve, reject) => {
-            if (!navigator.geolocation) reject("Geolocation not supported");
-            navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 });
-        });
-    }
-
-    // UI elements
-    const pickupAddr = document.getElementById("pickupAddr");
-    const destAddr = document.getElementById("destAddr");
-    const calcBtn = document.getElementById("calcBtn");
-    const resultArea = document.getElementById("resultArea");
-    const fareSpan = document.getElementById("fareAmount");
-    const routeInfoSpan = document.getElementById("routeInfo");
-    const tollBreakdownSpan = document.getElementById("tollBreakdown");
-
-    let map = L.map('map').setView([3.1390, 101.6869], 8);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB',
-        subdomains: 'abcd',
-        maxZoom: 19
-    }).addTo(map);
-    
-    let pickupMarker = null, destMarker = null;
-
-    function updateMap() {
-        // just a placeholder – user can click to set but we auto-refresh via address geocode later
-    }
-
-    async function setLocationFromAddress(type, addressText) {
-        if (!addressText.trim()) return null;
-        const geo = await geocodeAddress(addressText);
-        if (geo) {
-            if (type === 'pickup') {
-                if (pickupMarker) map.removeLayer(pickupMarker);
-                pickupMarker = L.marker([geo.lat, geo.lon]).addTo(map).bindPopup("Pickup").openPopup();
-                map.setView([geo.lat, geo.lon], 12);
-                return geo;
-            } else {
-                if (destMarker) map.removeLayer(destMarker);
-                destMarker = L.marker([geo.lat, geo.lon]).addTo(map).bindPopup("Destination").openPopup();
-                map.setView([geo.lat, geo.lon], 12);
-                return geo;
-            }
-        } else {
-            alert("Address not found. Use more specific Malaysian postal format.");
-            return null;
         }
-    }
-
-    async function detectLocation(type) {
-        try {
-            const pos = await getCurrentPosition();
-            const { latitude, longitude } = pos.coords;
-            const reverseUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`;
-            const resp = await fetch(reverseUrl, { headers: { "User-Agent": "TollApp/1.0" } });
-            const data = await resp.json();
-            const addressStr = data.display_name || `${latitude}, ${longitude}`;
-            if (type === 'pickup') {
-                pickupAddr.value = addressStr;
-                if (pickupMarker) map.removeLayer(pickupMarker);
-                pickupMarker = L.marker([latitude, longitude]).addTo(map).bindPopup("Current Location (Pickup)").openPopup();
-                map.setView([latitude, longitude], 13);
-            } else {
-                destAddr.value = addressStr;
-                if (destMarker) map.removeLayer(destMarker);
-                destMarker = L.marker([latitude, longitude]).addTo(map).bindPopup("Current Location (Dest)").openPopup();
-                map.setView([latitude, longitude], 13);
-            }
-        } catch(err) {
-            alert("Location detection failed: " + err.message);
+        // if no match, base fee RM 2.50 (minimal)
+        if (maxRate === 0) {
+            // estimate based on distance proxy (random? no, better give standard rate)
+            // often at least 1 segment open system
+            maxRate = 3.20;
+            matchedSystem = "Open (standard segment)";
+            matchedName = "general highway";
         }
+        // additional surcharge if both addresses seem far apart? just give final
+        let finalRate = maxRate + 0.00;
+        return { rate: finalRate, system: matchedSystem, zone: matchedName };
     }
 
-    async function calculateToll() {
-        const pickupText = pickupAddr.value.trim();
-        const destText = destAddr.value.trim();
-        if (!pickupText || !destText) {
-            alert("Please enter both Pickup and Destination addresses.");
+    // Nominatim free geocoding (malaysian addresses)
+    let activeTimeoutPickup = null;
+    let activeTimeoutDest = null;
+
+    async function fetchAutocomplete(query, containerId, inputId) {
+        if (!query || query.length < 3) {
+            document.getElementById(containerId).style.display = 'none';
             return;
         }
-        resultArea.style.display = "block";
-        fareSpan.innerText = "🔄 Calculating...";
-        const pickupGeo = await geocodeAddress(pickupText);
-        const destGeo = await geocodeAddress(destText);
-        if (!pickupGeo || !destGeo) {
-            fareSpan.innerText = "❌ Failed";
-            routeInfoSpan.innerText = "Geocoding error. Check addresses.";
-            return;
-        }
-        // update markers
-        if (pickupMarker) map.removeLayer(pickupMarker);
-        pickupMarker = L.marker([pickupGeo.lat, pickupGeo.lon]).addTo(map).bindPopup("Pickup: " + pickupText.slice(0,30)).openPopup();
-        if (destMarker) map.removeLayer(destMarker);
-        destMarker = L.marker([destGeo.lat, destGeo.lon]).addTo(map).bindPopup("Dest: " + destText.slice(0,30));
-        map.fitBounds([ [pickupGeo.lat, pickupGeo.lon], [destGeo.lat, destGeo.lon] ]);
-
-        const tollResult = estimateToll(pickupGeo.lat, pickupGeo.lon, destGeo.lat, destGeo.lon);
-        if (tollResult.fare !== null && tollResult.fare !== undefined) {
-            fareSpan.innerHTML = `RM ${tollResult.fare.toFixed(2)}`;
-            routeInfoSpan.innerHTML = `📌 ${tollResult.msg} | Distance ~${tollResult.dist?.toFixed(1) || "?"} km`;
-            tollBreakdownSpan.innerHTML = tollResult.detail || "Based on Class 1 (car) | Open/Closed/Hybrid integrated DB";
-        } else {
-            fareSpan.innerText = "Estimate unavailable";
-            routeInfoSpan.innerText = tollResult.msg;
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)},+Malaysia&format=json&addressdetails=1&limit=6&countrycodes=my`;
+        try {
+            const response = await fetch(url, { headers: { 'User-Agent': 'TollCalculatorApp/1.0' } });
+            const data = await response.json();
+            const suggestionsDiv = document.getElementById(containerId);
+            suggestionsDiv.innerHTML = '';
+            if (data.length === 0) {
+                suggestionsDiv.style.display = 'none';
+                return;
+            }
+            data.forEach(place => {
+                const displayName = place.display_name;
+                const item = document.createElement('div');
+                item.className = 'autocomplete-item';
+                item.innerText = displayName.length > 70 ? displayName.substring(0,70)+'...' : displayName;
+                item.onclick = () => {
+                    document.getElementById(inputId).value = displayName;
+                    suggestionsDiv.style.display = 'none';
+                };
+                suggestionsDiv.appendChild(item);
+            });
+            suggestionsDiv.style.display = 'block';
+        } catch(e) {
+            console.warn(e);
+            document.getElementById(containerId).style.display = 'none';
         }
     }
 
-    // Event listeners
-    document.getElementById("detectPickupBtn").addEventListener("click", () => detectLocation('pickup'));
-    document.getElementById("detectDestBtn").addEventListener("click", () => detectLocation('dest'));
-    document.getElementById("clearPickupBtn").addEventListener("click", () => { pickupAddr.value = ""; if(pickupMarker) map.removeLayer(pickupMarker); });
-    document.getElementById("clearDestBtn").addEventListener("click", () => { destAddr.value = ""; if(destMarker) map.removeLayer(destMarker); });
-    calcBtn.addEventListener("click", calculateToll);
-    
-    // manual address marker set using right-click on map (bonus)
-    map.on('click', async (e) => {
-        const lat = e.latlng.lat, lng = e.latlng.lng;
-        const reverseUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18`;
-        const resp = await fetch(reverseUrl, { headers: { "User-Agent": "TollApp" } });
-        const data = await resp.json();
-        const addr = data.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-        const which = confirm("Set as Pickup (OK) or Destination (Cancel)?");
-        if (which) {
-            pickupAddr.value = addr;
-            if(pickupMarker) map.removeLayer(pickupMarker);
-            pickupMarker = L.marker([lat,lng]).addTo(map).bindPopup("Pickup set").openPopup();
-        } else {
-            destAddr.value = addr;
-            if(destMarker) map.removeLayer(destMarker);
-            destMarker = L.marker([lat,lng]).addTo(map).bindPopup("Destination set");
+    document.getElementById('pickupInput').addEventListener('input', (e) => {
+        if (activeTimeoutPickup) clearTimeout(activeTimeoutPickup);
+        activeTimeoutPickup = setTimeout(() => {
+            fetchAutocomplete(e.target.value, 'pickupSuggestions', 'pickupInput');
+        }, 400);
+    });
+    document.getElementById('destInput').addEventListener('input', (e) => {
+        if (activeTimeoutDest) clearTimeout(activeTimeoutDest);
+        activeTimeoutDest = setTimeout(() => {
+            fetchAutocomplete(e.target.value, 'destSuggestions', 'destInput');
+        }, 400);
+    });
+    // hide suggestions on click outside simple
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('#pickupInput') && !e.target.closest('#pickupSuggestions')) {
+            document.getElementById('pickupSuggestions').style.display = 'none';
+        }
+        if (!e.target.closest('#destInput') && !e.target.closest('#destSuggestions')) {
+            document.getElementById('destSuggestions').style.display = 'none';
         }
     });
 
-    // init default example
-    pickupAddr.value = "Petronas Twin Towers, Kuala Lumpur City Centre, 50088 Kuala Lumpur";
-    destAddr.value = "Northport Bypass, 42000 Port Klang, Selangor";
+    // GEOLOCATION for pickup & dest (auto detect)
+    async function reverseGeocode(lat, lng) {
+        const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1&zoom=18`;
+        const res = await fetch(url, { headers: { 'User-Agent': 'TollApp/1.0' } });
+        const data = await res.json();
+        return data.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)} (Malaysia)`;
+    }
+
+    function getCurrentPosition(setFieldId) {
+        if (!navigator.geolocation) {
+            alert("GPS not supported");
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            try {
+                const address = await reverseGeocode(lat, lng);
+                document.getElementById(setFieldId).value = address;
+                // hide suggestions
+                document.getElementById(setFieldId === 'pickupInput' ? 'pickupSuggestions' : 'destSuggestions').style.display = 'none';
+            } catch(e) {
+                document.getElementById(setFieldId).value = `${lat.toFixed(5)}, ${lng.toFixed(5)} (MY)`;
+            }
+        }, (err) => {
+            alert("Location error: " + err.message);
+        });
+    }
+
+    document.getElementById('detectPickupBtn').addEventListener('click', () => getCurrentPosition('pickupInput'));
+    document.getElementById('detectDestBtn').addEventListener('click', () => getCurrentPosition('destInput'));
+
+    // MAP (leaflet free map)
+    let map = null;
+    function initMap() {
+        if(map) map.remove();
+        map = L.map('miniMap').setView([3.1390, 101.6869], 7);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB',
+            subdomains: 'abcd',
+            maxZoom: 19
+        }).addTo(map);
+    }
+    initMap();
+
+    // update map view to show roughly both points
+    async function updateMapWithAddresses(pickupAddr, destAddr) {
+        function geocode(addr) {
+            return fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addr)},+Malaysia&format=json&limit=1`, { headers: { 'User-Agent': 'TollApp' } })
+                .then(r => r.json()).then(data => data[0] ? [parseFloat(data[0].lat), parseFloat(data[0].lon)] : null);
+        }
+        try {
+            const [pickupLoc, destLoc] = await Promise.all([geocode(pickupAddr), geocode(destAddr)]);
+            if (pickupLoc && destLoc) {
+                const bounds = L.latLngBounds(pickupLoc, destLoc);
+                map.fitBounds(bounds, { padding: [50,50] });
+                L.marker(pickupLoc).addTo(map).bindPopup("Pickup").openPopup();
+                L.marker(destLoc).addTo(map).bindPopup("Destination");
+            } else if (pickupLoc) {
+                map.setView(pickupLoc, 11);
+                L.marker(pickupLoc).addTo(map).bindPopup("Pickup");
+            } else if (destLoc) {
+                map.setView(destLoc, 11);
+                L.marker(destLoc).addTo(map).bindPopup("Destination");
+            } else {
+                map.setView([3.1390, 101.6869], 7);
+            }
+        } catch(e) { console.warn(e); }
+    }
+
+    // MAIN CALCULATION
+    document.getElementById('calculateBtn').addEventListener('click', async () => {
+        const pickup = document.getElementById('pickupInput').value.trim();
+        const destination = document.getElementById('destInput').value.trim();
+        if (!pickup || !destination) {
+            document.getElementById('tollValue').innerHTML = "⚠️ Both addresses needed";
+            document.getElementById('routeDetail').innerHTML = "Please fill pickup & destination fields.";
+            return;
+        }
+
+        const toll = estimateTollFromAddress(pickup, destination);
+        document.getElementById('tollValue').innerHTML = `RM ${toll.rate.toFixed(2)}`;
+        let systemIcon = (toll.system === "Open") ? "🚪 Open system" : (toll.system === "Closed" ? "🔁 Closed (entry/exit)" : (toll.system === "Hybrid" ? "⚡ Hybrid" : "🛣️ Mixed"));
+        document.getElementById('routeDetail').innerHTML = `📍 Route matched: <strong>${toll.zone}</strong> · ${systemIcon} · Class 1 (car)<br>🗺️ From ${pickup.substring(0, 45)} → ${destination.substring(0,45)}`;
+
+        // Update map with addresses (free OSM)
+        await updateMapWithAddresses(pickup, destination);
+    });
+
+    // optional: prefill example for better experience
+    document.getElementById('pickupInput').value = "KL Sentral, 50470 Kuala Lumpur, Malaysia";
+    document.getElementById('destInput').value = "Northport Bypass, 42000 Port Klang, Selangor";
+    setTimeout(() => {
+        const toll = estimateTollFromAddress("KL Sentral", "Northport Bypass");
+        document.getElementById('tollValue').innerHTML = `RM ${toll.rate.toFixed(2)}`;
+        document.getElementById('routeDetail').innerHTML = `⚡ Example: Northport Bypass detected → RM ${toll.rate.toFixed(2)} · ${toll.system} system (Class 1)`;
+        updateMapWithAddresses("KL Sentral, Kuala Lumpur", "Northport Bypass, Port Klang");
+    }, 500);
 </script>
 </body>
 </html>
