@@ -289,7 +289,6 @@
             font-weight: 500;
         }
 
-        /* hint text */
         .tap-hint {
             font-size: 12px;
             color: #aeaeb2;
@@ -432,7 +431,6 @@
     // Based on Malaysian highway toll rate schedule 2025
     // ========================
     const TOLL_CLASS1_DATABASE = {
-        // Major intercity / expressways - Class 1 (Private Car)
         "PLUS_NORTH_SOUTH": {
             "KLIA_to_Putrajaya": 6.50,
             "KL_to_Seremban": 9.30,
@@ -514,6 +512,8 @@
     
     // Advanced Toll Resolver using LLM-extracted data (Class 1)
     function resolveClass1Toll(pickupCoord, dropoffCoord, distanceKm, routeHasTolls, originZone, destZone) {
+        if (!routeHasTolls) return 0;
+        
         // 1. Priority: specific zone matrix match
         if (originZone && destZone) {
             const key1 = `${originZone}-${destZone}`;
