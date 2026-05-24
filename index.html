@@ -1,1307 +1,1173 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-  <meta name="description" content="Malaysia Toll Calculator 2025/2026 with Official PLUS, ANIH, and LPT2 API Integration">
-  <meta name="author" content="MY Toll Calculator">
-  <title>MY Toll Calculator 2025/2026 — Official API Integration | Class 1 Rates</title>
-  <!-- Leaflet CSS + JS for map visualization -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: 'Segoe UI', Roboto, 'Inter', system-ui, -apple-system, sans-serif;
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Rideshare MY Pro - Actual Toll System & Fare Estimator</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<style>
+*{box-sizing:border-box}
+
+body{
+    margin:0;
+    padding:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:#f8f9fa;
+    display:flex;
+    flex-direction:column;
+    height:100vh;
+    overflow:hidden;
+    color:#212529;
+}
+
+#container{
+    display:flex;
+    flex-direction:column;
+    height:100%;
+    position:relative;
+}
+
+#map{
+    height:33vh;
+    width:100%;
+    z-index:1;
+}
+
+#search-panel{
+    flex:1;
+    background:#fff;
+    padding:16px 16px 32px;
+    box-shadow:0 -4px 20px rgba(0,0,0,.08);
+    z-index:10;
+    border-top-left-radius:16px;
+    border-top-right-radius:16px;
+    display:flex;
+    flex-direction:column;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+}
+
+.routing-wrapper{
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    margin-bottom:8px;
+    margin-top:8px;
+}
+
+.input-container{
+    position:relative;
+    display:flex;
+    align-items:center;
+}
+
+input{
+    width:100%;
+    padding:12px 64px 12px 12px;
+    border:1px solid #e0e0e0;
+    border-radius:8px;
+    font-size:14px;
+    background:#f9f9f9;
+    transition:.2s;
+}
+
+#pickup{padding-right:88px}
+
+input:focus{
+    outline:none;
+    border-color:#8e24aa;
+    background:#fff;
+    box-shadow:0 0 0 2px rgba(142,36,170,.1);
+}
+
+.action-group{
+    position:absolute;
+    right:8px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    z-index:5;
+}
+
+.icon-btn{
+    border:none;
+    background:none;
+    color:#757575;
+    font-size:14px;
+    cursor:pointer;
+    padding:6px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    transition:background .2s;
+}
+
+.icon-btn:hover{
+    background:#f0f0f0;
+    color:#8e24aa;
+}
+
+.clear-btn{
+    display:none;
+    font-size:18px;
+    color:#aaa;
+}
+
+.swap-container{
+    position:absolute;
+    right:48px;
+    top:50%;
+    transform:translateY(-50%);
+    z-index:15;
+}
+
+.swap-btn{
+    background:#fff;
+    border:1px solid #e0e0e0;
+    color:#8e24aa;
+    width:28px;
+    height:28px;
+    border-radius:50%;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-shadow:0 2px 6px rgba(0,0,0,.15);
+    font-size:14px;
+}
+
+.suggestions{
+    position:absolute;
+    top:100%;
+    left:0;
+    right:0;
+    background:#fff;
+    border:1px solid #e0e0e0;
+    border-radius:8px;
+    max-height:180px;
+    overflow-y:auto;
+    z-index:1000;
+    box-shadow:0 6px 16px rgba(0,0,0,.1);
+    display:none;
+}
+
+.suggestion-item{
+    padding:12px;
+    cursor:pointer;
+    font-size:13px;
+    border-bottom:1px solid #f5f5f5;
+}
+
+.suggestion-item:hover{
+    background:#f5f5f5;
+}
+
+#result-card{
+    background:#1c1c1e;
+    color:#fff;
+    padding:16px;
+    border-radius:12px;
+    margin-top:8px;
+    margin-bottom:16px;
+    display:none;
+    box-shadow:0 4px 14px rgba(0,0,0,.15);
+}
+
+.fare-header-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:12px;
+}
+
+.fare-header{
+    font-size:42px;
+    font-weight:900;
+    color:#39ff14;
+    line-height:1;
+    text-shadow:0 0 10px rgba(57,255,20,.3);
+}
+
+.meta-distance,
+.meta-duration{
+    font-weight:700;
+}
+
+.meta-distance{
+    font-size:16px;
+    color:#fff;
+}
+
+.meta-duration{
+    font-size:14px;
+    color:#aeaeb2;
+}
+
+#invoice-details{
+    margin-top:12px;
+    border-top:1px dashed #3a3a3c;
+    padding-top:12px;
+}
+
+.detail-row{
+    display:flex;
+    justify-content:space-between;
+    font-size:15px;
+    color:#aeaeb2;
+    margin-bottom:8px;
+}
+
+.detail-row.total-bold{
+    color:#fff;
+    font-weight:600;
+    border-top:1px solid #2c2c2e;
+    padding-top:10px;
+    font-size:16px;
+}
+
+#toll-breakdown{
+    font-size:12px;
+    color:#b0b0b5;
+    margin-top:6px;
+    padding-left:4px;
+    border-left:2px solid #8e24aa;
+}
+
+#error-msg{
+    color:#ff3b30;
+    font-size:13px;
+    margin-top:8px;
+    display:none;
+    font-weight:500;
+}
+
+@media(min-width:768px){
+    #container{
+        flex-direction:row-reverse;
     }
 
-    body {
-      background: linear-gradient(135deg, #d4dfed 0%, #b8cce4 100%);
-      min-height: 100vh;
-      padding: 30px 20px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+    #map{
+        height:100%;
+        flex:1;
     }
 
-    .toll-card {
-      max-width: 1200px;
-      width: 100%;
-      background: #ffffffef;
-      backdrop-filter: blur(2px);
-      border-radius: 48px;
-      box-shadow: 0 30px 50px -20px rgba(0,0,0,0.4);
-      overflow: hidden;
-      transition: 0.3s;
+    #search-panel{
+        width:420px;
+        height:100%;
+        border-radius:0;
+        padding:24px 20px;
     }
 
-    .header {
-      background: linear-gradient(135deg, #0b2b3b 0%, #1a4a6e 100%);
-      padding: 22px 30px;
-      color: white;
+    .fare-header{
+        font-size:48px;
     }
-
-    .header h1 {
-      font-weight: 700;
-      font-size: 1.8rem;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .badge {
-      background: #ffb74d;
-      color: #1e2a32;
-      padding: 4px 12px;
-      border-radius: 40px;
-      font-size: 0.8rem;
-      font-weight: 600;
-    }
-
-    .api-status {
-      background: rgba(255,255,255,0.2);
-      border-radius: 20px;
-      padding: 4px 12px;
-      font-size: 0.7rem;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .sub {
-      opacity: 0.85;
-      font-size: 0.9rem;
-      margin-top: 8px;
-    }
-
-    .form-container {
-      padding: 28px 28px 32px;
-    }
-
-    .api-panel {
-      background: linear-gradient(135deg, #f0f7ff, #e8f0fe);
-      border-radius: 24px;
-      padding: 16px 20px;
-      margin-bottom: 24px;
-      border: 1px solid #cde0f0;
-    }
-
-    .api-selector {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      flex-wrap: wrap;
-      margin-bottom: 12px;
-    }
-
-    .api-btn {
-      background: white;
-      border: 1px solid #bdd4e8;
-      padding: 8px 16px;
-      border-radius: 40px;
-      cursor: pointer;
-      font-weight: 500;
-      transition: all 0.2s;
-    }
-
-    .api-btn.active {
-      background: #0f3b5c;
-      color: white;
-      border-color: #0f3b5c;
-    }
-
-    .api-btn:hover:not(.active) {
-      background: #e6f0fa;
-      transform: translateY(-1px);
-    }
-
-    .address-row {
-      background: #f9fafd;
-      border-radius: 32px;
-      padding: 12px 20px 20px 20px;
-      margin-bottom: 24px;
-      border: 1px solid #e6edf4;
-      transition: 0.2s;
-    }
-
-    .address-row:hover {
-      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-    }
-
-    .row-label {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-      flex-wrap: wrap;
-    }
-
-    .label-badge {
-      font-weight: 700;
-      background: #eef2fa;
-      padding: 5px 14px;
-      border-radius: 60px;
-      font-size: 0.85rem;
-      color: #1f4e7a;
-    }
-
-    .pickup-color { border-left: 4px solid #2b7e3a; }
-    .dest-color { border-left: 4px solid #c44536; }
-    
-    .detect-btn {
-      background: #e9f0f9;
-      border: none;
-      padding: 6px 14px;
-      border-radius: 30px;
-      font-size: 0.7rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: 0.1s;
-    }
-    .detect-btn:hover {
-      background: #d4e2f5;
-      transform: scale(0.98);
-    }
-
-    .input-group input {
-      width: 100%;
-      padding: 14px 18px;
-      font-size: 1rem;
-      border: 1px solid #cfdfed;
-      border-radius: 60px;
-      background: white;
-      outline: none;
-      transition: 0.2s;
-    }
-    .input-group input:focus {
-      border-color: #1e6fdf;
-      box-shadow: 0 0 0 3px rgba(30,111,223,0.2);
-    }
-
-    .autocomplete-suggestions {
-      background: white;
-      border-radius: 24px;
-      margin-top: 8px;
-      max-height: 210px;
-      overflow-y: auto;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.12);
-      position: relative;
-      z-index: 1000;
-    }
-
-    .suggestion-item {
-      padding: 10px 18px;
-      cursor: pointer;
-      border-bottom: 1px solid #edf2f9;
-      font-size: 0.85rem;
-      transition: 0.1s;
-    }
-    .suggestion-item:hover {
-      background: #eef4ff;
-    }
-
-    .action-buttons {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 14px;
-      margin: 20px 0 28px;
-      justify-content: center;
-    }
-
-    .btn {
-      border: none;
-      background: white;
-      padding: 10px 24px;
-      border-radius: 44px;
-      font-weight: 600;
-      font-size: 0.9rem;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      cursor: pointer;
-      border: 1px solid #caddec;
-      transition: 0.2s;
-    }
-    .btn-primary {
-      background: #0f3b5c;
-      color: white;
-      border: none;
-      box-shadow: 0 6px 12px -8px #0f3b5c;
-    }
-    .btn-primary:hover:not(:disabled) {
-      background: #1b5177;
-      transform: translateY(-2px);
-      box-shadow: 0 8px 16px -8px #0f3b5c;
-    }
-    .btn-primary:disabled {
-      background: #8ea3b5;
-      cursor: not-allowed;
-      opacity: 0.7;
-    }
-    .btn-secondary:hover {
-      background: #fef0e0;
-      transform: translateY(-1px);
-    }
-
-    .result-area {
-      background: linear-gradient(120deg, #eef3fc, #ffffff);
-      border-radius: 36px;
-      padding: 22px 24px;
-      text-align: center;
-      border: 1px solid #e2ebf3;
-    }
-
-    .toll-fare {
-      font-size: 2.8rem;
-      font-weight: 800;
-      color: #1a5d89;
-      background: white;
-      display: inline-block;
-      padding: 6px 28px;
-      border-radius: 70px;
-      margin: 8px 0;
-      letter-spacing: 1px;
-      box-shadow: inset 0 1px 1px #fff8, 0 6px 12px #0000000c;
-    }
-
-    .route-hint {
-      font-size: 0.85rem;
-      color: #386582;
-      margin-top: 8px;
-    }
-
-    .breakdown-link {
-      margin-top: 12px;
-      font-size: 0.75rem;
-      background: #e2edf8;
-      display: inline-block;
-      padding: 6px 16px;
-      border-radius: 30px;
-      cursor: pointer;
-      transition: 0.2s;
-    }
-    .breakdown-link:hover {
-      background: #cde0f0;
-      transform: scale(0.98);
-    }
-
-    .loading-spinner {
-      display: inline-block;
-      width: 20px;
-      height: 20px;
-      border: 3px solid rgba(255,255,255,0.3);
-      border-radius: 50%;
-      border-top-color: white;
-      animation: spin 0.8s linear infinite;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    hr {
-      margin: 18px 0;
-      border: 0;
-      height: 1px;
-      background: #cddfed;
-    }
-
-    .footer-note {
-      font-size: 0.7rem;
-      text-align: center;
-      margin-top: 18px;
-      color: #4f6f8f;
-      line-height: 1.4;
-    }
-
-    .modal-bg {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: #00000066;
-      backdrop-filter: blur(3px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 2000;
-      visibility: hidden;
-      opacity: 0;
-      transition: 0.2s;
-    }
-
-    .modal-card {
-      background: white;
-      max-width: 550px;
-      width: 90%;
-      border-radius: 40px;
-      padding: 24px;
-      box-shadow: 0 30px 40px #00000030;
-      max-height: 80vh;
-      overflow-y: auto;
-    }
-
-    .close-modal {
-      float: right;
-      font-size: 1.8rem;
-      cursor: pointer;
-      transition: 0.2s;
-    }
-    .close-modal:hover {
-      transform: scale(1.1);
-    }
-
-    .map-container {
-      margin-top: 20px;
-      border-radius: 24px;
-      overflow: hidden;
-      height: 0;
-      transition: height 0.3s;
-    }
-    .map-container.active {
-      height: 300px;
-    }
-    #routeMap {
-      height: 100%;
-      width: 100%;
-    }
-
-    @media (max-width: 768px) {
-      .toll-fare {
-        font-size: 2rem;
-      }
-      .header h1 {
-        font-size: 1.3rem;
-      }
-      .form-container {
-        padding: 20px;
-      }
-    }
-  </style>
+}
+</style>
 </head>
+
 <body>
-<div class="toll-card">
-  <div class="header">
-    <h1>
-      🛣️ Toll Fare Malaysia 
-      <span class="badge">Class 1 (2025/26)</span>
-      <span class="api-status" id="apiStatusBadge">
-        <span id="apiStatusDot">🟢</span> <span id="apiStatusText">API Ready</span>
-      </span>
-    </h1>
-    <div class="sub">✅ Official PLUS, ANIH, LPT2 rates integrated • Real-time API endpoints • OSRM routing</div>
-  </div>
-  <div class="form-container">
-    <!-- API Selection Panel -->
-    <div class="api-panel">
-      <div class="api-selector">
-        <span style="font-weight:600; font-size:0.85rem;">🔌 Select Toll API:</span>
-        <button class="api-btn active" data-api="simulated" data-provider="Official Rates DB">
-          🇲🇾 Official Rates DB
-        </button>
-        <button class="api-btn" data-api="plus" data-provider="PLUS Malaysia">
-          🛣️ PLUS Expressways
-        </button>
-        <button class="api-btn" data-api="anih" data-provider="ANIH Berhad">
-          🌄 East Coast (LPT1)
-        </button>
-        <button class="api-btn" data-api="lpt2" data-provider="LPT2">
-          🏞️ LPT2 Terengganu
-        </button>
-      </div>
-      <div style="font-size:0.7rem; color:#2c6e9e;" id="apiInfoText">
-        Using official toll rate database with weighted calculation
-      </div>
+
+<div id="container">
+
+    <div id="map"></div>
+
+    <div id="search-panel">
+
+        <div class="routing-wrapper">
+
+            <div class="input-container">
+                <input type="text" id="pickup" placeholder="Pickup location..." autocomplete="off">
+
+                <div class="action-group">
+                    <button class="icon-btn" id="current-loc-btn">🎯</button>
+                    <button class="icon-btn clear-btn" id="clear-pickup">&times;</button>
+                </div>
+
+                <div id="pickup-suggestions" class="suggestions"></div>
+            </div>
+
+            <div class="swap-container">
+                <button class="swap-btn" id="swap-locations-btn">⇅</button>
+            </div>
+
+            <div class="input-container">
+                <input type="text" id="dropoff" placeholder="Drop-off location..." autocomplete="off">
+
+                <div class="action-group">
+                    <button class="icon-btn clear-btn" id="clear-dropoff">&times;</button>
+                </div>
+
+                <div id="dropoff-suggestions" class="suggestions"></div>
+            </div>
+
+        </div>
+
+        <div id="error-msg"></div>
+
+        <div id="result-card">
+
+            <div class="fare-header-row">
+
+                <div class="fare-left-col">
+                    <div id="total-fare" class="fare-header">RM --</div>
+                </div>
+
+                <div class="fare-right-col">
+                    <span id="fare-distance" class="meta-distance">0 km</span>
+                    <span id="fare-duration" class="meta-duration">0 mins</span>
+                </div>
+
+            </div>
+
+            <div id="invoice-details">
+
+                <div class="detail-row">
+                    <span>Base Fare</span>
+                    <span id="calc-base-fare">RM 5.00</span>
+                </div>
+
+                <div class="detail-row">
+                    <span>Distance Fare</span>
+                    <span id="calc-ride-distance-rate">RM 0.00</span>
+                </div>
+
+                <div class="detail-row" id="tolls-row">
+                    <span>🚧 Toll Charges</span>
+                    <span id="calc-tolls">RM 0.00</span>
+                </div>
+
+                <div id="toll-breakdown" style="display:none;"></div>
+
+                <div class="detail-row">
+                    <span>Traffic & Incentive</span>
+                    <span id="calc-incentive">RM 0.00</span>
+                </div>
+
+                <div class="detail-row">
+                    <span>Out-of-Zone Surcharge</span>
+                    <span id="calc-deadhead-km">RM 0.00</span>
+                </div>
+
+                <div class="detail-row total-bold">
+                    <span>Rounded Final Total</span>
+                    <span id="calc-grand" style="color:#39ff14;">RM 0.00</span>
+                </div>
+
+            </div>
+
+        </div>
+
     </div>
 
-    <!-- Pickup Location -->
-    <div class="address-row pickup-color">
-      <div class="row-label">
-        <span class="label-badge">📍 PICKUP LOCATION</span>
-        <button class="detect-btn" id="detectPickupBtn">📍 Detect current location</button>
-      </div>
-      <div class="input-group">
-        <input type="text" id="pickupInput" placeholder="e.g., KL Sentral, Kuala Lumpur" autocomplete="off">
-      </div>
-      <div id="pickupSuggestions" class="autocomplete-suggestions"></div>
-    </div>
-
-    <!-- Destination -->
-    <div class="address-row dest-color">
-      <div class="row-label">
-        <span class="label-badge">🏁 DESTINATION</span>
-        <button class="detect-btn" id="detectDestBtn">📍 Use current location</button>
-      </div>
-      <div class="input-group">
-        <input type="text" id="destInput" placeholder="e.g., Penang International Airport" autocomplete="off">
-      </div>
-      <div id="destSuggestions" class="autocomplete-suggestions"></div>
-    </div>
-
-    <div class="action-buttons">
-      <button class="btn btn-secondary" id="swapBtn">🔄 Swap locations</button>
-      <button class="btn btn-secondary" id="clearBtn">🗑️ Clear / Reset</button>
-      <button class="btn btn-primary" id="calcBtn">💰 Calculate Toll</button>
-      <button class="btn btn-secondary" id="toggleMapBtn">🗺️ Show Route Map</button>
-    </div>
-
-    <div class="result-area" id="resultPanel">
-      <div style="font-weight:600;">✨ Estimated Toll — Class 1 Vehicle</div>
-      <div class="toll-fare" id="tollAmount">— RM —</div>
-      <div class="route-hint" id="routeDetail">Enter pickup & destination, or use auto-detect</div>
-      <div id="extraInfo" style="font-size:12px; margin-top:6px; color:#2e6290;"></div>
-      <div class="breakdown-link" id="showBreakdownBtn">📋 View toll plaza breakdown</div>
-    </div>
-
-    <div class="map-container" id="mapContainer">
-      <div id="routeMap"></div>
-    </div>
-
-    <div class="footer-note">
-      <strong>📢 Official Sources:</strong> PLUS Malaysia Berhad, ANIH Berhad, LPT2 Concessionaire (2025-2026 gazetted rates)<br>
-      🚗 Class 1: Private cars, taxis, pickups (2-axle, 3-4 wheels) • Routing powered by OSRM<br>
-      💡 <em>API endpoints ready: https://api.plus.com.my/v1/toll, https://api.anih.com.my/v1/rate</em>
-    </div>
-  </div>
 </div>
 
-<!-- Modal for Breakdown -->
-<div id="modal" class="modal-bg">
-  <div class="modal-card">
-    <span id="closeModalBtn" class="close-modal">&times;</span>
-    <h3 style="margin-top: 0; margin-bottom: 20px;">🧾 Toll Calculation Breakdown</h3>
-    <div id="breakdownContent" style="font-size: 0.85rem; line-height: 1.6;">Loading...</div>
-  </div>
-</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-  // ============================================================
-  // OFFICIAL TOLL DATABASE 2025/2026 - Verified Concessionaire Rates
-  // Sources: PLUS Malaysia, ANIH Berhad, LPT2, SPRINT, LDP, MEX, DUKE, NPE
-  // Last Updated: January 2026
-  // ============================================================
-  
-  const OFFICIAL_TOLL_DATA = {
-    // PLUS Highway System (North-South Expressway) - Complete segment rates
-    plus: {
-      name: "PLUS Expressways Berhad",
-      segments: [
-        { id: "JB-SEN", name: "Johor Bahru - Senai (Utara)", startKm: 0, endKm: 28, rate: 2.60, highway: "NSE" },
-        { id: "SEN-SED", name: "Senai (Utara) - Sedenak", startKm: 28, endKm: 58, rate: 3.60, highway: "NSE" },
-        { id: "SED-SRG", name: "Sedenak - Simpang Renggam", startKm: 58, endKm: 83, rate: 3.50, highway: "NSE" },
-        { id: "SRG-AH", name: "Simpang Renggam - Ayer Hitam", startKm: 83, endKm: 109, rate: 3.80, highway: "NSE" },
-        { id: "AH-YP", name: "Ayer Hitam - Yong Peng (Utara)", startKm: 109, endKm: 145, rate: 5.60, highway: "NSE" },
-        { id: "YP-PAG", name: "Yong Peng (Utara) - Pagoh", startKm: 145, endKm: 189, rate: 6.90, highway: "NSE" },
-        { id: "PAG-TGK", name: "Pagoh - Tangkak", startKm: 189, endKm: 224, rate: 5.60, highway: "NSE" },
-        { id: "TGK-AK", name: "Tangkak - Ayer Keroh", startKm: 224, endKm: 270, rate: 7.30, highway: "NSE" },
-        { id: "AK-AG", name: "Ayer Keroh - Alor Gajah", startKm: 270, endKm: 304, rate: 5.40, highway: "NSE" },
-        { id: "AG-PL", name: "Alor Gajah - Pedas Linggi", startKm: 304, endKm: 347, rate: 6.90, highway: "NSE" },
-        { id: "PL-SNW", name: "Pedas Linggi - Senawang", startKm: 347, endKm: 373, rate: 4.10, highway: "NSE" },
-        { id: "SNW-PD", name: "Senawang - Port Dickson", startKm: 373, endKm: 388, rate: 2.50, highway: "NSE" },
-        { id: "PD-SRB", name: "Port Dickson - Seremban", startKm: 388, endKm: 407, rate: 3.20, highway: "NSE" },
-        { id: "SRB-NIL", name: "Seremban - Nilai (Utara)", startKm: 407, endKm: 433, rate: 3.80, highway: "NSE" },
-        { id: "NIL-USJ", name: "Nilai (Utara) - USJ", startKm: 433, endKm: 475, rate: 6.80, highway: "NSE" },
-        { id: "USJ-SHA", name: "USJ - Shah Alam", startKm: 475, endKm: 490, rate: 2.50, highway: "NSE" },
-        { id: "SHA-JD", name: "Shah Alam - Jalan Duta", startKm: 490, endKm: 513, rate: 3.90, highway: "NSE" },
-        { id: "JD-RAW", name: "Jalan Duta - Rawang", startKm: 513, endKm: 543, rate: 4.80, highway: "NSE" },
-        { id: "RAW-TM", name: "Rawang - Tanjung Malim", startKm: 543, endKm: 603, rate: 9.60, highway: "NSE" },
-        { id: "TM-SGK", name: "Tanjung Malim - Sungkai", startKm: 603, endKm: 651, rate: 7.80, highway: "NSE" },
-        { id: "SGK-BDR", name: "Sungkai - Bidor", startKm: 651, endKm: 671, rate: 3.30, highway: "NSE" },
-        { id: "BDR-TAP", name: "Bidor - Tapah", startKm: 671, endKm: 703, rate: 5.20, highway: "NSE" },
-        { id: "TAP-GPG", name: "Tapah - Gopeng", startKm: 703, endKm: 755, rate: 8.40, highway: "NSE" },
-        { id: "GPG-IPS", name: "Gopeng - Ipoh (Selatan)", startKm: 755, endKm: 783, rate: 4.50, highway: "NSE" },
-        { id: "IPS-IPU", name: "Ipoh (Selatan) - Ipoh (Utara)", startKm: 783, endKm: 799, rate: 2.80, highway: "NSE" },
-        { id: "IPU-KK", name: "Ipoh (Utara) - Kuala Kangsar", startKm: 799, endKm: 837, rate: 6.20, highway: "NSE" },
-        { id: "KK-CJ", name: "Kuala Kangsar - Changkat Jering", startKm: 837, endKm: 877, rate: 6.50, highway: "NSE" },
-        { id: "CJ-BG", name: "Changkat Jering - Bukit Gantang", startKm: 877, endKm: 895, rate: 3.10, highway: "NSE" },
-        { id: "BG-JRU", name: "Bukit Gantang - Juru", startKm: 895, endKm: 928, rate: 5.40, highway: "NSE" },
-        { id: "JRU-SBJ", name: "Juru - Seberang Jaya", startKm: 928, endKm: 946, rate: 3.10, highway: "NSE" },
-        { id: "SBJ-SGD", name: "Seberang Jaya - Sungai Dua", startKm: 946, endKm: 966, rate: 3.40, highway: "NSE" },
-        { id: "SGD-ASS", name: "Sungai Dua - Alor Setar (Selatan)", startKm: 966, endKm: 1030, rate: 10.80, highway: "NSE" },
-        { id: "ASS-ASU", name: "Alor Setar (Selatan) - Alor Setar (Utara)", startKm: 1030, endKm: 1053, rate: 3.90, highway: "NSE" },
-        { id: "ASU-BKH", name: "Alor Setar (Utara) - Bukit Kayu Hitam", startKm: 1053, endKm: 1085, rate: 5.40, highway: "NSE" }
-      ],
-      specialTolls: [
-        { name: "Penang Bridge", rate: 7.00, type: "fixed" },
-        { name: "Butterworth-Kulim Expressway", rate: 2.50, type: "fixed" },
-        { name: "Second Link (Linkedua)", rate: 7.50, type: "fixed" }
-      ]
+
+// ==========================================================
+// MAP INIT
+// ==========================================================
+
+const map = L.map('map').setView([3.1390,101.6869],11);
+
+L.tileLayer(
+    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    { attribution:'© OpenStreetMap' }
+).addTo(map);
+
+const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0=";
+
+// ==========================================================
+// GLOBALS
+// ==========================================================
+
+let pickupMarker = null;
+let dropoffMarker = null;
+let routeLine = null;
+
+let pickupCoords = null;
+let dropoffCoords = null;
+
+let currentRouteTimeout = null;
+
+// ==========================================================
+// MALAYSIA TOLL DATABASE
+// ==========================================================
+
+const TOLL_DB = {
+
+    operators: {
+
+        PLUS:{
+            name:"PLUS Malaysia Berhad",
+            system:"Hybrid"
+        },
+
+        LITRAK:{
+            name:"Lingkaran Trans Kota",
+            system:"Open"
+        },
+
+        PROLINTAS:{
+            name:"Prolintas",
+            system:"Open"
+        },
+
+        KESAS:{
+            name:"KESAS",
+            system:"Open"
+        },
+
+        IJM:{
+            name:"IJM Expressway",
+            system:"Open"
+        },
+
+        ANIH:{
+            name:"ANIH Berhad",
+            system:"Hybrid"
+        },
+
+        LEKAS:{
+            name:"LEKAS",
+            system:"Closed"
+        },
+
+        WCE:{
+            name:"West Coast Expressway",
+            system:"Closed"
+        },
+
+        SMART:{
+            name:"SMART Tunnel",
+            system:"Hybrid"
+        }
     },
-    
-    // ANIH Berhad (East Coast Highway - LPT1)
-    anih: {
-      name: "ANIH Berhad",
-      segments: [
-        { id: "GOM-BEN", name: "Gombak - Bentong", startKm: 0, endKm: 46, rate: 6.00, highway: "LPT1" },
-        { id: "BEN-KRK", name: "Bentong - Karak", startKm: 46, endKm: 63, rate: 2.80, highway: "LPT1" },
-        { id: "KRK-LCH", name: "Karak - Lanchang", startKm: 63, endKm: 87, rate: 3.90, highway: "LPT1" },
-        { id: "LCH-TML", name: "Lanchang - Temerloh", startKm: 87, endKm: 124, rate: 6.20, highway: "LPT1" },
-        { id: "TML-CHR", name: "Temerloh - Chenor", startKm: 124, endKm: 147, rate: 4.10, highway: "LPT1" },
-        { id: "CHR-MRN", name: "Chenor - Maran", startKm: 147, endKm: 170, rate: 4.00, highway: "LPT1" },
-        { id: "MRN-SRJ", name: "Maran - Sri Jaya", startKm: 170, endKm: 215, rate: 7.20, highway: "LPT1" },
-        { id: "SRJ-KTN", name: "Sri Jaya - Kuantan", startKm: 215, endKm: 248, rate: 5.60, highway: "LPT1" }
-      ]
-    },
-    
-    // LPT2 (East Coast Highway Phase 2)
-    lpt2: {
-      name: "LPT2 Concessionaire",
-      segments: [
-        { id: "KTN-JBR", name: "Kuantan - Jabor", startKm: 0, endKm: 21, rate: 3.80, highway: "LPT2" },
-        { id: "JBR-GBG", name: "Jabor - Gambang", startKm: 21, endKm: 44, rate: 4.20, highway: "LPT2" },
-        { id: "GBG-BSG", name: "Gambang - Bukit Segumpal", startKm: 44, endKm: 78, rate: 6.10, highway: "LPT2" },
-        { id: "BSG-CHJ", name: "Bukit Segumpal - Cheneh Jaya", startKm: 78, endKm: 112, rate: 5.90, highway: "LPT2" },
-        { id: "CHJ-KTG", name: "Cheneh Jaya - Kuala Terengganu", startKm: 112, endKm: 158, rate: 8.40, highway: "LPT2" }
-      ]
-    }
-  };
 
-  // Major interchanges with coordinates for distance calculation
-  const INTERCHANGES = {
-    // PLUS Interchanges
-    "Johor Bahru": { lat: 1.4927, lng: 103.7414, highway: "plus", km: 0 },
-    "Senai Utara": { lat: 1.6003, lng: 103.6356, highway: "plus", km: 28 },
-    "Sedenak": { lat: 1.7119, lng: 103.5274, highway: "plus", km: 58 },
-    "Simpang Renggam": { lat: 1.8275, lng: 103.2850, highway: "plus", km: 83 },
-    "Ayer Hitam": { lat: 1.9215, lng: 103.1810, highway: "plus", km: 109 },
-    "Yong Peng Utara": { lat: 2.0111, lng: 103.0663, highway: "plus", km: 145 },
-    "Pagoh": { lat: 2.1451, lng: 102.7736, highway: "plus", km: 189 },
-    "Tangkak": { lat: 2.2686, lng: 102.5398, highway: "plus", km: 224 },
-    "Ayer Keroh": { lat: 2.2663, lng: 102.2865, highway: "plus", km: 270 },
-    "Alor Gajah": { lat: 2.3808, lng: 102.2091, highway: "plus", km: 304 },
-    "Pedas Linggi": { lat: 2.5757, lng: 101.9909, highway: "plus", km: 347 },
-    "Senawang": { lat: 2.6964, lng: 101.9847, highway: "plus", km: 373 },
-    "Seremban": { lat: 2.7297, lng: 101.9381, highway: "plus", km: 407 },
-    "Nilai Utara": { lat: 2.8518, lng: 101.8000, highway: "plus", km: 433 },
-    "USJ": { lat: 3.0386, lng: 101.5818, highway: "plus", km: 475 },
-    "Shah Alam": { lat: 3.0738, lng: 101.5185, highway: "plus", km: 490 },
-    "Jalan Duta": { lat: 3.1739, lng: 101.6682, highway: "plus", km: 513 },
-    "Rawang": { lat: 3.3214, lng: 101.5773, highway: "plus", km: 543 },
-    "Tanjung Malim": { lat: 3.6964, lng: 101.5238, highway: "plus", km: 603 },
-    "Sungkai": { lat: 4.0024, lng: 101.3072, highway: "plus", km: 651 },
-    "Bidor": { lat: 4.1162, lng: 101.2897, highway: "plus", km: 671 },
-    "Tapah": { lat: 4.2047, lng: 101.2682, highway: "plus", km: 703 },
-    "Gopeng": { lat: 4.4766, lng: 101.1652, highway: "plus", km: 755 },
-    "Ipoh Selatan": { lat: 4.5614, lng: 101.0936, highway: "plus", km: 783 },
-    "Ipoh Utara": { lat: 4.6276, lng: 101.1143, highway: "plus", km: 799 },
-    "Kuala Kangsar": { lat: 4.7688, lng: 100.9402, highway: "plus", km: 837 },
-    "Changkat Jering": { lat: 4.7937, lng: 100.7277, highway: "plus", km: 877 },
-    "Bukit Gantang": { lat: 4.9439, lng: 100.6855, highway: "plus", km: 895 },
-    "Juru": { lat: 5.3135, lng: 100.4275, highway: "plus", km: 928 },
-    "Seberang Jaya": { lat: 5.3993, lng: 100.3889, highway: "plus", km: 946 },
-    "Sungai Dua": { lat: 5.4434, lng: 100.4014, highway: "plus", km: 966 },
-    "Alor Setar Selatan": { lat: 6.0906, lng: 100.3695, highway: "plus", km: 1030 },
-    "Alor Setar Utara": { lat: 6.1499, lng: 100.3658, highway: "plus", km: 1053 },
-    "Bukit Kayu Hitam": { lat: 6.0270, lng: 100.4305, highway: "plus", km: 1085 },
-    
-    // ANIH Interchanges
-    "Gombak": { lat: 3.2759, lng: 101.7157, highway: "anih", km: 0 },
-    "Bentong": { lat: 3.5227, lng: 101.9053, highway: "anih", km: 46 },
-    "Karak": { lat: 3.4143, lng: 102.0389, highway: "anih", km: 63 },
-    "Lanchang": { lat: 3.4885, lng: 102.2140, highway: "anih", km: 87 },
-    "Temerloh": { lat: 3.4504, lng: 102.4170, highway: "anih", km: 124 },
-    "Maran": { lat: 3.5866, lng: 102.7699, highway: "anih", km: 170 },
-    "Kuantan": { lat: 3.8245, lng: 103.3261, highway: "anih", km: 248 },
-    
-    // LPT2 Interchanges
-    "Jabor": { lat: 3.8434, lng: 103.2392, highway: "lpt2", km: 21 },
-    "Gambang": { lat: 3.7082, lng: 103.0839, highway: "lpt2", km: 44 },
-    "Bukit Segumpal": { lat: 4.0087, lng: 103.0570, highway: "lpt2", km: 78 },
-    "Kuala Terengganu": { lat: 5.3302, lng: 103.1425, highway: "lpt2", km: 158 }
-  };
+    highways: {
 
-  let currentAPI = "simulated";
-  let currentProvider = "Official Rates DB";
-  let pickupCoord = null;
-  let destCoord = null;
-  let lastCalculation = null;
-  let map = null;
-  let mapInitialized = false;
-  let mapVisible = false;
+        NSE:{
+            operator:"PLUS",
+            name:"North South Expressway",
+            system:"Closed",
+            ratePerKm:0.114
+        },
 
-  // ============================================================
-  // TOLL API SERVICE LAYER
-  // Ready for real API integration with proper endpoints
-  // ============================================================
-  
-  class TollAPI {
-    
-    // Calculate using PLUS Malaysia official API (Ready for integration)
-    static async calculatePLUS(startLat, startLng, endLat, endLng) {
-      // Find nearest interchanges
-      const startInterchange = this.findNearestInterchange(startLat, startLng, "plus");
-      const endInterchange = this.findNearestInterchange(endLat, endLng, "plus");
-      
-      if (!startInterchange || !endInterchange) {
-        // Fallback to distance-based estimation
-        const distance = await this.getRouteDistance(startLat, startLng, endLat, endLng);
-        return {
-          fare: Math.round(distance * 0.128 * 100) / 100,
-          distance: distance,
-          segments: [{ name: "Estimated PLUS route", distance: distance, fare: distance * 0.128 }],
-          source: "PLUS API (Estimated)",
-          apiEndpoint: "https://api.plus.com.my/v1/toll/calculate"
-        };
-      }
-      
-      let totalFare = 0;
-      const segmentsUsed = [];
-      const startKm = startInterchange.km;
-      const endKm = endInterchange.km;
-      
-      for (const segment of OFFICIAL_TOLL_DATA.plus.segments) {
-        const segStart = segment.startKm;
-        const segEnd = segment.endKm;
-        
-        if ((startKm <= segEnd && endKm >= segStart) || 
-            (endKm <= segEnd && startKm >= segStart)) {
-          const overlapStart = Math.max(startKm, segStart);
-          const overlapEnd = Math.min(endKm, segEnd);
-          if (overlapEnd > overlapStart) {
-            const segmentLength = segEnd - segStart;
-            const overlapLength = overlapEnd - overlapStart;
-            const proratedFare = (segment.rate * (overlapLength / segmentLength));
-            totalFare += proratedFare;
-            segmentsUsed.push({
-              name: segment.name,
-              distance: Math.round(overlapLength * 10) / 10,
-              fare: Math.round(proratedFare * 100) / 100,
-              highway: segment.highway
-            });
-          }
+        ELITE:{
+            operator:"PLUS",
+            name:"ELITE",
+            system:"Closed",
+            ratePerKm:0.105
+        },
+
+        LEKAS:{
+            operator:"LEKAS",
+            name:"LEKAS Highway",
+            system:"Closed",
+            ratePerKm:0.13
+        },
+
+        LDP:{
+            operator:"LITRAK",
+            name:"LDP",
+            system:"Open",
+            fixedClass1:2.10
+        },
+
+        SPRINT:{
+            operator:"PROLINTAS",
+            name:"SPRINT",
+            system:"Open",
+            fixedClass1:2.50
+        },
+
+        AKLEH:{
+            operator:"PROLINTAS",
+            name:"AKLEH",
+            system:"Open",
+            fixedClass1:2.50
+        },
+
+        DUKE:{
+            operator:"PROLINTAS",
+            name:"DUKE",
+            system:"Open",
+            fixedClass1:2.50
+        },
+
+        DASH:{
+            operator:"PROLINTAS",
+            name:"DASH",
+            system:"Open",
+            fixedClass1:1.90
+        },
+
+        SUKE:{
+            operator:"PROLINTAS",
+            name:"SUKE",
+            system:"Open",
+            fixedClass1:2.30
+        },
+
+        KESAS:{
+            operator:"KESAS",
+            name:"KESAS",
+            system:"Open",
+            fixedClass1:2.30
+        },
+
+        NPE:{
+            operator:"IJM",
+            name:"NPE",
+            system:"Open",
+            fixedClass1:2.00
+        },
+
+        BESRAYA:{
+            operator:"IJM",
+            name:"BESRAYA",
+            system:"Open",
+            fixedClass1:2.20
+        },
+
+        SMART:{
+            operator:"SMART",
+            name:"SMART Tunnel",
+            system:"Hybrid",
+            peak:4.00,
+            offpeak:3.00
+        },
+
+        LPT1:{
+            operator:"ANIH",
+            name:"LPT1",
+            system:"Closed",
+            ratePerKm:0.13
+        },
+
+        WCE:{
+            operator:"WCE",
+            name:"West Coast Expressway",
+            system:"Closed",
+            ratePerKm:0.16
         }
-      }
-      
-      // Add special tolls if applicable
-      const routeDistance = Math.abs(endKm - startKm);
-      if (routeDistance > 200 && (startKm < 928 || endKm < 928)) {
-        totalFare += 7.00;
-        segmentsUsed.push({ name: "Penang Bridge", distance: 0, fare: 7.00, highway: "Bridge" });
-      }
-      
-      return {
-        fare: Math.round(totalFare * 100) / 100,
-        distance: routeDistance,
-        segments: segmentsUsed,
-        source: "PLUS Malaysia API",
-        apiEndpoint: "https://api.plus.com.my/v1/toll/calculate"
-      };
     }
-    
-    // Calculate using ANIH Berhad API (Ready for integration)
-    static async calculateANIH(startLat, startLng, endLat, endLng) {
-      const startInterchange = this.findNearestInterchange(startLat, startLng, "anih");
-      const endInterchange = this.findNearestInterchange(endLat, endLng, "anih");
-      
-      if (!startInterchange || !endInterchange) {
-        const distance = await this.getRouteDistance(startLat, startLng, endLat, endLng);
-        return {
-          fare: Math.round(distance * 0.135 * 100) / 100,
-          distance: distance,
-          segments: [{ name: "Estimated LPT1 route", distance: distance, fare: distance * 0.135 }],
-          source: "ANIH API (Estimated)",
-          apiEndpoint: "https://api.anih.com.my/v1/rate"
-        };
-      }
-      
-      let totalFare = 0;
-      const segmentsUsed = [];
-      const startKm = startInterchange.km;
-      const endKm = endInterchange.km;
-      
-      for (const segment of OFFICIAL_TOLL_DATA.anih.segments) {
-        const segStart = segment.startKm;
-        const segEnd = segment.endKm;
-        
-        if ((startKm <= segEnd && endKm >= segStart) || 
-            (endKm <= segEnd && startKm >= segStart)) {
-          const overlapStart = Math.max(startKm, segStart);
-          const overlapEnd = Math.min(endKm, segEnd);
-          if (overlapEnd > overlapStart) {
-            const segmentLength = segEnd - segStart;
-            const overlapLength = overlapEnd - overlapStart;
-            const proratedFare = (segment.rate * (overlapLength / segmentLength));
-            totalFare += proratedFare;
-            segmentsUsed.push({
-              name: segment.name,
-              distance: Math.round(overlapLength * 10) / 10,
-              fare: Math.round(proratedFare * 100) / 100,
-              highway: segment.highway
-            });
-          }
-        }
-      }
-      
-      return {
-        fare: Math.round(totalFare * 100) / 100,
-        distance: Math.abs(endKm - startKm),
-        segments: segmentsUsed,
-        source: "ANIH Berhad API",
-        apiEndpoint: "https://api.anih.com.my/v1/rate"
-      };
+};
+
+// ==========================================================
+// REGIONAL BOUNDS
+// ==========================================================
+
+const REGIONAL_BOUNDS = {
+
+    klangKapar:[3.00,101.35,3.18,101.52],
+
+    johorBahru:[1.40,103.60,1.60,103.85],
+
+    genting:[3.35,101.75,3.45,101.85],
+
+    kelantan:[5.90,102.10,6.30,102.40],
+
+    bangiKajang:[2.90,101.70,3.02,101.85],
+
+    puncakPerdana:[3.10,101.45,3.16,101.55],
+
+    klCenter:[3.10,101.65,3.17,101.75],
+
+    damansara:[3.11,101.58,3.17,101.65],
+
+    seremban:[2.65,101.85,2.78,102.00]
+};
+
+// ==========================================================
+// HELPERS
+// ==========================================================
+
+function inBoundingBox(coords,bbox){
+
+    if(!coords) return false;
+
+    return (
+        coords.lat >= bbox[0] &&
+        coords.lon >= bbox[1] &&
+        coords.lat <= bbox[2] &&
+        coords.lon <= bbox[3]
+    );
+}
+
+function getActiveZonesForCoords(coords){
+
+    if(!coords) return [];
+
+    return Object.keys(REGIONAL_BOUNDS)
+        .filter(zone => inBoundingBox(coords,REGIONAL_BOUNDS[zone]));
+}
+
+// ==========================================================
+// ACTUAL TOLL ENGINE
+// ==========================================================
+
+function calculateActualToll(
+    pickup,
+    dropoff,
+    distanceKm,
+    routeHasTolls
+){
+
+    let total = 0;
+    let breakdown = [];
+
+    if(!routeHasTolls){
+        return { total:0, breakdown:[] };
     }
-    
-    // Calculate using LPT2 API (Ready for integration)
-    static async calculateLPT2(startLat, startLng, endLat, endLng) {
-      const startInterchange = this.findNearestInterchange(startLat, startLng, "lpt2");
-      const endInterchange = this.findNearestInterchange(endLat, endLng, "lpt2");
-      
-      if (!startInterchange || !endInterchange) {
-        const distance = await this.getRouteDistance(startLat, startLng, endLat, endLng);
-        return {
-          fare: Math.round(distance * 0.132 * 100) / 100,
-          distance: distance,
-          segments: [{ name: "Estimated LPT2 route", distance: distance, fare: distance * 0.132 }],
-          source: "LPT2 API (Estimated)",
-          apiEndpoint: "https://api.lpt2.com.my/v1/toll"
-        };
-      }
-      
-      let totalFare = 0;
-      const segmentsUsed = [];
-      const startKm = startInterchange.km;
-      const endKm = endInterchange.km;
-      
-      for (const segment of OFFICIAL_TOLL_DATA.lpt2.segments) {
-        const segStart = segment.startKm;
-        const segEnd = segment.endKm;
-        
-        if ((startKm <= segEnd && endKm >= segStart) || 
-            (endKm <= segEnd && startKm >= segStart)) {
-          const overlapStart = Math.max(startKm, segStart);
-          const overlapEnd = Math.min(endKm, segEnd);
-          if (overlapEnd > overlapStart) {
-            const segmentLength = segEnd - segStart;
-            const overlapLength = overlapEnd - overlapStart;
-            const proratedFare = (segment.rate * (overlapLength / segmentLength));
-            totalFare += proratedFare;
-            segmentsUsed.push({
-              name: segment.name,
-              distance: Math.round(overlapLength * 10) / 10,
-              fare: Math.round(proratedFare * 100) / 100,
-              highway: segment.highway
-            });
-          }
-        }
-      }
-      
-      return {
-        fare: Math.round(totalFare * 100) / 100,
-        distance: Math.abs(endKm - startKm),
-        segments: segmentsUsed,
-        source: "LPT2 API",
-        apiEndpoint: "https://api.lpt2.com.my/v1/toll"
-      };
-    }
-    
-    // Find nearest interchange to given coordinates
-    static findNearestInterchange(lat, lng, highway = null) {
-      let nearest = null;
-      let minDistance = Infinity;
-      
-      for (const [name, data] of Object.entries(INTERCHANGES)) {
-        if (highway && data.highway !== highway) continue;
-        
-        const distance = Math.sqrt(
-          Math.pow(data.lat - lat, 2) + 
-          Math.pow(data.lng - lng, 2)
+
+    const originZones = getActiveZonesForCoords(pickup);
+    const destZones = getActiveZonesForCoords(dropoff);
+
+    const isLongDistance = distanceKm > 45;
+
+    // ======================================================
+    // CLOSED SYSTEM
+    // ======================================================
+
+    if(isLongDistance){
+
+        let highway = TOLL_DB.highways.NSE;
+
+        let toll = distanceKm * highway.ratePerKm;
+
+        toll = Math.max(1.80,toll);
+
+        total += toll;
+
+        breakdown.push(
+            `${highway.name} (${highway.system}) - RM ${toll.toFixed(2)}`
         );
-        
-        if (distance < minDistance) {
-          minDistance = distance;
-          nearest = { ...data, name };
-        }
-      }
-      
-      return nearest;
-    }
-    
-    // Get route distance using OSRM (Open Source Routing Machine)
-    static async getRouteDistance(startLat, startLng, endLat, endLng) {
-      try {
-        const url = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?overview=full&geometries=geojson`;
-        const response = await fetch(url);
-        const data = await response.json();
-        
-        if (data.routes && data.routes[0]) {
-          // Store route geometry for map display
-          if (data.routes[0].geometry) {
-            window.lastRouteGeometry = data.routes[0].geometry;
-          }
-          // Convert meters to kilometers
-          return data.routes[0].distance / 1000;
-        }
-      } catch (error) {
-        console.warn("OSRM failed, using straight-line distance:", error);
-      }
-      
-      // Fallback to straight-line distance with road factor (Haversine formula)
-      const R = 6371;
-      const dLat = (endLat - startLat) * Math.PI / 180;
-      const dLng = (endLng - startLng) * Math.PI / 180;
-      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos(startLat * Math.PI/180) * Math.cos(endLat * Math.PI/180) *
-                Math.sin(dLng/2) * Math.sin(dLng/2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      const straightDist = R * c;
-      
-      // Apply road factor based on distance (1.25 for short, 1.15 for long)
-      const roadFactor = straightDist < 50 ? 1.25 : (straightDist < 200 ? 1.2 : 1.15);
-      return straightDist * roadFactor;
-    }
-    
-    // Simulated calculation using official rates database
-    static async calculateSimulated(startLat, startLng, endLat, endLng) {
-      const distance = await this.getRouteDistance(startLat, startLng, endLat, endLng);
-      
-      // Determine which highway system based on coordinates
-      let baseRate = 0.128; // Default PLUS rate
-      let source = "Official Rates Database";
-      
-      // Check if route is primarily East Coast
-      const startInterchange = this.findNearestInterchange(startLat, startLng);
-      const endInterchange = this.findNearestInterchange(endLat, endLng);
-      
-      if (startInterchange?.highway === "anih" || endInterchange?.highway === "anih") {
-        baseRate = 0.135;
-        source = "Official Rates DB (LPT1)";
-      } else if (startInterchange?.highway === "lpt2" || endInterchange?.highway === "lpt2") {
-        baseRate = 0.132;
-        source = "Official Rates DB (LPT2)";
-      }
-      
-      let fare = distance * baseRate;
-      
-      // Add special tolls
-      if (distance > 200) fare += 7.00; // Penang Bridge
-      if (distance > 300 && (startInterchange?.highway === "anih" || endInterchange?.highway === "anih")) {
-        fare += 6.00; // Gombak toll for East Coast
-      }
-      
-      fare = Math.round(fare * 100) / 100;
-      
-      return {
-        fare: fare,
-        distance: Math.round(distance * 10) / 10,
-        segments: [{ 
-          name: `${source} calculation`, 
-          distance: distance, 
-          fare: fare,
-          rate: baseRate 
-        }],
-        source: source,
-        apiEndpoint: "local"
-      };
-    }
-  }
 
-  // ============================================================
-  // UI HANDLERS AND EVENT LISTENERS
-  // ============================================================
-  
-  // API selector buttons
-  document.querySelectorAll('.api-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.api-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentAPI = btn.dataset.api;
-      currentProvider = btn.dataset.provider;
-      
-      const apiInfo = {
-        simulated: "Using official toll rate database with weighted calculation • Includes all concessionaires",
-        plus: "PLUS Malaysia API • North-South Expressway rates • 35 segments from JB to Bukit Kayu Hitam",
-        anih: "ANIH Berhad API • East Coast Highway (LPT1) rates • Gombak to Kuantan",
-        lpt2: "LPT2 API • East Coast Highway Phase 2 • Kuantan to Kuala Terengganu"
-      };
-      document.getElementById('apiInfoText').innerHTML = apiInfo[currentAPI];
-      document.getElementById('apiStatusText').innerHTML = `${currentProvider} Ready`;
-    });
-  });
-  
-  // Geocoding and Autocomplete
-  let pickupTimeout, destTimeout;
-  const pickupInput = document.getElementById('pickupInput');
-  const destInput = document.getElementById('destInput');
-  const pickupSuggest = document.getElementById('pickupSuggestions');
-  const destSuggest = document.getElementById('destSuggestions');
-  
-  async function fetchSuggestions(query, container, isPickup) {
-    if (!query || query.length < 2) {
-      container.innerHTML = '';
-      return;
-    }
-    
-    try {
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}+Malaysia&format=json&limit=5&addressdetails=1&countrycodes=my`;
-      const response = await fetch(url, {
-        headers: { 'User-Agent': 'MY-Toll-Calculator/2.0' }
-      });
-      const data = await response.json();
-      container.innerHTML = '';
-      
-      data.forEach(place => {
-        const div = document.createElement('div');
-        div.className = 'suggestion-item';
-        div.innerText = place.display_name.substring(0, 70);
-        div.onclick = () => {
-          const input = isPickup ? pickupInput : destInput;
-          input.value = place.display_name;
-          container.innerHTML = '';
-          
-          const coord = {
-            lat: parseFloat(place.lat),
-            lng: parseFloat(place.lon)
-          };
-          
-          if (isPickup) pickupCoord = coord;
-          else destCoord = coord;
-        };
-        container.appendChild(div);
-      });
-    } catch (error) {
-      console.error("Geocoding error:", error);
-      container.innerHTML = '';
-    }
-  }
-  
-  pickupInput.addEventListener('input', (e) => {
-    clearTimeout(pickupTimeout);
-    pickupTimeout = setTimeout(() => fetchSuggestions(e.target.value, pickupSuggest, true), 300);
-  });
-  
-  destInput.addEventListener('input', (e) => {
-    clearTimeout(destTimeout);
-    destTimeout = setTimeout(() => fetchSuggestions(e.target.value, destSuggest, false), 300);
-  });
-  
-  // Click outside to close suggestions
-  document.addEventListener('click', (e) => {
-    if (!pickupSuggest.contains(e.target) && e.target !== pickupInput) {
-      pickupSuggest.innerHTML = '';
-    }
-    if (!destSuggest.contains(e.target) && e.target !== destInput) {
-      destSuggest.innerHTML = '';
-    }
-  });
-  
-  // Geolocation detection
-  function detectLocation(inputField, isPickup) {
-    if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser");
-      return;
-    }
-    
-    const statusMsg = document.createElement('div');
-    statusMsg.style.fontSize = '0.7rem';
-    statusMsg.style.color = '#1f4e7a';
-    statusMsg.style.marginTop = '5px';
-    statusMsg.innerHTML = '📍 Detecting location...';
-    inputField.parentNode.appendChild(statusMsg);
-    
-    navigator.geolocation.getCurrentPosition(async (position) => {
-      const { latitude, longitude } = position.coords;
-      
-      try {
-        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=16`, {
-          headers: { 'User-Agent': 'MY-Toll-Calculator/2.0' }
-        });
-        const data = await response.json();
-        inputField.value = data.display_name || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-        
-        const coord = { lat: latitude, lng: longitude };
-        if (isPickup) pickupCoord = coord;
-        else destCoord = coord;
-        
-        statusMsg.innerHTML = '✅ Location detected successfully';
-        setTimeout(() => statusMsg.remove(), 2000);
-      } catch (error) {
-        inputField.value = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-        const coord = { lat: latitude, lng: longitude };
-        if (isPickup) pickupCoord = coord;
-        else destCoord = coord;
-        
-        statusMsg.innerHTML = '✅ Location detected (approximate)';
-        setTimeout(() => statusMsg.remove(), 2000);
-      }
-    }, (error) => {
-      statusMsg.innerHTML = '❌ Location detection failed. Please check permissions.';
-      setTimeout(() => statusMsg.remove(), 3000);
-      console.error("Geolocation error:", error);
-    });
-  }
-  
-  document.getElementById('detectPickupBtn').onclick = () => detectLocation(pickupInput, true);
-  document.getElementById('detectDestBtn').onclick = () => detectLocation(destInput, false);
-  
-  // Swap locations
-  document.getElementById('swapBtn').onclick = () => {
-    const tempValue = pickupInput.value;
-    const tempCoord = pickupCoord;
-    pickupInput.value = destInput.value;
-    destInput.value = tempValue;
-    pickupCoord = destCoord;
-    destCoord = tempCoord;
-    
-    // Clear results on swap
-    document.getElementById('tollAmount').innerHTML = '— RM —';
-    document.getElementById('routeDetail').innerHTML = 'Locations swapped. Click Calculate.';
-  };
-  
-  // Clear all
-  document.getElementById('clearBtn').onclick = () => {
-    pickupInput.value = '';
-    destInput.value = '';
-    pickupCoord = null;
-    destCoord = null;
-    document.getElementById('tollAmount').innerHTML = '— RM —';
-    document.getElementById('routeDetail').innerHTML = 'Enter pickup & destination, or use auto-detect';
-    document.getElementById('extraInfo').innerHTML = '';
-    lastCalculation = null;
-    
-    // Clear map if visible
-    if (mapVisible && map) {
-      document.getElementById('mapContainer').classList.remove('active');
-      mapVisible = false;
-      document.getElementById('toggleMapBtn').innerHTML = '🗺️ Show Route Map';
-    }
-  };
-  
-  // Toggle map
-  document.getElementById('toggleMapBtn').onclick = () => {
-    const mapContainer = document.getElementById('mapContainer');
-    const toggleBtn = document.getElementById('toggleMapBtn');
-    
-    if (!mapVisible) {
-      mapContainer.classList.add('active');
-      toggleBtn.innerHTML = '🗺️ Hide Route Map';
-      mapVisible = true;
-      
-      // Initialize map if needed
-      if (!mapInitialized) {
-        map = L.map('routeMap').setView([4.2105, 101.9758], 7);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; CartoDB'
-        }).addTo(map);
-        mapInitialized = true;
-      }
-      
-      // Show route if we have coordinates
-      if (pickupCoord && destCoord && lastCalculation) {
-        showRouteOnMap(pickupCoord, destCoord);
-      }
-    } else {
-      mapContainer.classList.remove('active');
-      toggleBtn.innerHTML = '🗺️ Show Route Map';
-      mapVisible = false;
-    }
-  };
-  
-  // Show route on map
-  async function showRouteOnMap(start, end) {
-    if (!map || !mapVisible) return;
-    
-    try {
-      const url = `https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`;
-      const response = await fetch(url);
-      const data = await response.json();
-      
-      if (data.routes && data.routes[0] && data.routes[0].geometry) {
-        // Remove existing layers
-        map.eachLayer(layer => {
-          if (layer instanceof L.Polyline) {
-            map.removeLayer(layer);
-          }
-        });
-        
-        const route = data.routes[0].geometry;
-        const routeLayer = L.geoJSON(route, {
-          style: { color: '#1a5d89', weight: 4, opacity: 0.8 }
-        }).addTo(map);
-        
-        // Add markers
-        L.marker([start.lat, start.lng], { 
-          title: 'Pickup',
-          icon: L.divIcon({ className: 'custom-marker', html: '📍', iconSize: [20, 20] })
-        }).addTo(map);
-        
-        L.marker([end.lat, end.lng], {
-          title: 'Destination',
-          icon: L.divIcon({ className: 'custom-marker', html: '🏁', iconSize: [20, 20] })
-        }).addTo(map);
-        
-        // Fit bounds to route
-        const bounds = routeLayer.getBounds();
-        map.fitBounds(bounds, { padding: [50, 50] });
-      }
-    } catch (error) {
-      console.error("Map routing error:", error);
-    }
-  }
-  
-  // Calculate toll
-  document.getElementById('calcBtn').onclick = async () => {
-    const calcBtn = document.getElementById('calcBtn');
-    const originalText = calcBtn.innerHTML;
-    calcBtn.innerHTML = '<div class="loading-spinner"></div> Calculating...';
-    calcBtn.disabled = true;
-    
-    try {
-      let startCoord = pickupCoord;
-      let endCoord = destCoord;
-      
-      // Geocode if coordinates not available
-      if (!startCoord && pickupInput.value) {
-        const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(pickupInput.value)}+Malaysia&format=json&limit=1`, {
-          headers: { 'User-Agent': 'MY-Toll-Calculator/2.0' }
-        });
-        const data = await response.json();
-        if (data.length) {
-          startCoord = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-          pickupCoord = startCoord;
+        // LEKAS
+
+        if(
+            originZones.includes("bangiKajang") ||
+            destZones.includes("bangiKajang")
+        ){
+
+            let lekas = TOLL_DB.highways.LEKAS;
+
+            let lekasToll =
+                distanceKm * lekas.ratePerKm * 0.35;
+
+            total += lekasToll;
+
+            breakdown.push(
+                `${lekas.name} (${lekas.system}) - RM ${lekasToll.toFixed(2)}`
+            );
         }
-      }
-      
-      if (!endCoord && destInput.value) {
-        const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(destInput.value)}+Malaysia&format=json&limit=1`, {
-          headers: { 'User-Agent': 'MY-Toll-Calculator/2.0' }
-        });
-        const data = await response.json();
-        if (data.length) {
-          endCoord = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-          destCoord = endCoord;
+    }
+
+    // ======================================================
+    // OPEN SYSTEM
+    // ======================================================
+
+    const urbanTrip = distanceKm <= 40;
+
+    if(urbanTrip){
+
+        // LDP
+
+        if(
+            originZones.includes("puncakPerdana") ||
+            destZones.includes("puncakPerdana")
+        ){
+
+            total += TOLL_DB.highways.LDP.fixedClass1;
+
+            breakdown.push(
+                `LDP Open Toll - RM ${TOLL_DB.highways.LDP.fixedClass1.toFixed(2)}`
+            );
         }
-      }
-      
-      if (!startCoord || !endCoord) {
-        alert("Please select valid locations from the suggestions or use location detection");
-        return;
-      }
-      
-      // Calculate using selected API
-      let result;
-      switch(currentAPI) {
-        case "plus":
-          result = await TollAPI.calculatePLUS(startCoord.lat, startCoord.lng, endCoord.lat, endCoord.lng);
-          break;
-        case "anih":
-          result = await TollAPI.calculateANIH(startCoord.lat, startCoord.lng, endCoord.lat, endCoord.lng);
-          break;
-        case "lpt2":
-          result = await TollAPI.calculateLPT2(startCoord.lat, startCoord.lng, endCoord.lat, endCoord.lng);
-          break;
-        default:
-          result = await TollAPI.calculateSimulated(startCoord.lat, startCoord.lng, endCoord.lat, endCoord.lng);
-      }
-      
-      if (result.error) {
-        alert(result.error);
-        return;
-      }
-      
-      // Update UI
-      document.getElementById('tollAmount').innerHTML = `RM ${result.fare.toFixed(2)}`;
-      document.getElementById('routeDetail').innerHTML = `📏 ${result.distance.toFixed(1)} km • Class 1 • ${result.source}`;
-      document.getElementById('extraInfo').innerHTML = `✅ Verified 2025/2026 rates • ${result.segments.length} toll segment(s) • ${result.apiEndpoint !== 'local' ? 'API: ' + result.apiEndpoint : 'Official Rates DB'}`;
-      
-      lastCalculation = {
-        breakdown: result.segments,
-        distance: result.distance,
-        fare: result.fare,
-        source: result.source
-      };
-      
-      // Update map if visible
-      if (mapVisible && mapInitialized) {
-        await showRouteOnMap(startCoord, endCoord);
-      }
-      
-    } catch (error) {
-      console.error("Calculation error:", error);
-      alert("Error calculating toll. Please try again.");
-    } finally {
-      calcBtn.innerHTML = originalText;
-      calcBtn.disabled = false;
+
+        // SPRINT
+
+        if(
+            originZones.includes("damansara") ||
+            destZones.includes("damansara")
+        ){
+
+            total += TOLL_DB.highways.SPRINT.fixedClass1;
+
+            breakdown.push(
+                `SPRINT Open Toll - RM ${TOLL_DB.highways.SPRINT.fixedClass1.toFixed(2)}`
+            );
+        }
+
+        // KESAS
+
+        if(
+            originZones.includes("klangKapar") ||
+            destZones.includes("klangKapar")
+        ){
+
+            total += TOLL_DB.highways.KESAS.fixedClass1;
+
+            breakdown.push(
+                `KESAS Open Toll - RM ${TOLL_DB.highways.KESAS.fixedClass1.toFixed(2)}`
+            );
+        }
+
+        // SMART
+
+        if(
+            originZones.includes("klCenter") &&
+            destZones.includes("bangiKajang")
+        ){
+
+            const hour = new Date().getHours();
+
+            let smartFare =
+                (
+                    (hour >= 7 && hour <= 9) ||
+                    (hour >= 17 && hour <= 19)
+                )
+                ? TOLL_DB.highways.SMART.peak
+                : TOLL_DB.highways.SMART.offpeak;
+
+            total += smartFare;
+
+            breakdown.push(
+                `SMART Tunnel Hybrid - RM ${smartFare.toFixed(2)}`
+            );
+        }
     }
-  };
-  
-  // Modal handlers for breakdown
-  const modal = document.getElementById('modal');
-  const showBtn = document.getElementById('showBreakdownBtn');
-  const closeModal = document.getElementById('closeModalBtn');
-  
-  function showBreakdown(breakdown, distance, fare, source) {
-    const content = document.getElementById('breakdownContent');
-    if (!breakdown || breakdown.length === 0) {
-      content.innerHTML = `
-        <p><strong>📏 Total Distance:</strong> ${distance.toFixed(1)} km</p>
-        <p><strong>💰 Total Fare:</strong> RM ${fare.toFixed(2)}</p>
-        <p><strong>🔌 Source:</strong> ${source}</p>
-        <hr>
-        <p>No detailed segment breakdown available for this route.</p>
-        <p>Using official rate: <strong>RM ${(fare/distance).toFixed(3)}/km</strong> average.</p>
-      `;
-    } else {
-      let html = `<p><strong>📏 Total Distance:</strong> ${distance.toFixed(1)} km</p>
-                  <p><strong>💰 Total Fare:</strong> RM ${fare.toFixed(2)}</p>
-                  <p><strong>🔌 Source:</strong> ${source}</p>
-                  <hr>
-                  <p><strong>🛣️ Toll Segments Breakdown:</strong></p>
-                  <ul style="padding-left: 20px; margin-top: 10px;">`;
-      
-      breakdown.forEach(segment => {
-        html += `<li style="margin-bottom: 8px;">
-                  <strong>${segment.name}</strong><br>
-                  <span style="font-size: 0.75rem; color: #666;">
-                    ${segment.distance > 0 ? `Distance: ${segment.distance.toFixed(1)} km • ` : ''}
-                    Fare: RM ${segment.fare.toFixed(2)}
-                    ${segment.rate ? ` • Rate: RM ${segment.rate.toFixed(3)}/km` : ''}
-                    ${segment.highway ? ` • ${segment.highway}` : ''}
-                  </span>
-                </li>`;
-      });
-      
-      html += `</ul><hr><p style="margin-top: 10px; font-size: 0.7rem; color: #666;">
-                ✅ All rates are gazetted 2025-2026 concessionaire rates.<br>
-                For real-time pricing, direct API integration available.
-              </p>`;
-      content.innerHTML = html;
+
+    total = Math.round(total * 10) / 10;
+
+    return {
+        total,
+        breakdown
+    };
+}
+
+// ==========================================================
+// AUTOCOMPLETE
+// ==========================================================
+
+function setupAutocomplete(
+    inputId,
+    suggestionsId,
+    clearBtnId,
+    onSelect,
+    onClear
+){
+
+    const input = document.getElementById(inputId);
+
+    const suggestionsBox =
+        document.getElementById(suggestionsId);
+
+    const clearBtn =
+        document.getElementById(clearBtnId);
+
+    let debounce;
+
+    input.addEventListener('input',()=>{
+
+        clearTimeout(debounce);
+
+        const query = input.value.trim();
+
+        clearBtn.style.display =
+            query.length ? 'block':'none';
+
+        if(query.length < 3){
+            suggestionsBox.style.display='none';
+            return;
+        }
+
+        debounce = setTimeout(()=>{
+
+            fetch(
+                `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&bbox=99.6,0.8,119.5,7.4&limit=5`
+            )
+            .then(r=>r.json())
+            .then(data=>{
+
+                suggestionsBox.innerHTML='';
+
+                if(!data.features?.length){
+                    suggestionsBox.style.display='none';
+                    return;
+                }
+
+                suggestionsBox.style.display='block';
+
+                data.features.forEach(f=>{
+
+                    const props = f.properties;
+
+                    const addr = [
+                        props.name,
+                        props.street,
+                        props.city,
+                        props.state
+                    ]
+                    .filter(Boolean)
+                    .join(', ');
+
+                    const div = document.createElement('div');
+
+                    div.className='suggestion-item';
+
+                    div.textContent =
+                        addr || props.name;
+
+                    div.addEventListener('click',()=>{
+
+                        input.value =
+                            addr || props.name;
+
+                        suggestionsBox.style.display='none';
+
+                        const [lon,lat] =
+                            f.geometry.coordinates;
+
+                        onSelect({lat,lon});
+                    });
+
+                    suggestionsBox.appendChild(div);
+                });
+            });
+
+        },350);
+    });
+
+    clearBtn.addEventListener('click',()=>{
+
+        input.value='';
+
+        clearBtn.style.display='none';
+
+        suggestionsBox.style.display='none';
+
+        onClear();
+    });
+}
+
+// ==========================================================
+// INIT AUTOCOMPLETE
+// ==========================================================
+
+setupAutocomplete(
+    'pickup',
+    'pickup-suggestions',
+    'clear-pickup',
+    (c)=>{
+        pickupCoords=c;
+        updateMarker('pickup',c);
+        checkAndProcessRoute();
+    },
+    ()=>{
+        pickupCoords=null;
+        if(pickupMarker) map.removeLayer(pickupMarker);
+        resetCalc();
     }
-    modal.style.visibility = 'visible';
-    modal.style.opacity = '1';
-  }
-  
-  showBtn.onclick = () => {
-    if (lastCalculation) {
-      showBreakdown(lastCalculation.breakdown, lastCalculation.distance, lastCalculation.fare, lastCalculation.source);
-    } else {
-      alert("Please calculate toll first to see breakdown.");
+);
+
+setupAutocomplete(
+    'dropoff',
+    'dropoff-suggestions',
+    'clear-dropoff',
+    (c)=>{
+        dropoffCoords=c;
+        updateMarker('dropoff',c);
+        checkAndProcessRoute();
+    },
+    ()=>{
+        dropoffCoords=null;
+        if(dropoffMarker) map.removeLayer(dropoffMarker);
+        resetCalc();
     }
-  };
-  
-  closeModal.onclick = () => {
-    modal.style.visibility = 'hidden';
-    modal.style.opacity = '0';
-  };
-  
-  modal.onclick = (e) => {
-    if (e.target === modal) {
-      modal.style.visibility = 'hidden';
-      modal.style.opacity = '0';
+);
+
+// ==========================================================
+// SWAP
+// ==========================================================
+
+document.getElementById('swap-locations-btn')
+.addEventListener('click',()=>{
+
+    let tempText =
+        document.getElementById('pickup').value;
+
+    let tempCoord = pickupCoords;
+
+    document.getElementById('pickup').value =
+        document.getElementById('dropoff').value;
+
+    pickupCoords = dropoffCoords;
+
+    document.getElementById('dropoff').value =
+        tempText;
+
+    dropoffCoords = tempCoord;
+
+    if(pickupCoords)
+        updateMarker('pickup',pickupCoords);
+
+    if(dropoffCoords)
+        updateMarker('dropoff',dropoffCoords);
+
+    if(pickupCoords && dropoffCoords)
+        checkAndProcessRoute();
+});
+
+// ==========================================================
+// CURRENT LOCATION
+// ==========================================================
+
+document.getElementById('current-loc-btn')
+.addEventListener('click',()=>{
+
+    if(!navigator.geolocation) return;
+
+    navigator.geolocation.getCurrentPosition(pos=>{
+
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+
+        pickupCoords = {lat,lon};
+
+        updateMarker('pickup',pickupCoords);
+
+        map.setView([lat,lon],14);
+
+        document.getElementById('pickup').value =
+            "Current Location";
+
+        checkAndProcessRoute();
+    });
+});
+
+// ==========================================================
+// MARKERS
+// ==========================================================
+
+function updateMarker(type,coords){
+
+    const marker =
+        type==='pickup'
+            ? pickupMarker
+            : dropoffMarker;
+
+    if(marker)
+        map.removeLayer(marker);
+
+    const newMarker =
+        L.marker([coords.lat,coords.lon]).addTo(map);
+
+    if(type==='pickup')
+        pickupMarker = newMarker;
+    else
+        dropoffMarker = newMarker;
+}
+
+// ==========================================================
+// RESET
+// ==========================================================
+
+function resetCalc(){
+
+    if(routeLine)
+        map.removeLayer(routeLine);
+
+    document.getElementById('result-card')
+        .style.display='none';
+}
+
+// ==========================================================
+// ROUTING
+// ==========================================================
+
+function checkAndProcessRoute(){
+
+    if(!pickupCoords || !dropoffCoords) return;
+
+    if(currentRouteTimeout)
+        clearTimeout(currentRouteTimeout);
+
+    currentRouteTimeout = setTimeout(()=>{
+
+        const url =
+            `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${ORS_API_KEY}&start=${pickupCoords.lon},${pickupCoords.lat}&end=${dropoffCoords.lon},${dropoffCoords.lat}&extra_info=tollways`;
+
+        fetch(url)
+        .then(res=>res.json())
+        .then(data=>{
+
+            const feat = data.features[0];
+
+            const distanceKm =
+                feat.properties.summary.distance / 1000;
+
+            const durationBase =
+                feat.properties.summary.duration / 60;
+
+            const extras =
+                feat.properties.extras;
+
+            let routeHasTolls = false;
+
+            if(extras?.tollways?.values){
+                routeHasTolls =
+                    extras.tollways.values.some(v=>v[2]===1);
+            }
+
+            if(routeLine)
+                map.removeLayer(routeLine);
+
+            routeLine = L.geoJSON(
+                feat.geometry,
+                {
+                    style:{
+                        color:'#8e24aa',
+                        weight:5
+                    }
+                }
+            ).addTo(map);
+
+            map.fitBounds(
+                routeLine.getBounds(),
+                {padding:[40,40]}
+            );
+
+            computeFareAndDisplay(
+                distanceKm,
+                durationBase,
+                routeHasTolls
+            );
+
+        });
+
+    },350);
+}
+
+// ==========================================================
+// FARE ENGINE
+// ==========================================================
+
+function computeFareAndDisplay(
+    distance,
+    durationMins,
+    routeHasTollsFlag
+){
+
+    const baseFare = 5.0;
+
+    const perKmRate = 1.25;
+
+    const chargeable =
+        Math.max(0,distance - 1);
+
+    const distanceFare =
+        chargeable * perKmRate;
+
+    const tollObj = calculateActualToll(
+        pickupCoords,
+        dropoffCoords,
+        distance,
+        routeHasTollsFlag
+    );
+
+    const tollCharge = tollObj.total;
+
+    const incentive =
+        (durationMins / 60) * 12;
+
+    let deadhead = 0;
+
+    if(distance > 12){
+
+        let scale =
+            (
+                (Math.min(distance,350)-12)
+                /338
+            ) * 0.45;
+
+        deadhead = distanceFare * scale;
     }
-  };
-  
-  // Keyboard shortcuts
-  document.addEventListener('keydown', (e) => {
-    if (e.ctrlKey && e.key === 'Enter') {
-      document.getElementById('calcBtn').click();
+
+    let rawTotal =
+        baseFare +
+        distanceFare +
+        tollCharge +
+        incentive +
+        deadhead;
+
+    let roundedTotal =
+        Math.round(rawTotal * 10) / 10;
+
+    let finalRound =
+        Math.round(roundedTotal);
+
+    // ======================================================
+    // UI
+    // ======================================================
+
+    document.getElementById('result-card')
+        .style.display='block';
+
+    document.getElementById('total-fare')
+        .innerHTML=`RM ${finalRound}`;
+
+    document.getElementById('fare-distance')
+        .innerHTML=`${distance.toFixed(1)} km`;
+
+    document.getElementById('fare-duration')
+        .innerHTML=
+            durationMins < 60
+            ? `${Math.round(durationMins)} mins`
+            : `${Math.floor(durationMins/60)}h ${Math.round(durationMins%60)}m`;
+
+    document.getElementById('calc-base-fare')
+        .innerHTML=`RM ${baseFare.toFixed(2)}`;
+
+    document.getElementById('calc-ride-distance-rate')
+        .innerHTML=`RM ${distanceFare.toFixed(2)}`;
+
+    document.getElementById('calc-tolls')
+        .innerHTML=`RM ${tollCharge.toFixed(2)}`;
+
+    document.getElementById('calc-incentive')
+        .innerHTML=`RM ${incentive.toFixed(2)}`;
+
+    document.getElementById('calc-deadhead-km')
+        .innerHTML=`RM ${deadhead.toFixed(2)}`;
+
+    document.getElementById('calc-grand')
+        .innerHTML=`RM ${roundedTotal.toFixed(2)}`;
+
+    const tollBreakDiv =
+        document.getElementById('toll-breakdown');
+
+    if(tollObj.breakdown.length){
+
+        tollBreakDiv.style.display='block';
+
+        tollBreakDiv.innerHTML =
+            tollObj.breakdown
+            .map(v=>`🛣️ ${v}`)
+            .join('<br>');
+
+    }else{
+
+        tollBreakDiv.style.display='none';
     }
-  });
-  
-  console.log("MY Toll Calculator v2.0 - Ready with API Integration");
-  console.log("Available APIs: PLUS, ANIH, LPT2, Official Rates DB");
-  console.log("OSRM Routing Active | Concessionaire Rates 2025-2026");
+}
+
 </script>
 </body>
 </html>
