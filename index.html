@@ -407,12 +407,13 @@
         return parts.length > 0 ? parts.join(', ') : 'Selected location';
     }
 
-    // ---------- TOLL EXTRACTION ENGINE (RECTIFIED) ----------
+    // ---------- TOLL EXTRACTION ENGINE (RECTIFIED W/ SHAPADU CORRECTION) ----------
     const TOLL_KEYWORDS = [
         'PLUS', 'NKVE', 'ELITE', 'MEX', 'LDP', 'SPRINT', 'DUKE', 'KESAS', 
         'GUTHRIE', 'KARAK', 'LEKAS', 'SILK', 'AKLEH', 'SMART', 'DASH', 'SUKE', 'SPE',
         'E1', 'E2', 'E3', 'E5', 'E6', 'E7', 'E8', 'E9', 'E11', 'E12', 'E20', 'E23', 'E35', 'E38',
-        'TOLL', 'TOL', 'EXPRESSWAY', 'LEBUHRAYA', 'PLAZA', 'GOMBAK', 'BENTONG', 'SETIA ALAM'
+        'TOLL', 'TOL', 'EXPRESSWAY', 'LEBUHRAYA', 'PLAZA', 'GOMBAK', 'BENTONG', 'SETIA ALAM',
+        'SEPADU', 'SHAPADU', 'BUKIT RAJA'
     ];
     
     function isTollStep(stepName) {
@@ -425,6 +426,7 @@
         let tollDistanceKm = 0;
         let hasKarakOrLpt = false;
         let hasNkveOrPlus = false;
+        let hasSepadu = false;
 
         try {
             const legs = routeObj.routes[0]?.legs;
@@ -445,37 +447,35 @@
                         if (upperStep.includes('NKVE') || upperStep.includes('E1') || upperStep.includes('SETIA ALAM')) {
                             hasNkveOrPlus = true;
                         }
+                        if (upperStep.includes('SEPADU') || upperStep.includes('SHAPADU') || upperStep.includes('E20') || upperStep.includes('BUKIT RAJA')) {
+                            hasSepadu = true;
+                        }
                     }
                 }
             }
         } catch(e) { console.warn("Toll calculation error", e); return 0; }
         
-        if (tollDistanceKm <= 0.1) return 0;
+        if (tollDistanceKm <= 0.1 && !hasSepadu) return 0;
 
         let estimatedCost = 0;
 
-        // Specialized hybrid matrix logic for East-West Interstate Corridors (Klang to East Coast)
         if (hasKarakOrLpt) {
-            // Segment 1: Fixed Gombak + Bentong flat barriers
             estimatedCost += 9.50; 
-            
-            // Segment 2: Distance estimation for closed ECE/LPT system (Approx RM0.12 per km)
-            // Deducting 60km typical non-paying or fixed parts of the route length
             let activeLptDistance = Math.max(0, tollDistanceKm - 60);
             estimatedCost += (activeLptDistance * 0.118);
+        } else if (hasSepadu && tollDistanceKm < 15) {
+            estimatedCost += 0.60;
         } else {
-            // Default rate fallback for standard western urban corridors
             estimatedCost = tollDistanceKm * 0.135;
         }
 
-        // Add typical entry hook tolls if coming out of Klang valley via NKVE links
         if (hasNkveOrPlus && hasKarakOrLpt) {
             estimatedCost += 2.50; 
         }
 
-        if (estimatedCost < 1.20) estimatedCost = 1.20;
+        if (estimatedCost < 0.20 && (hasSepadu)) estimatedCost = 0.60;
+        else if (estimatedCost < 1.20 && !hasSepadu) estimatedCost = 1.20;
         
-        // Round cleanly to nearest 10 Malaysian cents
         return Math.round(estimatedCost * 10) / 10;
     }
     
