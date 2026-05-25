@@ -365,7 +365,7 @@
     let pickupMarker = null, dropoffMarker = null, routeLine = null;
     let pickupCoords = null, dropoffCoords = null;
     let currentRouteTimeout = null;
-    let routeAbortController = null; // Track and abort outstanding in-flight fetch calls
+    let routeAbortController = null;
     let lastTollCost = 0;
 
     // ----- HELPER: show/hide error & reset
@@ -387,7 +387,6 @@
         lastTollCost = 0;
     }
 
-    // update markers on map
     function updateMarker(type, coords) {
         if (type === 'pickup') {
             if (pickupMarker) map.removeLayer(pickupMarker);
@@ -398,7 +397,6 @@
         }
     }
 
-    // reverse geocode for display
     function expandAddress(props) {
         const parts = [];
         if (props.name) parts.push(props.name);
@@ -409,12 +407,12 @@
         return parts.length > 0 ? parts.join(', ') : 'Selected location';
     }
 
-    // ---------- TOLL EXTRACTION (Optimized Malaysia Heuristics) ----------
+    // ---------- TOLL EXTRACTION ENGINE (RECTIFIED) ----------
     const TOLL_KEYWORDS = [
         'PLUS', 'NKVE', 'ELITE', 'MEX', 'LDP', 'SPRINT', 'DUKE', 'KESAS', 
         'GUTHRIE', 'KARAK', 'LEKAS', 'SILK', 'AKLEH', 'SMART', 'DASH', 'SUKE', 'SPE',
         'E1', 'E2', 'E3', 'E5', 'E6', 'E7', 'E8', 'E9', 'E11', 'E12', 'E20', 'E23', 'E35', 'E38',
-        'TOLL', 'TOL', 'EXPRESSWAY', 'LEBUHRAYA', 'PLAZA', 'GOMBAK', 'SETIA ALAM'
+        'TOLL', 'TOL', 'EXPRESSWAY', 'LEBUHRAYA', 'PLAZA', 'GOMBAK', 'BENTONG', 'SETIA ALAM'
     ];
     
     function isTollStep(stepName) {
@@ -425,41 +423,59 @@
     
     function computeTollCostFromRoute(routeObj) {
         let tollDistanceKm = 0;
-        let hasKarakExpressway = false;
+        let hasKarakOrLpt = false;
+        let hasNkveOrPlus = false;
 
         try {
             const legs = routeObj.routes[0]?.legs;
             if (!legs || legs.length === 0) return 0;
+            
             for (let leg of legs) {
                 const steps = leg.steps || [];
                 for (let step of steps) {
                     const stepName = step.name || '';
                     if (isTollStep(stepName)) {
-                        tollDistanceKm += (step.distance || 0) / 1000;
-                        if (stepName.toUpperCase().includes('KARAK') || stepName.toUpperCase().includes('E8')) {
-                            hasKarakExpressway = true;
+                        const distKm = (step.distance || 0) / 1000;
+                        tollDistanceKm += distKm;
+                        
+                        const upperStep = stepName.toUpperCase();
+                        if (upperStep.includes('KARAK') || upperStep.includes('E8') || upperStep.includes('BENTONG') || upperStep.includes('GOMBAK')) {
+                            hasKarakOrLpt = true;
+                        }
+                        if (upperStep.includes('NKVE') || upperStep.includes('E1') || upperStep.includes('SETIA ALAM')) {
+                            hasNkveOrPlus = true;
                         }
                     }
                 }
             }
-        } catch(e) { console.warn("toll parsing error", e); return 0; }
+        } catch(e) { console.warn("Toll calculation error", e); return 0; }
         
         if (tollDistanceKm <= 0.1) return 0;
 
-        // Dynamic base-rate selection depending on region matrix
-        let dynamicRate = 0.125; 
-        if (hasKarakExpressway) {
-            dynamicRate = 0.105; 
+        let estimatedCost = 0;
+
+        // Specialized hybrid matrix logic for East-West Interstate Corridors (Klang to East Coast)
+        if (hasKarakOrLpt) {
+            // Segment 1: Fixed Gombak + Bentong flat barriers
+            estimatedCost += 9.50; 
+            
+            // Segment 2: Distance estimation for closed ECE/LPT system (Approx RM0.12 per km)
+            // Deducting 60km typical non-paying or fixed parts of the route length
+            let activeLptDistance = Math.max(0, tollDistanceKm - 60);
+            estimatedCost += (activeLptDistance * 0.118);
+        } else {
+            // Default rate fallback for standard western urban corridors
+            estimatedCost = tollDistanceKm * 0.135;
         }
 
-        let estimatedCost = tollDistanceKm * dynamicRate;
-
-        // Hardcode point-barrier injection for Karak (Gombak Flat fee link corrections)
-        if (hasKarakExpressway && estimatedCost < 6.00) {
-            estimatedCost += 3.30; 
+        // Add typical entry hook tolls if coming out of Klang valley via NKVE links
+        if (hasNkveOrPlus && hasKarakOrLpt) {
+            estimatedCost += 2.50; 
         }
 
         if (estimatedCost < 1.20) estimatedCost = 1.20;
+        
+        // Round cleanly to nearest 10 Malaysian cents
         return Math.round(estimatedCost * 10) / 10;
     }
     
@@ -532,14 +548,13 @@
         return Math.max(2, Math.round(corrected));
     }
     
-    // ----- MAIN ROUTE PROCESSING (OSRM + Toll Extraction + Abort Handling) -----
+    // ----- MAIN ROUTE PROCESSING -----
     async function fetchRouteAndFare() {
         if (!pickupCoords || !dropoffCoords) return;
         
         hideError();
         if (currentRouteTimeout) clearTimeout(currentRouteTimeout);
         
-        // Interrupt and drop ongoing API executions to allow dynamic updates
         if (routeAbortController) {
             routeAbortController.abort();
         }
@@ -574,7 +589,7 @@
                 
                 processCalculations(distanceKm, finalDurationMins, tollCost);
             } catch (err) {
-                if (err.name === 'AbortError') return; // Silence internal deliberate cancellations
+                if (err.name === 'AbortError') return;
                 console.error(err);
                 showError("Routing error: cannot retrieve road data. Check network or try again.");
             }
@@ -660,7 +675,6 @@
         });
     }
     
-    // location swap
     function executeLocationSwap() {
         const pickupInp = document.getElementById('pickup');
         const dropoffInp = document.getElementById('dropoff');
@@ -684,7 +698,6 @@
         else resetCalculationDisplay();
     }
     
-    // ---- GPS current location ----
     document.getElementById('current-loc-btn').addEventListener('click', () => {
         if (!navigator.geolocation) {
             showError("Geolocation not supported by browser.");
@@ -727,7 +740,6 @@
         );
     });
     
-    // attach autocomplete to fields
     setupAutocomplete('pickup', 'pickup-suggestions', 'clear-pickup', 
         (coords) => { pickupCoords = coords; updateMarker('pickup', coords); checkAndProcessRoute(); },
         () => { pickupCoords = null; if(pickupMarker){map.removeLayer(pickupMarker); pickupMarker=null;} resetCalculationDisplay(); }
