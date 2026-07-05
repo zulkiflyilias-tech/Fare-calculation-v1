@@ -242,7 +242,6 @@
             font-weight: 500;
         }
 
-        /* hint text */
         .tap-hint {
             font-size: 12px;
             color: #aeaeb2;
@@ -373,9 +372,10 @@
     let pickupCoords = null, dropoffCoords = null;
     let currentRouteTimeout = null;
 
+    // OPTIMIZED GEOMETRY: shahAlamZone expanded to cover general city limits (Setia Alam down to Section 25)
     const REGIONAL_BOUNDS = {
         klangKapar:   [3.00, 101.35, 3.18, 101.52],
-        shahAlamSec7: [3.05, 101.46, 3.09, 101.51],
+        shahAlamZone: [3.00, 101.44, 3.14, 101.55], 
         johorBahru:   [1.40, 103.60, 1.60, 103.85],
         genting:       [3.35, 101.75, 3.45, 101.85],
         kelantan:     [5.90, 102.10, 6.30, 102.40],
@@ -605,7 +605,6 @@
                     const distanceKm = summary.distance / 1000;
                     const baseDurationMins = summary.duration / 60;
 
-                    // Parse exact tollway cumulative distance from ORS structural response payload
                     let preciseTollDistanceKm = 0;
                     const extras = feature.properties.extras;
                     if (extras && extras.tollways && extras.tollways.summary) {
@@ -703,11 +702,11 @@
             return (originInZone(zoneA) && destInZone(zoneB)) || (originInZone(zoneB) && destInZone(zoneA));
         };
 
-        // STEP 1: Direct zone matching override logic (for exact closed-toll pairs)
+        // STEP 1: Direct zone matching override logic (Optimized zone target)
         if (matchRoute('klangKapar', 'kliaZone')) {
             dynamicTolls = 6.80; 
-        } else if (matchRoute('shahAlamSec7', 'kliaZone')) {
-            dynamicTolls = 5.70; 
+        } else if (matchRoute('shahAlamZone', 'kliaZone')) {
+            dynamicTolls = 5.70; // Fixed closed toll system charge for ELITE highway (Shah Alam -> KLIA)
         } else if (matchRoute('klangKapar', 'johorBahru')) {
             dynamicTolls = 37.31; 
         } else if (matchRoute('klangKapar', 'seremban')) {
@@ -723,15 +722,14 @@
         } else if (matchRoute('klangKapar', 'bangiKajang')) {
             dynamicTolls = 6.91; 
         } 
-        // STEP 2: Fallback to ORS precise data calculation engine if no override zones match
+        // STEP 2: Fallback mathematical toll calculations based on precise ORS tollway attributes
         else if (tollDistanceKm > 0) {
-            // Evaluates mathematical steps purely against active highway distance, skipping urban access roads
             if (tollDistanceKm <= 10) {
-                dynamicTolls = tollDistanceKm * 0.22; // Typified short open-toll configurations
+                dynamicTolls = tollDistanceKm * 0.22; 
             } else if (tollDistanceKm <= 40) {
                 dynamicTolls = 2.20 + ((tollDistanceKm - 10) * 0.11);
             } else {
-                dynamicTolls = 5.50 + ((tollDistanceKm - 40) * 0.095); // Standardized closed-toll metric calculation
+                dynamicTolls = 5.50 + ((tollDistanceKm - 40) * 0.095); 
             }
         }
 
