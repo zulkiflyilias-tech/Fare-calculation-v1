@@ -382,7 +382,8 @@
         puncakPerdana:[3.10, 101.45, 3.16, 101.55],
         klCenter:   [3.10, 101.65, 3.17, 101.75],
         damansara:  [3.11, 101.58, 3.17, 101.65],
-        seremban:   [2.65, 101.85, 2.78, 102.00]
+        seremban:   [2.65, 101.85, 2.78, 102.00],
+        kliaZone:    [2.70, 101.64, 2.80, 101.74]
     };
 
     function inBoundingBox(coords, bbox) {
@@ -650,7 +651,6 @@
                     
                     document.getElementById('result-card').style.display = 'block';
                     
-                    // ensure invoice details are hidden on new route
                     const invoiceDiv = document.getElementById('invoice-details');
                     invoiceDiv.style.display = 'none';
                     const hintSpan = document.getElementById('tapHint');
@@ -700,7 +700,10 @@
             return (originInZone(zoneA) && destInZone(zoneB)) || (originInZone(zoneB) && destInZone(zoneA));
         };
 
-        if (matchRoute('klangKapar', 'johorBahru')) {
+        // Precision regional pricing overrides
+        if (matchRoute('klangKapar', 'kliaZone')) {
+            dynamicTolls = 6.80; // Combined NKVE segment (RM1.10) + ELITE mainline corridor (RM5.70)
+        } else if (matchRoute('klangKapar', 'johorBahru')) {
             dynamicTolls = 37.31; 
         } else if (matchRoute('klangKapar', 'seremban')) {
             dynamicTolls = 9.30; 
@@ -751,18 +754,14 @@
         document.getElementById('deadhead-km-row').style.display = deadheadCost > 0 ? 'flex' : 'none';
     }
     
-    // ========== INVOICE TOGGLE LOGIC: Click total fare container shows/hides details ==========
+    // ========== INVOICE TOGGLE LOGIC ==========
     const resultCard = document.getElementById('result-card');
     const invoiceDetails = document.getElementById('invoice-details');
     const tapHint = document.getElementById('tapHint');
     
     if (resultCard) {
         resultCard.addEventListener('click', (e) => {
-            // Prevent toggling if user accidentally clicks on any interactive child that might conflict, but we allow main toggle.
-            // Stop propagation not necessary, but ensure that if the click originated from within invoice-details (like detail row) it still toggles? 
-            // requirement: clicking total fare shows invoice details; clicking again hides. Fine.
-            // We'll also ensure map markers etc unaffected.
-            e.stopPropagation(); // avoid weird bubbling
+            e.stopPropagation(); 
             if (invoiceDetails.style.display === 'none' || invoiceDetails.style.display === '') {
                 invoiceDetails.style.display = 'block';
                 if (tapHint) tapHint.style.display = 'none';
@@ -773,10 +772,6 @@
         });
     }
     
-    // ensure initial state whenever result card appears but invoice hidden (already hidden by CSS default)
-    // also on new route, reset invoice hidden via checkAndProcessRoute.
-    // Additional double-check: when resetting calculation, no effect needed, but we also want to reset hint on any new fare.
-    // Override the processCalculations final step to ensure invoice starts hidden on fresh route.
     const originalProcess = processCalculations;
     window.processCalculations = function(distance, duration, routeHasTolls) {
         originalProcess(distance, duration, routeHasTolls);
@@ -788,12 +783,9 @@
         }
     }.bind(this);
     
-    // rebind the function reference for processCalculations to ensure overriding works
     window.processCalculations = window.processCalculations;
-    // replace the old reference
     processCalculations = window.processCalculations;
     
-    // Additionally if result-card reappears manually via route, state consistency
     const originalResetDisplay = resetCalculationDisplay;
     window.resetCalculationDisplay = function() {
         originalResetDisplay();
@@ -802,7 +794,6 @@
     }.bind(this);
     resetCalculationDisplay = window.resetCalculationDisplay;
     
-    // ensure that on any new valid route, invoice hidden via routing flow
     const originalCheck = checkAndProcessRoute;
     window.checkAndProcessRoute = function() {
         originalCheck();
