@@ -372,7 +372,6 @@
     let pickupCoords = null, dropoffCoords = null;
     let currentRouteTimeout = null;
 
-    // OPTIMIZED GEOMETRY: shahAlamZone expanded to cover general city limits (Setia Alam down to Section 25)
     const REGIONAL_BOUNDS = {
         klangKapar:   [3.00, 101.35, 3.18, 101.52],
         shahAlamZone: [3.00, 101.44, 3.14, 101.55], 
@@ -702,11 +701,10 @@
             return (originInZone(zoneA) && destInZone(zoneB)) || (originInZone(zoneB) && destInZone(zoneA));
         };
 
-        // STEP 1: Direct zone matching override logic (Optimized zone target)
         if (matchRoute('klangKapar', 'kliaZone')) {
             dynamicTolls = 6.80; 
         } else if (matchRoute('shahAlamZone', 'kliaZone')) {
-            dynamicTolls = 5.70; // Fixed closed toll system charge for ELITE highway (Shah Alam -> KLIA)
+            dynamicTolls = 5.70; 
         } else if (matchRoute('klangKapar', 'johorBahru')) {
             dynamicTolls = 37.31; 
         } else if (matchRoute('klangKapar', 'seremban')) {
@@ -722,7 +720,6 @@
         } else if (matchRoute('klangKapar', 'bangiKajang')) {
             dynamicTolls = 6.91; 
         } 
-        // STEP 2: Fallback mathematical toll calculations based on precise ORS tollway attributes
         else if (tollDistanceKm > 0) {
             if (tollDistanceKm <= 10) {
                 dynamicTolls = tollDistanceKm * 0.22; 
@@ -745,7 +742,8 @@
         }
 
         const rawTotal = baseFare + rideDistanceFare + dynamicTolls + driverIncentive + deadheadCost;
-        const roundedTotal = Math.max(baseFare, roundToMalaysianCents(rawTotal));
+        // Enforce maximum baseline check and apply strict RM8 minimum rule override
+        const roundedTotal = Math.max(8.00, Math.max(baseFare, roundToMalaysianCents(rawTotal)));
         const finalDisplayedWholeFare = Math.round(roundedTotal);
 
         document.getElementById('total-fare').textContent = `RM ${finalDisplayedWholeFare}`;
