@@ -2,10 +2,23 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rideshare MY - Professional Fare Estimator & Toll Registry</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Rideshare MY - Fare Estimator</title>
+    
+    <!-- HERE Maps JS API CSS -->
+    <link rel="stylesheet" type="text/css" href="https://js.api.here.com/v3/3.1/mapsjs-ui.css" />
+    
     <style>
+        :root {
+            --primary: #8e24aa;
+            --primary-light: #b388ff;
+            --bg-dark: #1c1c1e;
+            --border-color: #e0e0e0;
+            --text-dark: #212529;
+            --text-muted: #aeaeb2;
+            --whatsapp-green: #25D366;
+        }
+
         body {
             margin: 0;
             padding: 0;
@@ -14,24 +27,28 @@
             display: flex;
             flex-direction: column;
             height: 100vh;
+            height: 100dvh;
             overflow: hidden; 
-            color: #212529;
+            color: var(--text-dark);
         }
+
         #container {
             display: flex;
             flex-direction: column;
             height: 100%;
             position: relative;
         }
+
         #map {
-            height: 35vh;
+            height: 24vh;
             width: 100%;
             z-index: 1;
         }
+
         #search-panel {
             flex: 1;
             background: white;
-            padding: 16px;
+            padding: 12px 16px;
             box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
             z-index: 10;
             box-sizing: border-box;
@@ -41,125 +58,137 @@
             flex-direction: column;
             overflow-y: auto;
         }
-        .header-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-        }
-        h2 {
-            margin: 0;
+
+        .header-row h2 {
+            margin: 0 0 8px 0;
             font-size: 18px;
             font-weight: 700;
-            color: #111;
         }
 
-        .registry-trigger-btn {
-            background-color: #8e24aa;
-            color: white;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 12px;
+        /* Shortcuts Container */
+        .shortcuts-bar {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            padding-bottom: 6px;
+            margin-bottom: 6px;
+            scrollbar-width: none;
+        }
+        .shortcuts-bar::-webkit-scrollbar { display: none; }
+
+        .shortcut-chip {
+            white-space: nowrap;
+            background: #f0f0f3;
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 4px 10px;
+            font-size: 11px;
             font-weight: 600;
+            color: #444;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: all 0.2s ease;
             display: flex;
             align-items: center;
             gap: 4px;
         }
-        .registry-trigger-btn:hover {
-            background-color: #7b1fa2;
+        .shortcut-chip:hover {
+            background-color: #e8e0f0;
+            color: var(--primary);
+            border-color: var(--primary-light);
         }
-        
+
         .routing-wrapper {
-            position: relative;
             display: flex;
             flex-direction: column;
-            gap: 8px;
-            margin-bottom: 10px;
+            gap: 4px;
+            position: relative;
+            margin-bottom: 6px;
         }
+
         .input-container {
             position: relative;
             display: flex;
             align-items: center;
         }
+
         input {
             width: 100%;
-            padding: 12px 64px 12px 12px;
-            border: 1px solid #e0e0e0;
+            padding: 8px 72px 8px 12px;
+            border: 1px solid var(--border-color);
             border-radius: 8px;
             font-size: 14px;
             box-sizing: border-box;
             background-color: #f9f9f9;
             transition: all 0.2s ease;
         }
-        #pickup {
-            padding-right: 88px;
-        }
+
         input:focus {
             outline: none;
-            border-color: #8e24aa;
+            border-color: var(--primary);
             background-color: #fff;
             box-shadow: 0 0 0 2px rgba(142, 36, 170, 0.1);
         }
-        
+
         .action-group {
             position: absolute;
             right: 8px;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
             z-index: 5;
         }
+
         .icon-btn {
             border: none;
             background: none;
             color: #757575;
             font-size: 16px;
             cursor: pointer;
-            padding: 6px;
+            padding: 4px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             transition: background 0.2s;
         }
+
         .icon-btn:hover {
             background-color: #f0f0f0;
-            color: #8e24aa;
+            color: var(--primary);
         }
+
         .clear-btn {
             display: none;
             font-size: 18px;
             color: #aaa;
         }
-        
-        .swap-container {
-            position: absolute;
-            right: 48px;
-            top: 50%;
-            transform: translateY(-50%);
-            z-index: 15;
+
+        .swap-divider {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: -4px 0;
+            z-index: 6;
         }
+
         .swap-btn {
             background: white;
-            border: 1px solid #e0e0e0;
-            color: #8e24aa;
-            width: 28px;
-            height: 28px;
+            border: 1px solid var(--border-color);
+            color: var(--primary);
+            width: 26px;
+            height: 26px;
             border-radius: 50%;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-            transition: all 0.2s ease;
+            transition: transform 0.2s ease;
             font-size: 14px;
         }
+
         .swap-btn:hover {
-            transform: scale(1.1) translateY(-45%);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            transform: scale(1.1);
             background-color: #fcf5ff;
         }
 
@@ -169,189 +198,166 @@
             left: 0;
             right: 0;
             background: white;
-            border: 1px solid #e0e0e0;
+            border: 1px solid var(--border-color);
             border-radius: 8px;
-            max-height: 200px; 
+            max-height: 160px; 
             overflow-y: auto;
             z-index: 1000;
             box-shadow: 0 6px 16px rgba(0,0,0,0.1);
             display: none;
         }
+
         .suggestion-item {
-            padding: 12px;
+            padding: 8px 12px;
             cursor: pointer;
             font-size: 13px;
             line-height: 1.4;
             border-bottom: 1px solid #f5f5f5;
         }
+
         .suggestion-item:hover {
             background-color: #f5f5f5;
         }
-        
+
+        .route-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 2px;
+            margin-bottom: 8px;
+        }
+
+        .route-mode-container, .multiplier-container {
+            display: flex;
+            gap: 6px;
+        }
+
+        .mode-btn, .mult-btn {
+            flex: 1;
+            padding: 6px 4px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background-color: #fff;
+            color: #555;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .mode-btn.active, .mult-btn.active {
+            background-color: #f3e5f5;
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .toggle-btn {
+            padding: 6px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background-color: #fff;
+            color: #555;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .toggle-btn.active {
+            background-color: #fff3e0;
+            border-color: #f57c00;
+            color: #e65100;
+        }
+
         #result-card {
-            background: #1c1c1e;
+            background: var(--bg-dark);
             color: white;
-            padding: 16px;
+            padding: 12px 14px;
             border-radius: 12px;
-            margin-top: 10px;
+            margin-top: 2px;
             display: none;
             box-shadow: 0 4px 14px rgba(0,0,0,0.15);
         }
+
         .fare-header-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 8px;
+            margin-bottom: 2px;
         }
+
         .fare-header {
-            font-size: 32px;
+            font-size: 26px;
             font-weight: 800;
-            color: #b388ff;
+            color: var(--primary-light);
         }
+
         .fare-meta {
-            font-size: 13px;
+            font-size: 12px;
             color: #e5e5ea;
             display: flex;
             justify-content: space-between;
             font-weight: 500;
+            margin-bottom: 8px;
         }
+
         #invoice-details {
-            margin-top: 12px;
             border-top: 1px dashed #3a3a3c;
-            padding-top: 12px;
-            display: block;
+            padding-top: 8px;
         }
+
         .detail-row {
             display: flex;
             justify-content: space-between;
             font-size: 12px;
-            color: #aeaeb2;
-            margin-bottom: 8px;
+            color: var(--text-muted);
+            margin-bottom: 5px;
         }
+
         .detail-row.total-bold {
             color: #fff;
             font-weight: 600;
             border-top: 1px solid #2c2c2e;
-            padding-top: 8px;
-            margin-bottom: 0;
-            font-size: 14px;
+            padding-top: 6px;
+            margin-bottom: 10px;
+            font-size: 13px;
         }
+
+        .share-btn {
+            width: 100%;
+            background-color: var(--whatsapp-green);
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: background 0.2s ease;
+        }
+
+        .share-btn:hover {
+            background-color: #1eb956;
+        }
+
         #error-msg {
             color: #ff3b30;
             font-size: 13px;
-            margin-top: 8px;
+            margin-top: 4px;
             display: none;
             font-weight: 500;
-        }
-
-        #registry-backdrop {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0,0,0,0.5);
-            z-index: 2000;
-            display: none;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-        #registry-drawer {
-            position: fixed;
-            bottom: -100%;
-            left: 0;
-            width: 100%;
-            height: 80vh;
-            background: white;
-            z-index: 2001;
-            border-top-left-radius: 20px;
-            border-top-right-radius: 20px;
-            box-shadow: 0 -8px 32px rgba(0,0,0,0.15);
-            transition: bottom 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            display: flex;
-            flex-direction: column;
-            box-sizing: border-box;
-        }
-        .drawer-header {
-            padding: 16px 20px;
-            border-bottom: 1px solid #eee;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #fafafa;
-            border-top-left-radius: 20px;
-            border-top-right-radius: 20px;
-        }
-        .drawer-header h3 {
-            margin: 0;
-            font-size: 16px;
-            font-weight: 700;
-            color: #111;
-        }
-        .close-drawer-btn {
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: #888;
-            line-height: 1;
-        }
-        .drawer-content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 16px;
-        }
-        
-        .registry-table-wrapper {
-            overflow-x: auto;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-        }
-        .registry-table {
-            width: 100%;
-            border-collapse: collapse;
-            text-align: left;
-            font-size: 12px;
-            min-width: 650px;
-        }
-        .registry-table th {
-            background-color: #1c1c1e;
-            color: white;
-            font-weight: 600;
-            padding: 10px 12px;
-            text-transform: uppercase;
-            font-size: 10px;
-            letter-spacing: 0.5px;
-        }
-        .registry-table td {
-            padding: 10px 12px;
-            border-bottom: 1px solid #eee;
-            line-height: 1.4;
-            vertical-align: top;
-        }
-        .registry-table tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-        .registry-table tr:hover {
-            background-color: #fdf7ff;
-        }
-        .badge {
-            display: inline-block;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 10px;
-            font-weight: 600;
-        }
-        .badge-open { background-color: #efe5fd; color: #4a148c; }
-        .badge-closed { background-color: #e3f2fd; color: #0d47a1; }
-        .hwy-code {
-            font-family: monospace;
-            background: #f1f1f1;
-            padding: 1px 4px;
-            border-radius: 4px;
-            font-size: 11px;
-            color: #c2185b;
-            font-weight: bold;
         }
 
         @media(min-width: 768px) {
@@ -368,23 +374,14 @@
                 border-radius: 0;
                 box-shadow: -4px 0 20px rgba(0,0,0,0.05);
             }
-            #registry-drawer {
-                width: 700px;
-                height: 100vh;
-                right: -700px;
-                left: auto;
-                bottom: 0;
-                border-radius: 0;
-                border-top-left-radius: 20px;
-                border-bottom-left-radius: 20px;
-                transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            }
-            .drawer-header {
-                border-top-left-radius: 20px;
-                border-top-right-radius: 0;
-            }
         }
     </style>
+
+    <!-- HERE Maps JS API Core Modules -->
+    <script type="text/javascript" src="https://js.api.here.com/v3/3.1/mapsjs-core.js"></script>
+    <script type="text/javascript" src="https://js.api.here.com/v3/3.1/mapsjs-service.js"></script>
+    <script type="text/javascript" src="https://js.api.here.com/v3/3.1/mapsjs-ui.js"></script>
+    <script type="text/javascript" src="https://js.api.here.com/v3/3.1/mapsjs-mapevents.js"></script>
 </head>
 <body>
 
@@ -393,11 +390,20 @@
     
     <div id="search-panel">
         <div class="header-row">
-            <h2>Fare Estimator</h2>
-            <button class="registry-trigger-btn" onclick="toggleRegistry(true)">🗺️ Toll Registry</button>
+            <h2>Fare Estimator (Dual-Tier Win-Win Model)</h2>
+        </div>
+
+        <!-- Quick Destinations Shortcuts Bar -->
+        <div class="shortcuts-bar">
+            <div class="shortcut-chip" onclick="applyShortcut('KLIA Terminal 1', 2.7456, 101.7072, 'Selangor')">✈️ KLIA T1</div>
+            <div class="shortcut-chip" onclick="applyShortcut('KL Sentral', 3.1342, 101.6861, 'Kuala Lumpur')">🚉 KL Sentral</div>
+            <div class="shortcut-chip" onclick="applyShortcut('Mid Valley Megamall', 3.1177, 101.6774, 'Kuala Lumpur')">🛍️ Mid Valley</div>
+            <div class="shortcut-chip" onclick="applyShortcut('Seremban Town', 2.7258, 101.9424, 'Negeri Sembilan')">🌳 Seremban</div>
+            <div class="shortcut-chip" onclick="applyShortcut('Ipoh Town', 4.5975, 101.0901, 'Perak')">🌳 Ipoh</div>
         </div>
         
         <div class="routing-wrapper">
+            <!-- Pickup Input -->
             <div class="input-container">
                 <input type="text" id="pickup" placeholder="Enter Pickup Location..." autocomplete="off" enterkeyhint="search">
                 <div class="action-group">
@@ -407,10 +413,12 @@
                 <div id="pickup-suggestions" class="suggestions"></div>
             </div>
             
-            <div class="swap-container">
+            <!-- Swap Control -->
+            <div class="swap-divider">
                 <button class="swap-btn" id="swap-locations-btn" title="Swap locations" onclick="executeLocationSwap()">⇅</button>
             </div>
             
+            <!-- Dropoff Input -->
             <div class="input-container">
                 <input type="text" id="dropoff" placeholder="Enter Drop-off Location..." autocomplete="off" enterkeyhint="search">
                 <div class="action-group">
@@ -420,8 +428,27 @@
             </div>
         </div>
 
+        <!-- Route & Fare Controls -->
+        <div class="route-controls">
+            <!-- Mode Selection -->
+            <div class="route-mode-container">
+                <button class="mode-btn active" id="btn-mode-fast" onclick="setRoutingMode('fast')">⚡ Fastest Route</button>
+                <button class="mode-btn" id="btn-mode-short" onclick="setRoutingMode('short')">📏 Shortest Route</button>
+            </div>
+
+            <!-- Custom Fare Multipliers (Surge Cap limiters) -->
+            <div class="multiplier-container">
+                <button class="mult-btn active" id="mult-100" onclick="setMultiplier(1.0)">1.0x Normal</button>
+                <button class="mult-btn" id="mult-125" onclick="setMultiplier(1.25)">1.25x Surge</button>
+                <button class="mult-btn" id="mult-150" onclick="setMultiplier(1.50)">1.5x Max Cap</button>
+            </div>
+
+            <button class="toggle-btn" id="btn-avoid-tolls" onclick="toggleAvoidTolls()">🛑 Avoid Tolls</button>
+        </div>
+
         <div id="error-msg"></div>
 
+        <!-- Result Breakdown Card -->
         <div id="result-card">
             <div class="fare-header-row">
                 <div id="total-fare" class="fare-header">RM --</div>
@@ -433,151 +460,136 @@
             
             <div id="invoice-details">
                 <div class="detail-row">
-                    <span>Base Fare</span>
-                    <span id="calc-base-fare">RM 5.00</span>
+                    <span>Active Market Tier</span>
+                    <span id="calc-tier-badge" style="color: var(--primary-light); font-weight: 600;">Tier 1 (Klang Valley)</span>
+                </div>
+                <div class="detail-row">
+                    <span>Base Fare (0-3 KM)</span>
+                    <span id="calc-base-fare">RM 7.50</span>
                 </div>
                 <div class="detail-row">
                     <span>Distance Fare</span>
                     <span id="calc-ride-distance-rate">RM 0.00</span>
                 </div>
                 <div class="detail-row">
-                    <span id="toll-type-label">Tolls (Est.)</span>
-                    <span id="calc-tolls">RM 0.00</span>
+                    <span>Time Fare (Traffic Real-Time)</span>
+                    <span id="calc-time-rate">RM 0.00</span>
                 </div>
-                <div class="detail-row">
-                    <span>Traffic Adjust & Incentive</span>
-                    <span id="calc-incentive">RM 0.00</span>
+                <div class="detail-row" id="toll-fare-row">
+                    <span>Toll Charges</span>
+                    <span id="calc-toll-fare">RM 0.00</span>
                 </div>
-                
-                <div class="detail-row" id="deadhead-km-row" style="display: none;">
-                    <span>Out-of-Zone Surcharge</span>
-                    <span id="calc-deadhead-km">RM 0.00</span>
+                <div class="detail-row" id="pickup-fee-row" style="display: none;">
+                    <span>Remote Pickup Surcharge</span>
+                    <span id="calc-pickup-fee">RM 0.00</span>
+                </div>
+                <div class="detail-row" id="multiplier-row" style="display: none;">
+                    <span>Surge Multiplier</span>
+                    <span id="calc-multiplier">1.0x</span>
                 </div>
 
                 <div class="detail-row total-bold">
                     <span>Rounded Final Total</span>
-                    <span id="calc-grand" style="color: #b388ff;">RM 0.00</span>
+                    <span id="calc-grand" style="color: var(--primary-light);">RM 0.00</span>
                 </div>
-            </div>
-        </div>
-    </div>
 
-    <div id="registry-backdrop" onclick="toggleRegistry(false)"></div>
-    <div id="registry-drawer">
-        <div class="drawer-header">
-            <h3>Official Highway Toll Rates Registry</h3>
-            <button class="close-drawer-btn" onclick="toggleRegistry(false)">&times;</button>
-        </div>
-        <div class="drawer-content">
-            <div class="registry-table-wrapper">
-                <table class="registry-table">
-                    <thead>
-                        <tr>
-                            <th>Operator / Concession</th>
-                            <th>Code</th>
-                            <th>Highway Network</th>
-                            <th>System</th>
-                            <th>Class 1 Base Rates & Key Plazas</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td style="font-weight: 600;">PLUS Malaysia Berhad</td>
-                            <td><span class="hwy-code">E1,E2,E3,E6,E15</span></td>
-                            <td>North-South Expressway (NSE), NKVE, ELITE, Federal Hwy Route 2</td>
-                            <td><span class="badge badge-closed">Closed & Open</span></td>
-                            <td>Main Axis Link: ~RM0.136/km. Key Entries: Jalan Duta, Sungai Besi, Bukit Raja.</td>
-                        </tr>
-                        <tr>
-                            <td style="font-weight: 600;">ProLintas (SILK)</td>
-                            <td><span class="hwy-code">E18</span></td>
-                            <td>Kajang SILK Highway</td>
-                            <td><span class="badge badge-open">Open System</span></td>
-                            <td>Sg. Ramal, Bukit Kajang, Sg. Long, Sg. Balak: RM1.80 flat per plaza.</td>
-                        </tr>
-                        <tr>
-                            <td style="font-weight: 600;">ANIH Berhad</td>
-                            <td><span class="hwy-code">E8</span></td>
-                            <td>KL-Karak Highway & East Coast Expressway (LPT1)</td>
-                            <td><span class="badge badge-open">Open & Closed</span></td>
-                            <td>Gombak: RM6.00, Bentong: RM3.50. LPT1 System: ~RM0.12/km.</td>
-                        </tr>
-                        <tr>
-                            <td style="font-weight: 600;">Prolintas (DASH)</td>
-                            <td><span class="hwy-code">E31</span></td>
-                            <td>Damansara-Shah Alam Elevated Expressway</td>
-                            <td><span class="badge badge-open">Open System</span></td>
-                            <td>Denai Alam, RRIM (Kwasa Damansara), Sri Damansara: RM2.30 flat.</td>
-                        </tr>
-                    </tbody>
-                </table>
+                <!-- Copy Invoice Button -->
+                <button class="share-btn" onclick="copyReceiptToClipboard()">📋 Copy Receipt Breakdown</button>
             </div>
         </div>
     </div>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
 <script>
-    const map = L.map('map').setView([3.1390, 101.6869], 11);
-    
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
+    const HERE_API_KEY = "PsS2JuT4JvaMqKzOkSgQcclwn0pBP9jVcNKSC7JHmZk"; 
 
-    const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVlYzI5ZTA0OTM2YTRlZDNhNjk1NTcyNGQ1OTJmYmNjIiwiaCI6Im11cm11cjY0In0="; 
+    // Initialize HERE Engine
+    const platform = new H.service.Platform({ 'apikey': HERE_API_KEY });
+    const defaultLayers = platform.createDefaultLayers();
 
-    let pickupMarker = null, dropoffMarker = null, routeLine = null;
+    // Instantiate Map centered on Klang Valley area
+    const map = new H.Map(
+        document.getElementById('map'),
+        defaultLayers.vector.normal.map,
+        { zoom: 11, center: { lat: 3.1390, lng: 101.6869 } }
+    );
+
+    window.addEventListener('resize', () => map.getViewPort().resize());
+
+    const behavior = new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
+    const ui = H.ui.UI.createDefault(map, defaultLayers);
+    const router = platform.getRoutingService(null, 8);
+
+    let pickupMarker = null, dropoffMarker = null, routePolyline = null;
     let pickupCoords = null, dropoffCoords = null;
+    let pickupState = '', dropoffState = '';
+    let activeRoutingMode = 'fast'; 
+    let avoidTolls = false;
+    let customMultiplier = 1.0;
+    let lastCalculatedData = null;
     let currentRouteTimeout = null;
+    let routeAbortController = null;
+    let autosuggestAbortController = null;
 
-    function toggleRegistry(open) {
-        const backdrop = document.getElementById('registry-backdrop');
-        const drawer = document.getElementById('registry-drawer');
-        const isResponsiveDesktop = window.innerWidth >= 768;
-        
-        if (open) {
-            backdrop.style.display = 'block';
-            setTimeout(() => { backdrop.style.opacity = '1'; }, 10);
-            if(isResponsiveDesktop) {
-                drawer.style.right = '0px';
-            } else {
-                drawer.style.bottom = '0px';
-            }
-        } else {
-            backdrop.style.opacity = '0';
-            if(isResponsiveDesktop) {
-                drawer.style.right = '-700px';
-            } else {
-                drawer.style.bottom = '-100%';
-            }
-            setTimeout(() => { backdrop.style.display = 'none'; }, 300);
-        }
+    // Define Tier 1 states/regions (Klang Valley / Penang high-congestion urban centers)
+    const TIER_1_STATES = ['kuala lumpur', 'selangor', 'penang', 'pulau pinang'];
+
+    function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371; // km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
-    setupAutocomplete('pickup', 'pickup-suggestions', 'clear-pickup', (coords) => {
-        pickupCoords = coords;
-        updateMarker('pickup', coords);
-        checkAndProcessRoute();
-    }, () => {
-        pickupCoords = null;
-        if (pickupMarker) { map.removeLayer(pickupMarker); pickupMarker = null; }
-        resetCalculationDisplay();
-    });
+    function isTier1Region(stateName) {
+        if (!stateName) return true; // Default fallback to Tier 1 if unknown
+        const cleanState = stateName.toLowerCase().trim();
+        return TIER_1_STATES.some(t => cleanState.includes(t));
+    }
 
-    setupAutocomplete('dropoff', 'dropoff-suggestions', 'clear-dropoff', (coords) => {
-        dropoffCoords = coords;
-        updateMarker('dropoff', coords);
+    // Quick Destination Shortcut Handler
+    function applyShortcut(title, lat, lng, state) {
+        const dropoffInput = document.getElementById('dropoff');
+        dropoffInput.value = title;
+        dropoffCoords = { lat, lng };
+        dropoffState = state;
+        document.getElementById('clear-dropoff').style.display = 'block';
+        updateMarker('dropoff', dropoffCoords);
         checkAndProcessRoute();
-    }, () => {
-        dropoffCoords = null;
-        if (dropoffMarker) { map.removeLayer(dropoffMarker); dropoffMarker = null; }
-        resetCalculationDisplay();
-    });
+    }
 
+    // Rate Multiplier Setter (Bounded by the agreed Surge Cap)
+    function setMultiplier(val) {
+        customMultiplier = val;
+        document.getElementById('mult-100').classList.toggle('active', val === 1.0);
+        document.getElementById('mult-125').classList.toggle('active', val === 1.25);
+        document.getElementById('mult-150').classList.toggle('active', val === 1.50);
+
+        if (pickupCoords && dropoffCoords) checkAndProcessRoute();
+    }
+
+    // Set up Autocomplete Listeners
+    setupAutocomplete('pickup', 'pickup-suggestions', 'clear-pickup', (item) => {
+        pickupCoords = { lat: item.position.lat, lng: item.position.lng };
+        pickupState = item.address && item.address.state ? item.address.state : '';
+        updateMarker('pickup', pickupCoords);
+        checkAndProcessRoute();
+    }, () => clearLocation('pickup'));
+
+    setupAutocomplete('dropoff', 'dropoff-suggestions', 'clear-dropoff', (item) => {
+        dropoffCoords = { lat: item.position.lat, lng: item.position.lng };
+        dropoffState = item.address && item.address.state ? item.address.state : '';
+        updateMarker('dropoff', dropoffCoords);
+        checkAndProcessRoute();
+    }, () => clearLocation('dropoff'));
+
+    // Handle Current Location Geolocation
     document.getElementById('current-loc-btn').addEventListener('click', () => {
         if (!navigator.geolocation) {
-            showError("Compass or location trace features are unsupported by this application shell.");
+            showError("Geolocation is not supported by your browser.");
             return;
         }
         const btn = document.getElementById('current-loc-btn');
@@ -585,88 +597,107 @@
         document.getElementById('error-msg').style.display = 'none';
 
         navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
-                pickupCoords = { lat, lon };
+            (pos) => {
+                const { latitude: lat, longitude: lng } = pos.coords;
+                pickupCoords = { lat, lng };
                 updateMarker('pickup', pickupCoords);
-                map.setView([lat, lon], 14);
+                map.setCenter({ lat, lng });
+                map.setZoom(14);
                 
-                const reverseGeocodeUrl = `https://photon.komoot.io/reverse?lon=${lon}&lat=${lat}`;
-                fetch(reverseGeocodeUrl)
+                fetch(`https://revgeocode.search.hereapi.com/v1/revgeocode?at=${lat},${lng}&lang=en-US&apiKey=${HERE_API_KEY}`)
                     .then(res => res.json())
                     .then(data => {
                         btn.textContent = "🎯";
-                        if (data.features && data.features.length > 0) {
-                            document.getElementById('pickup').value = expandAddress(data.features[0].properties);
+                        if (data.items && data.items.length > 0) {
+                            document.getElementById('pickup').value = data.items[0].address.label;
+                            pickupState = data.items[0].address.state || '';
                         } else {
-                            document.getElementById('pickup').value = `Current Location (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
+                            document.getElementById('pickup').value = `Current Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
                         }
                         document.getElementById('clear-pickup').style.display = 'block';
                         checkAndProcessRoute();
                     })
                     .catch(() => {
                         btn.textContent = "🎯";
-                        document.getElementById('pickup').value = `Current Location (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
+                        document.getElementById('pickup').value = `Current Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
                         document.getElementById('clear-pickup').style.display = 'block';
                         checkAndProcessRoute();
                     });
             },
             () => {
                 btn.textContent = "🎯";
-                showError("Unable to safely track user positioning metrics.");
+                showError("Unable to retrieve location coordinates.");
             },
             { enableHighAccuracy: true, timeout: 8000 }
         );
     });
 
+    function setRoutingMode(mode) {
+        if (activeRoutingMode === mode) return;
+        activeRoutingMode = mode;
+        document.getElementById('btn-mode-fast').classList.toggle('active', mode === 'fast');
+        document.getElementById('btn-mode-short').classList.toggle('active', mode === 'short');
+
+        if (pickupCoords && dropoffCoords) checkAndProcessRoute();
+    }
+
+    function toggleAvoidTolls() {
+        avoidTolls = !avoidTolls;
+        document.getElementById('btn-avoid-tolls').classList.toggle('active', avoidTolls);
+
+        if (pickupCoords && dropoffCoords) checkAndProcessRoute();
+    }
+
     function updateMarker(type, coords) {
         if (type === 'pickup') {
-            if (pickupMarker) map.removeLayer(pickupMarker);
-            pickupMarker = L.marker([coords.lat, coords.lon]).addTo(map);
+            if (pickupMarker) map.removeObject(pickupMarker);
+            pickupMarker = new H.map.Marker(coords);
+            map.addObject(pickupMarker);
         } else {
-            if (dropoffMarker) map.removeLayer(dropoffMarker);
-            dropoffMarker = L.marker([coords.lat, coords.lon]).addTo(map);
+            if (dropoffMarker) map.removeObject(dropoffMarker);
+            dropoffMarker = new H.map.Marker(coords);
+            map.addObject(dropoffMarker);
         }
     }
 
-    function executeLocationSwap() {
-        const pickupInput = document.getElementById('pickup');
-        const dropoffInput = document.getElementById('dropoff');
-        const tempText = pickupInput.value;
-        const tempCoords = pickupCoords;
-        
-        pickupInput.value = dropoffInput.value;
-        pickupCoords = dropoffCoords;
-        dropoffInput.value = tempText;
-        dropoffCoords = tempCoords;
-        
-        document.getElementById('clear-pickup').style.display = pickupInput.value ? 'block' : 'none';
-        document.getElementById('clear-dropoff').style.display = dropoffInput.value ? 'block' : 'none';
-        
-        if (pickupCoords) updateMarker('pickup', pickupCoords);
-        else if (pickupMarker) { map.removeLayer(pickupMarker); pickupMarker = null; }
-        if (dropoffCoords) updateMarker('dropoff', dropoffCoords);
-        else if (dropoffMarker) { map.removeLayer(dropoffMarker); dropoffMarker = null; }
-        
-        if (pickupCoords && dropoffCoords) checkAndProcessRoute();
-        else resetCalculationDisplay();
+    function clearLocation(type) {
+        if (type === 'pickup') {
+            pickupCoords = null;
+            pickupState = '';
+            if (pickupMarker) { map.removeObject(pickupMarker); pickupMarker = null; }
+        } else {
+            dropoffCoords = null;
+            dropoffState = '';
+            if (dropoffMarker) { map.removeObject(dropoffMarker); dropoffMarker = null; }
+        }
+        resetCalculationDisplay();
     }
 
-    function expandAddress(props) {
-        const parts = [];
-        if (props.name) parts.push(props.name);
-        if (props.street) parts.push(props.street);
-        if (props.district) parts.push(props.district);
-        if (props.city || props.town) parts.push(props.city || props.town);
-        if (props.state) parts.push(props.state);
-        return parts.length > 0 ? parts.join(', ') : 'Target Location Coordinates';
+    function executeLocationSwap() {
+        const pInput = document.getElementById('pickup');
+        const dInput = document.getElementById('dropoff');
+        
+        [pInput.value, dInput.value] = [dInput.value, pInput.value];
+        [pickupCoords, dropoffCoords] = [dropoffCoords, pickupCoords];
+        [pickupState, dropoffState] = [dropoffState, pickupState];
+        
+        document.getElementById('clear-pickup').style.display = pInput.value ? 'block' : 'none';
+        document.getElementById('clear-dropoff').style.display = dInput.value ? 'block' : 'none';
+        
+        if (pickupCoords) updateMarker('pickup', pickupCoords);
+        else clearLocation('pickup');
+
+        if (dropoffCoords) updateMarker('dropoff', dropoffCoords);
+        else clearLocation('dropoff');
+        
+        if (pickupCoords && dropoffCoords) checkAndProcessRoute();
     }
 
     function resetCalculationDisplay() {
-        if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+        if (routePolyline) { map.removeObject(routePolyline); routePolyline = null; }
         document.getElementById('result-card').style.display = 'none';
         document.getElementById('error-msg').style.display = 'none';
+        lastCalculatedData = null;
     }
 
     function showError(msg) {
@@ -694,33 +725,64 @@
             }
 
             debounceTimeout = setTimeout(() => {
-                const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&bbox=99.6,0.8,119.5,7.4&limit=5`;
-                fetch(url)
+                if (autosuggestAbortController) autosuggestAbortController.abort();
+                autosuggestAbortController = new AbortController();
+
+                fetch(`https://autosuggest.search.hereapi.com/v1/autosuggest?q=${encodeURIComponent(query)}&at=3.1390,101.6869&limit=10&apiKey=${HERE_API_KEY}`, {
+                    signal: autosuggestAbortController.signal
+                })
                     .then(res => res.json())
                     .then(data => {
                         suggestionsBox.innerHTML = '';
-                        if(!data.features || data.features.length === 0) {
+                        
+                        if (!data.items || data.items.length === 0) {
                             suggestionsBox.style.display = 'none';
                             return;
                         }
+
+                        const malaysianItems = [];
+                        const otherItems = [];
+
+                        data.items.forEach(item => {
+                            if (!item.position) return;
+                            const isMalaysia = item.address && (
+                                item.address.countryCode === 'MYS' || 
+                                (item.address.label && item.address.label.toLowerCase().includes('malaysia'))
+                            );
+
+                            if (isMalaysia) {
+                                malaysianItems.push(item);
+                            } else {
+                                otherItems.push(item);
+                            }
+                        });
+
+                        const sortedItems = [...malaysianItems, ...otherItems];
+
+                        if (sortedItems.length === 0) {
+                            suggestionsBox.style.display = 'none';
+                            return;
+                        }
+                        
                         suggestionsBox.style.display = 'block';
-                        data.features.forEach(feature => {
-                            const props = feature.properties;
-                            const detailedAddress = expandAddress(props);
+                        sortedItems.slice(0, 5).forEach(item => {
                             const div = document.createElement('div');
                             div.className = 'suggestion-item';
-                            div.textContent = detailedAddress;
+                            const addressDetails = item.address && item.address.label ? ` - ${item.address.label}` : '';
+                            div.textContent = item.title + addressDetails;
+                            
                             div.addEventListener('click', () => {
-                                input.value = props.name || detailedAddress;
+                                input.value = item.title;
                                 suggestionsBox.innerHTML = '';
                                 suggestionsBox.style.display = 'none';
-                                const [lon, lat] = feature.geometry.coordinates;
-                                onSelect({ lat, lon });
+                                onSelect(item);
                             });
                             suggestionsBox.appendChild(div);
                         });
-                    }).catch(err => console.error(err));
-            }, 350);
+                    }).catch(err => {
+                        if (err.name !== 'AbortError') console.error(err);
+                    });
+            }, 300);
         });
 
         clearBtn.addEventListener('click', () => {
@@ -732,205 +794,167 @@
         });
     }
 
+    async function ensureStateInformation() {
+        const promises = [];
+        if (pickupCoords && !pickupState) {
+            promises.push(
+                fetch(`https://revgeocode.search.hereapi.com/v1/revgeocode?at=${pickupCoords.lat},${pickupCoords.lng}&lang=en-US&apiKey=${HERE_API_KEY}`)
+                    .then(res => res.json())
+                    .then(data => { if (data.items?.[0]?.address?.state) pickupState = data.items[0].address.state; })
+            );
+        }
+        if (dropoffCoords && !dropoffState) {
+            promises.push(
+                fetch(`https://revgeocode.search.hereapi.com/v1/revgeocode?at=${dropoffCoords.lat},${dropoffCoords.lng}&lang=en-US&apiKey=${HERE_API_KEY}`)
+                    .then(res => res.json())
+                    .then(data => { if (data.items?.[0]?.address?.state) dropoffState = data.items[0].address.state; })
+            );
+        }
+        await Promise.all(promises);
+    }
+
     function checkAndProcessRoute() {
         if (!pickupCoords || !dropoffCoords) return;
         
         document.getElementById('error-msg').style.display = 'none';
-        if(currentRouteTimeout) clearTimeout(currentRouteTimeout);
+        if (currentRouteTimeout) clearTimeout(currentRouteTimeout);
+        if (routeAbortController) routeAbortController.abort();
         
-        currentRouteTimeout = setTimeout(() => {
-            const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${ORS_API_KEY}&start=${pickupCoords.lon},${pickupCoords.lat}&end=${dropoffCoords.lon},${dropoffCoords.lat}&extra_info=tollways`;
+        routeAbortController = new AbortController();
 
-            fetch(url)
-                .then(res => {
-                    if (!res.ok) throw new Error('API route payload evaluation drop.');
-                    return res.json();
-                })
-                .then(data => {
-                    if (!data.features || data.features.length === 0) {
-                        showError("No valid drivable geometry found matching those vectors.");
-                        return;
-                    }
+        currentRouteTimeout = setTimeout(async () => {
+            await ensureStateInformation();
+            if (routeAbortController.signal.aborted) return;
 
-                    const feature = data.features[0];
-                    const summary = feature.properties.summary;
-                    
-                    const distanceKm = summary.distance / 1000;
-                    const baseDurationMins = summary.duration / 60;
+            const params = {
+                'routingMode': activeRoutingMode,
+                'transportMode': 'car',
+                'origin': `${pickupCoords.lat},${pickupCoords.lng}`,
+                'destination': `${dropoffCoords.lat},${dropoffCoords.lng}`,
+                'departureTime': new Date().toISOString(),
+                'return': 'polyline,summary,tolls'
+            };
 
-                    let routeHasTolls = false;
-                    const extras = feature.properties.extras;
-                    if (extras && extras.tollways && extras.tollways.values) {
-                        routeHasTolls = extras.tollways.values.some(valueArray => valueArray[2] === 1);
-                    } else if (distanceKm > 50) {
-                        routeHasTolls = true;
-                    }
-
-                    const now = new Date();
-                    const currentHour = now.getHours();
-                    const isWeekend = (now.getDay() === 0 || now.getDay() === 6);
-
-                    let trafficDelayFactor = 1.15; 
-                    if (!isWeekend) {
-                        if ((currentHour >= 7 && currentHour <= 9) || (currentHour >= 17 && currentHour <= 19.5)) {
-                            trafficDelayFactor = 1.55; 
-                        } else if (currentHour >= 12 && currentHour <= 14) {
-                            trafficDelayFactor = 1.25; 
-                        }
-                    } else {
-                        if (currentHour >= 16 && currentHour <= 21) {
-                            trafficDelayFactor = 1.35; 
-                        }
-                    }
-
-                    let distanceImpactModifier = 1.0;
-                    if (distanceKm <= 5) {
-                        distanceImpactModifier = 0.65;
-                    } else if (distanceKm <= 15) {
-                        distanceImpactModifier = 0.85;
-                    } else if (distanceKm > 100) {
-                        distanceImpactModifier = 0.35; 
-                    } else if (distanceKm > 50) {
-                        distanceImpactModifier = 0.60;
-                    }
-
-                    const localizedTrafficWeight = 1 + ((trafficDelayFactor - 1) * distanceImpactModifier);
-                    const correctedDurationMins = Math.max(1, Math.round(baseDurationMins * localizedTrafficWeight));
-
-                    if (routeLine) map.removeLayer(routeLine);
-                    
-                    routeLine = L.geoJSON(feature.geometry, { 
-                        style: { color: '#8e24aa', weight: 5, opacity: 0.85 } 
-                    }).addTo(map);
-                    
-                    map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
-
-                    processCalculations(distanceKm, correctedDurationMins, routeHasTolls);
-                })
-                .catch(err => {
-                    console.error("ORS Infrastructure Error:", err);
-                    showError("API connectivity fault or quota restriction triggered.");
-                });
-        }, 250);
-    }
-
-    function formatDuration(totalMins) {
-        if (totalMins < 60) return `${totalMins} mins`;
-        const hours = Math.floor(totalMins / 60);
-        const mins = totalMins % 60;
-        return mins > 0 ? `${hours} hr ${mins} mins` : `${hours} hr`;
-    }
-
-    function roundToMalaysianCents(value) {
-        return Math.round(value * 10) / 10;
-    }
-
-    function processCalculations(distance, duration, routeHasTolls) {
-        const baseFare = 5.00;
-        const perKmRate = 1.25;
-        
-        const chargeableDistance = Math.max(0, distance - 1);
-        const rideDistanceFare = chargeableDistance * perKmRate;
-        
-        let dynamicTolls = 0;
-        let tollSystemLabel = "PLUS Tolls (Est.)";
-
-        const pickupText = document.getElementById('pickup').value.toLowerCase();
-        const dropoffText = document.getElementById('dropoff').value.toLowerCase();
-
-        const isKlangKaparOrigin = pickupText.includes('meru') || pickupText.includes('kapar') || pickupText.includes('bukit raja') || pickupText.includes('klang');
-        const isKlangKaparDest = dropoffText.includes('meru') || dropoffText.includes('kapar') || dropoffText.includes('bukit raja') || dropoffText.includes('klang');
-
-        const isJohorBahruDest = dropoffText.includes('holiday plaza') || dropoffText.includes('jb sentral') || dropoffText.includes('skudai') || dropoffText.includes('r&f mall') || dropoffText.includes('johor');
-        const isJohorBahruOrigin = pickupText.includes('holiday plaza') || pickupText.includes('jb sentral') || pickupText.includes('skudai') || pickupText.includes('r&f mall') || pickupText.includes('johor');
-
-        const isGentingDest = dropoffText.includes('genting') || dropoffText.includes('premium outlet') || dropoffText.includes('ghpo') || dropoffText.includes('gohtong');
-        const isGentingOrigin = pickupText.includes('genting') || pickupText.includes('premium outlet') || pickupText.includes('ghpo') || pickupText.includes('gohtong');
-
-        const isKelantanDest = dropoffText.includes('pengkalan kubor') || dropoffText.includes('kota bharu') || dropoffText.includes('kubor') || dropoffText.includes('kelantan');
-        const isKelantanOrigin = pickupText.includes('pengkalan kubor') || pickupText.includes('kota bharu') || pickupText.includes('kubor') || pickupText.includes('kelantan');
-
-        const isBangiKajangDest = dropoffText.includes('bangi') || dropoffText.includes('pelangi') || dropoffText.includes('kajang') || dropoffText.includes('reko');
-        const isBangiKajangOrigin = pickupText.includes('bangi') || pickupText.includes('pelangi') || pickupText.includes('kajang') || pickupText.includes('reko');
-
-        const isEastCoastDest = dropoffText.includes('kuantan') || dropoffText.includes('pahang') || dropoffText.includes('terengganu') || dropoffText.includes('maran') || dropoffText.includes('temerloh') || dropoffText.includes('gebeng');
-        const isEastCoastOrigin = pickupText.includes('kuantan') || pickupText.includes('pahang') || pickupText.includes('terengganu') || pickupText.includes('maran') || pickupText.includes('temerloh') || pickupText.includes('gebeng');
-
-        const isDamansaraDest = dropoffText.includes('the curve') || dropoffText.includes('mutiara damansara') || dropoffText.includes('one utama') || dropoffText.includes('pj') || dropoffText.includes('damansara');
-        const isDamansaraOrigin = pickupText.includes('the curve') || pickupText.includes('mutiara damansara') || pickupText.includes('one utama') || pickupText.includes('pj') || pickupText.includes('damansara');
-        const isPuncakPerdanaDest = dropoffText.includes('puncak perdana') || dropoffText.includes('uitm puncak') || dropoffText.includes('subang dua');
-        const isPuncakPerdanaOrigin = pickupText.includes('puncak perdana') || pickupText.includes('uitm puncak') || pickupText.includes('subang dua');
-
-        const isKLCenterDest = dropoffText.includes('klcc') || dropoffText.includes('kuala lumpur') || dropoffText.includes('kl tower') || dropoffText.includes('bintang') || dropoffText.includes('sentral');
-        const isKLCenterOrigin = pickupText.includes('klcc') || pickupText.includes('kuala lumpur') || pickupText.includes('kl tower') || pickupText.includes('bintang') || pickupText.includes('sentral');
-
-        // Target clusters for Southern / Negeri Sembilan lines
-        const isSerembanDest = dropoffText.includes('seremban') || dropoffText.includes('tuanku jaafar') || dropoffText.includes('senawang') || dropoffText.includes('nilai');
-        const isSerembanOrigin = pickupText.includes('seremban') || pickupText.includes('tuanku jaafar') || pickupText.includes('senawang') || pickupText.includes('nilai');
-
-        // CRITICAL SPATIAL OVERRIDES
-        if ((isKlangKaparOrigin && isJohorBahruDest) || (isJohorBahruOrigin && isKlangKaparDest)) {
-            dynamicTolls = 37.31; 
-            tollSystemLabel = "PLUS Tolls (Actual)";
-        } else if ((isKlangKaparOrigin && isSerembanDest) || (isSerembanOrigin && isKlangKaparDest)) {
-            dynamicTolls = 9.30; // Matches TollGuru ELITE + NSE Closed-System Class 1 standard perfectly
-            tollSystemLabel = "PLUS Tolls (NKVE-ELITE)";
-        } else if ((isPuncakPerdanaOrigin && isKLCenterDest) || (isKLCenterOrigin && isPuncakPerdanaDest)) {
-            dynamicTolls = 5.00; // Force override to cover DASH + SPRINT/DUKE combo framework
-            tollSystemLabel = "DASH + SPRINT/DUKE Toll";
-        } else if ((isKlangKaparOrigin && isDamansaraDest) || (isDamansaraOrigin && isKlangKaparDest) || (isDamansaraOrigin && isPuncakPerdanaDest) || (isPuncakPerdanaOrigin && isDamansaraDest)) {
-            dynamicTolls = 2.30; // Flat open system Class 1 rate for the DASH highway run
-            tollSystemLabel = "DASH Toll (Actual)";
-        } else if ((isKlangKaparOrigin && isGentingDest) || (isGentingOrigin && isKlangKaparDest)) {
-            dynamicTolls = 12.10; 
-            tollSystemLabel = "PLUS + Karak Tolls";
-        } else if ((isKlangKaparOrigin && isKelantanDest) || (isKelantanOrigin && isKlangKaparDest)) {
-            dynamicTolls = 24.30; 
-            tollSystemLabel = "PLUS + LPT Tolls";
-        } else if ((isKlangKaparOrigin && isBangiKajangDest) || (isBangiKajangOrigin && isKlangKaparDest)) {
-            dynamicTolls = 6.91; 
-            tollSystemLabel = "PLUS Tolls (Actual)";
-        } else if (routeHasTolls) {
-            dynamicTolls = distance <= 45 ? 2.50 : 3.50 + ((distance - 45) * 0.095);
-            
-            // Tightened bounding constraints to prevent southern routes from throwing East Coast tags
-            if ((isEastCoastDest || isEastCoastOrigin || (dropoffCoords && dropoffCoords.lon > 101.95)) && !isSerembanDest) {
-                tollSystemLabel = "LPT / East Coast Tolls";
-            } else {
-                tollSystemLabel = "PLUS Tolls (Est.)";
+            if (avoidTolls) {
+                params['avoid[features]'] = 'tollRoad';
             }
-        }
 
-        document.getElementById('toll-type-label').textContent = tollSystemLabel;
+            router.calculateRoute(params, (result) => {
+                if (routeAbortController.signal.aborted) return;
+                if (!result.routes || result.routes.length === 0) {
+                    showError("No valid route found matching selected routing preferences.");
+                    return;
+                }
 
-        const driverIncentive = (duration / 60) * 12.00;
+                const section = result.routes[0].sections[0];
+                const distanceKm = section.summary.length / 1000;
+                let durationMins = section.summary.duration / 60;
 
-        let deadheadCost = 0;
-        if (distance > 12) {
-            const boundaryKm = Math.min(distance, 350);
-            const dynamicScalePct = ((boundaryKm - 12) / (350 - 12)) * 0.45;
-            deadheadCost = rideDistanceFare * dynamicScalePct;
-            document.getElementById('deadhead-km-row').style.display = 'flex';
-        } else {
-            document.getElementById('deadhead-km-row').style.display = 'none';
-        }
+                let calculatedTollFee = 0;
+                if (!avoidTolls) {
+                    if (section.tolls) {
+                        section.tolls.forEach(t => {
+                            if (t.fares && t.fares[0]) calculatedTollFee += parseFloat(t.fares[0].price.value || 0);
+                        });
+                    } else if (section.summary && section.summary.tollCosts) {
+                        section.summary.tollCosts.forEach(tc => calculatedTollFee += parseFloat(tc.value || 0));
+                    }
+                }
 
-        const rawTotal = baseFare + rideDistanceFare + dynamicTolls + driverIncentive + deadheadCost;
-        const roundedTotal = Math.max(baseFare, roundToMalaysianCents(rawTotal));
-        const finalDisplayedWholeFare = Math.round(roundedTotal);
+                if (routePolyline) map.removeObject(routePolyline);
+                const linestring = H.geo.LineString.fromFlexiblePolyline(section.polyline);
+                routePolyline = new H.map.Polyline(linestring, { style: { strokeColor: '#8e24aa', lineWidth: 5 } });
+                
+                map.addObject(routePolyline);
+                map.getViewModel().setLookAtData({ bounds: routePolyline.getBoundingBox() });
 
-        document.getElementById('total-fare').textContent = `RM ${finalDisplayedWholeFare}`;
+                processCalculations(distanceKm, durationMins, calculatedTollFee);
+            }, (error) => {
+                if (routeAbortController.signal.aborted) return;
+                console.error("HERE Routing API Error:", error);
+                showError("Route calculation failed with selected preferences.");
+            });
+        }, 200);
+    }
+
+    function processCalculations(distance, duration, tollFee) {
+        // Determine whether trip belongs to Tier 1 (Klang Valley / Penang) or Tier 2 (Secondary Cities)
+        const isTier1 = isTier1Region(pickupState) || isTier1Region(dropoffState);
+
+        // Assign parameters based on Tier specifications
+        const baseFare = isTier1 ? 7.50 : 4.50;
+        const perKmRate = isTier1 ? 1.30 : 1.00;
+        const perMinuteRate = isTier1 ? 0.50 : 0.25;
+
+        const chargeableDistance = Math.max(0, distance - 3);
+        const rideDistanceFare = chargeableDistance * perKmRate;
+        const rideTimeFare = duration * perMinuteRate;
+
+        // Remote Pickup Distance Check (if pickup distance from a baseline is considered, or simulated via direct calculation)
+        let pickupFee = 0;
+        // As an example logic safeguard, if needed we can apply distance-based remote pickup check
+        
+        // Subtotal before Surge Multiplier & Tolls
+        const subtotal = (baseFare + rideDistanceFare + rideTimeFare + pickupFee) * customMultiplier;
+        const rawTotal = subtotal + tollFee;
+        
+        // Snap to 5 sen (0.05) rounding for realistic e-wallet / cash payment
+        const roundedTotal = Math.max(baseFare, Math.round(rawTotal * 20) / 20);
+
+        // Render UI Elements & Badges
+        document.getElementById('calc-tier-badge').textContent = isTier1 ? "🏙️ Tier 1: Klang Valley / Penang" : "🌳 Tier 2: Secondary City";
+        document.getElementById('pickup-fee-row').style.display = pickupFee > 0 ? 'flex' : 'none';
+        document.getElementById('multiplier-row').style.display = customMultiplier > 1.0 ? 'flex' : 'none';
+
+        document.getElementById('total-fare').textContent = `RM ${Math.round(roundedTotal)}`;
         document.getElementById('fare-distance').textContent = `${distance.toFixed(1)} km`;
-        document.getElementById('fare-duration').textContent = formatDuration(duration);
+        document.getElementById('fare-duration').textContent = duration < 60 ? `${Math.round(duration)} mins` : `${Math.floor(duration / 60)} hr ${Math.round(duration % 60)} mins`;
 
         document.getElementById('calc-base-fare').textContent = `RM ${baseFare.toFixed(2)}`;
         document.getElementById('calc-ride-distance-rate').textContent = `RM ${rideDistanceFare.toFixed(2)}`;
-        document.getElementById('calc-tolls').textContent = `RM ${dynamicTolls.toFixed(2)}`;
-        document.getElementById('calc-incentive').textContent = `RM ${driverIncentive.toFixed(2)}`;
-        document.getElementById('calc-deadhead-km').textContent = `RM ${deadheadCost.toFixed(2)}`;
+        document.getElementById('calc-time-rate').textContent = `RM ${rideTimeFare.toFixed(2)}`;
+        document.getElementById('calc-toll-fare').textContent = `RM ${tollFee.toFixed(2)}`;
+        document.getElementById('calc-pickup-fee').textContent = `RM ${pickupFee.toFixed(2)}`;
+        document.getElementById('calc-multiplier').textContent = `${customMultiplier.toFixed(2)}x`;
         document.getElementById('calc-grand').textContent = `RM ${roundedTotal.toFixed(2)}`;
 
+        // Save State for Receipt Generator
+        lastCalculatedData = {
+            pickup: document.getElementById('pickup').value || "Pickup Point",
+            dropoff: document.getElementById('dropoff').value || "Drop-off Point",
+            distance: distance.toFixed(1),
+            duration: Math.round(duration),
+            total: roundedTotal.toFixed(2)
+        };
+
         document.getElementById('result-card').style.display = 'block';
+    }
+
+    // Format Receipt to WhatsApp-friendly message
+    function copyReceiptToClipboard() {
+        if (!lastCalculatedData) return;
+
+        const text = `🚗 *RIDE-HAILING FARE ESTIMATE*\n` +
+            `-----------------------------------\n` +
+            `📍 *From:* ${lastCalculatedData.pickup}\n` +
+            `🏁 *To:* ${lastCalculatedData.dropoff}\n` +
+            `📏 *Distance:* ${lastCalculatedData.distance} km (${lastCalculatedData.duration} mins)\n` +
+            `-----------------------------------\n` +
+            `💰 *TOTAL FARE: RM ${lastCalculatedData.total}*\n` +
+            `_*(Includes base fare, distance, traffic time & tolls)*_\n` +
+            `-----------------------------------\n` +
+            `_Powered by Dual-Tier Win-Win Algorithm_`;
+
+        navigator.clipboard.writeText(text).then(() => {
+            const shareBtn = document.querySelector('.share-btn');
+            const originalText = shareBtn.innerHTML;
+            shareBtn.innerHTML = "✅ Receipt Copied!";
+            shareBtn.style.backgroundColor = "#1b5e20";
+            setTimeout(() => {
+                shareBtn.innerHTML = originalText;
+                shareBtn.style.backgroundColor = "var(--whatsapp-green)";
+            }, 2000);
+        }).catch(err => console.error("Could not copy receipt:", err));
     }
 </script>
 </body>
