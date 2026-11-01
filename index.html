@@ -464,7 +464,7 @@
                     <span id="calc-grand" style="color: var(--primary-light);">RM 0.00</span>
                 </div>
                 <div class="detail-row" style="color: #ff8a80;">
-                    <span>Platform Admin Fee (15% off Distance)</span>
+                    <span>Platform Admin Fee (Min RM 1.50)</span>
                     <span id="calc-deduction">-RM 0.00</span>
                 </div>
                 <div class="detail-row driver-net-highlight">
@@ -868,11 +868,14 @@
     }
 
     function processCalculations(distance, duration, tollFee, maxElevation) {
-        // 1. Distance Fare: Updated Rate to RM 1.45/km
+        // 1. Distance Fare: RM 1.45/km
         const distanceFare = distance * 1.45;
 
-        // 1b. 15% Driver Platform Deduction calculated strictly off Distance Fare
-        const deduction15 = distanceFare * 0.15;
+        // 1b. 15% Driver Platform Deduction with Minimum RM 1.50 Floor Rule
+        let deduction15 = distanceFare * 0.15;
+        if (deduction15 < 1.50) {
+            deduction15 = 1.50;
+        }
 
         // 2. Urban Area / POI / Trip > 20km Surcharge Calculation (+RM 3.00)
         let urbanSurcharge = 0;
@@ -904,7 +907,7 @@
         let exactTotal = Math.max(8.00, Math.round(rawTotal * 100) / 100);
         const customerTotal = Math.round(exactTotal);
 
-        // Driver Net Income calculation: Customer Total - 15% Distance Deduction
+        // Driver Net Income calculation: Customer Total - Deduction
         const driverNetIncome = Math.round((customerTotal - deduction15) * 100) / 100;
 
         // Display conditional rows
