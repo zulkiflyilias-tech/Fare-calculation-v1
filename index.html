@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rideshare MY - Fare Estimator</title>
+    <title>Rideshare MY - Fare Estimator (Optimized Engine)</title>
     
     <!-- HERE Maps JS API CSS -->
     <link rel="stylesheet" type="text/css" href="https://js.api.here.com/v3/3.1/mapsjs-ui.css" />
@@ -63,38 +63,6 @@
             margin: 0 0 8px 0;
             font-size: 18px;
             font-weight: 700;
-        }
-
-        /* Shortcuts Container */
-        .shortcuts-bar {
-            display: flex;
-            gap: 6px;
-            overflow-x: auto;
-            padding-bottom: 6px;
-            margin-bottom: 6px;
-            scrollbar-width: none;
-        }
-        .shortcuts-bar::-webkit-scrollbar { display: none; }
-
-        .shortcut-chip {
-            white-space: nowrap;
-            background: #f0f0f3;
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 4px 10px;
-            font-size: 11px;
-            font-weight: 600;
-            color: #444;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-        .shortcut-chip:hover {
-            background-color: #e8e0f0;
-            color: var(--primary);
-            border-color: var(--primary-light);
         }
 
         .routing-wrapper {
@@ -227,12 +195,12 @@
             margin-bottom: 8px;
         }
 
-        .route-mode-container, .multiplier-container {
+        .route-mode-container {
             display: flex;
             gap: 6px;
         }
 
-        .mode-btn, .mult-btn {
+        .mode-btn {
             flex: 1;
             padding: 6px 4px;
             border: 1px solid var(--border-color);
@@ -249,7 +217,7 @@
             transition: all 0.2s ease;
         }
 
-        .mode-btn.active, .mult-btn.active {
+        .mode-btn.active {
             background-color: #f3e5f5;
             border-color: var(--primary);
             color: var(--primary);
@@ -309,9 +277,24 @@
             margin-bottom: 8px;
         }
 
-        #invoice-details {
+        details {
             border-top: 1px dashed #3a3a3c;
             padding-top: 8px;
+            margin-top: 6px;
+        }
+
+        summary {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--primary-light);
+            cursor: pointer;
+            outline: none;
+            user-select: none;
+            margin-bottom: 6px;
+        }
+
+        summary:hover {
+            color: #d1c4e9;
         }
 
         .detail-row {
@@ -326,6 +309,15 @@
             color: #fff;
             font-weight: 600;
             border-top: 1px solid #2c2c2e;
+            padding-top: 6px;
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
+
+        .detail-row.driver-net-highlight {
+            color: #a5d6a7;
+            font-weight: 700;
+            border-top: 1px solid rgba(255,255,255,0.1);
             padding-top: 6px;
             margin-bottom: 10px;
             font-size: 13px;
@@ -346,6 +338,7 @@
             justify-content: center;
             gap: 6px;
             transition: background 0.2s ease;
+            margin-top: 8px;
         }
 
         .share-btn:hover {
@@ -390,16 +383,7 @@
     
     <div id="search-panel">
         <div class="header-row">
-            <h2>Fare Estimator (Dual-Tier Win-Win Model)</h2>
-        </div>
-
-        <!-- Quick Destinations Shortcuts Bar -->
-        <div class="shortcuts-bar">
-            <div class="shortcut-chip" onclick="applyShortcut('KLIA Terminal 1', 2.7456, 101.7072, 'Selangor')">✈️ KLIA T1</div>
-            <div class="shortcut-chip" onclick="applyShortcut('KL Sentral', 3.1342, 101.6861, 'Kuala Lumpur')">🚉 KL Sentral</div>
-            <div class="shortcut-chip" onclick="applyShortcut('Mid Valley Megamall', 3.1177, 101.6774, 'Kuala Lumpur')">🛍️ Mid Valley</div>
-            <div class="shortcut-chip" onclick="applyShortcut('Seremban Town', 2.7258, 101.9424, 'Negeri Sembilan')">🌳 Seremban</div>
-            <div class="shortcut-chip" onclick="applyShortcut('Ipoh Town', 4.5975, 101.0901, 'Perak')">🌳 Ipoh</div>
+            <h2>Fare Estimator</h2>
         </div>
         
         <div class="routing-wrapper">
@@ -436,13 +420,6 @@
                 <button class="mode-btn" id="btn-mode-short" onclick="setRoutingMode('short')">📏 Shortest Route</button>
             </div>
 
-            <!-- Custom Fare Multipliers (Surge Cap limiters) -->
-            <div class="multiplier-container">
-                <button class="mult-btn active" id="mult-100" onclick="setMultiplier(1.0)">1.0x Normal</button>
-                <button class="mult-btn" id="mult-125" onclick="setMultiplier(1.25)">1.25x Surge</button>
-                <button class="mult-btn" id="mult-150" onclick="setMultiplier(1.50)">1.5x Max Cap</button>
-            </div>
-
             <button class="toggle-btn" id="btn-avoid-tolls" onclick="toggleAvoidTolls()">🛑 Avoid Tolls</button>
         </div>
 
@@ -458,44 +435,46 @@
                 <span id="fare-duration">0 mins</span>
             </div>
             
-            <div id="invoice-details">
+            <!-- Collapsible Driver Details (Private Breakdown) -->
+            <details>
+                <summary>📊 Detailed Calculation (Driver View)</summary>
                 <div class="detail-row">
-                    <span>Active Market Tier</span>
-                    <span id="calc-tier-badge" style="color: var(--primary-light); font-weight: 600;">Tier 1 (Klang Valley)</span>
+                    <span>Distance Fare (RM 1.45/km)</span>
+                    <span id="calc-distance-fare">RM 0.00</span>
                 </div>
-                <div class="detail-row">
-                    <span>Base Fare (0-3 KM)</span>
-                    <span id="calc-base-fare">RM 7.50</span>
-                </div>
-                <div class="detail-row">
-                    <span>Distance Fare</span>
-                    <span id="calc-ride-distance-rate">RM 0.00</span>
-                </div>
-                <div class="detail-row">
-                    <span>Time Fare (Traffic Real-Time)</span>
-                    <span id="calc-time-rate">RM 0.00</span>
+                <div class="detail-row" id="urban-surcharge-row" style="display: none;">
+                    <span id="urban-surcharge-label">Urban / POI Surcharge</span>
+                    <span id="calc-urban-surcharge">RM 0.00</span>
                 </div>
                 <div class="detail-row" id="toll-fare-row">
                     <span>Toll Charges</span>
                     <span id="calc-toll-fare">RM 0.00</span>
                 </div>
-                <div class="detail-row" id="pickup-fee-row" style="display: none;">
-                    <span>Remote Pickup Surcharge</span>
-                    <span id="calc-pickup-fee">RM 0.00</span>
+                <div class="detail-row" id="hill-surcharge-row" style="display: none;">
+                    <span>Hill Surcharge</span>
+                    <span id="calc-hill-surcharge">RM 0.00</span>
                 </div>
-                <div class="detail-row" id="multiplier-row" style="display: none;">
-                    <span>Surge Multiplier</span>
-                    <span id="calc-multiplier">1.0x</span>
+                <div class="detail-row" id="long-haul-incentive-row" style="display: none;">
+                    <span>Long-Haul Driver Incentive (+25%)</span>
+                    <span id="calc-long-haul-incentive">RM 0.00</span>
                 </div>
 
                 <div class="detail-row total-bold">
-                    <span>Rounded Final Total</span>
+                    <span>Exact Calculated Total</span>
                     <span id="calc-grand" style="color: var(--primary-light);">RM 0.00</span>
                 </div>
+                <div class="detail-row" style="color: #ff8a80;">
+                    <span>Platform Admin Fee (15% off Distance)</span>
+                    <span id="calc-deduction">-RM 0.00</span>
+                </div>
+                <div class="detail-row driver-net-highlight">
+                    <span>Driver Net Income (incl. Tolls)</span>
+                    <span id="driver-net-fare">RM 0.00</span>
+                </div>
+            </details>
 
-                <!-- Copy Invoice Button -->
-                <button class="share-btn" onclick="copyReceiptToClipboard()">📋 Copy Receipt Breakdown</button>
-            </div>
+            <!-- Copy Invoice Button -->
+            <button class="share-btn" id="share-btn" onclick="copyReceiptToClipboard()">📋 Copy Receipt Breakdown</button>
         </div>
     </div>
 </div>
@@ -522,17 +501,34 @@
 
     let pickupMarker = null, dropoffMarker = null, routePolyline = null;
     let pickupCoords = null, dropoffCoords = null;
-    let pickupState = '', dropoffState = '';
+    let pickupItem = null, dropoffItem = null;
     let activeRoutingMode = 'fast'; 
     let avoidTolls = false;
-    let customMultiplier = 1.0;
     let lastCalculatedData = null;
     let currentRouteTimeout = null;
     let routeAbortController = null;
     let autosuggestAbortController = null;
 
-    // Define Tier 1 states/regions (Klang Valley / Penang high-congestion urban centers)
-    const TIER_1_STATES = ['kuala lumpur', 'selangor', 'penang', 'pulau pinang'];
+    // Define Major Highland Destination Zones in Peninsular Malaysia
+    const HIGHLAND_ZONES = [
+        { lat: 3.4241, lng: 101.7933, radiusKm: 10.0, fee: 25.00, name: "Genting Highlands & Gohtong" },
+        { lat: 4.4715, lng: 101.3787, radiusKm: 22.0, fee: 25.00, name: "Cameron Highlands" },
+        { lat: 3.7155, lng: 101.7432, radiusKm: 6.0,  fee: 25.00, name: "Fraser's Hill" },
+        { lat: 3.3533, lng: 101.8385, radiusKm: 8.0,  fee: 25.00, name: "Bukit Tinggi & Colmar Tropicale" }
+    ];
+
+    // Key Major Urban & High-Density Transport Zones (KLCC, Airports, Major Malls/Hubs)
+    const URBAN_POI_ZONES = [
+        { lat: 3.1579, lng: 101.7116, radiusKm: 5.0, name: "KL City Centre & Golden Triangle" },
+        { lat: 2.7456, lng: 101.7072, radiusKm: 8.0, name: "KLIA / KLIA2 Airport Zone" },
+        { lat: 3.1340, lng: 101.6861, radiusKm: 3.0, name: "KL Sentral & Brickfields" },
+        { lat: 3.1191, lng: 101.6741, radiusKm: 3.0, name: "Mid Valley & Bangsar South" },
+        { lat: 3.1580, lng: 101.6145, radiusKm: 3.0, name: "1 Utama & Mutiara Damansara" },
+        { lat: 3.0732, lng: 101.6070, radiusKm: 3.0, name: "Sunway Pyramid & Subang Jaya" },
+        { lat: 3.0449, lng: 101.6212, radiusKm: 3.0, name: "Puchong IOI Zone" },
+        { lat: 3.0707, lng: 101.5204, radiusKm: 4.0, name: "Shah Alam City Centre" },
+        { lat: 3.0442, lng: 101.4456, radiusKm: 4.0, name: "Klang City Centre" }
+    ];
 
     function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
         const R = 6371; // km
@@ -544,49 +540,58 @@
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
-    function isTier1Region(stateName) {
-        if (!stateName) return true; // Default fallback to Tier 1 if unknown
-        const cleanState = stateName.toLowerCase().trim();
-        return TIER_1_STATES.some(t => cleanState.includes(t));
+    function getHighlandZoneFee(pickup, dropoff) {
+        let maxFee = 0;
+        const points = [pickup, dropoff].filter(Boolean);
+
+        points.forEach(coord => {
+            HIGHLAND_ZONES.forEach(zone => {
+                if (calculateHaversineDistance(coord.lat, coord.lng, zone.lat, zone.lng) <= zone.radiusKm) {
+                    if (zone.fee > maxFee) maxFee = zone.fee;
+                }
+            });
+        });
+
+        return maxFee;
     }
 
-    // Quick Destination Shortcut Handler
-    function applyShortcut(title, lat, lng, state) {
-        const dropoffInput = document.getElementById('dropoff');
-        dropoffInput.value = title;
-        dropoffCoords = { lat, lng };
-        dropoffState = state;
-        document.getElementById('clear-dropoff').style.display = 'block';
-        updateMarker('dropoff', dropoffCoords);
-        checkAndProcessRoute();
+    function isUrbanOrPOI(pickup, dropoff, itemP, itemD) {
+        const points = [pickup, dropoff].filter(Boolean);
+
+        // 1. Check Spatial proximity to key Malaysian urban hotspots
+        for (let coord of points) {
+            for (let zone of URBAN_POI_ZONES) {
+                if (calculateHaversineDistance(coord.lat, coord.lng, zone.lat, zone.lng) <= zone.radiusKm) {
+                    return true;
+                }
+            }
+        }
+
+        // 2. Check HERE API Result Category Type for POI metadata (Mall, Airport, Station, Hotel, Hospital)
+        const items = [itemP, itemD].filter(Boolean);
+        for (let item of items) {
+            if (item.resultType === 'pointOfInterest' || (item.categories && item.categories.length > 0)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
-    // Rate Multiplier Setter (Bounded by the agreed Surge Cap)
-    function setMultiplier(val) {
-        customMultiplier = val;
-        document.getElementById('mult-100').classList.toggle('active', val === 1.0);
-        document.getElementById('mult-125').classList.toggle('active', val === 1.25);
-        document.getElementById('mult-150').classList.toggle('active', val === 1.50);
-
-        if (pickupCoords && dropoffCoords) checkAndProcessRoute();
-    }
-
-    // Set up Autocomplete Listeners
     setupAutocomplete('pickup', 'pickup-suggestions', 'clear-pickup', (item) => {
+        pickupItem = item;
         pickupCoords = { lat: item.position.lat, lng: item.position.lng };
-        pickupState = item.address && item.address.state ? item.address.state : '';
         updateMarker('pickup', pickupCoords);
         checkAndProcessRoute();
     }, () => clearLocation('pickup'));
 
     setupAutocomplete('dropoff', 'dropoff-suggestions', 'clear-dropoff', (item) => {
+        dropoffItem = item;
         dropoffCoords = { lat: item.position.lat, lng: item.position.lng };
-        dropoffState = item.address && item.address.state ? item.address.state : '';
         updateMarker('dropoff', dropoffCoords);
         checkAndProcessRoute();
     }, () => clearLocation('dropoff'));
 
-    // Handle Current Location Geolocation
     document.getElementById('current-loc-btn').addEventListener('click', () => {
         if (!navigator.geolocation) {
             showError("Geolocation is not supported by your browser.");
@@ -600,6 +605,7 @@
             (pos) => {
                 const { latitude: lat, longitude: lng } = pos.coords;
                 pickupCoords = { lat, lng };
+                pickupItem = null;
                 updateMarker('pickup', pickupCoords);
                 map.setCenter({ lat, lng });
                 map.setZoom(14);
@@ -609,8 +615,8 @@
                     .then(data => {
                         btn.textContent = "🎯";
                         if (data.items && data.items.length > 0) {
+                            pickupItem = data.items[0];
                             document.getElementById('pickup').value = data.items[0].address.label;
-                            pickupState = data.items[0].address.state || '';
                         } else {
                             document.getElementById('pickup').value = `Current Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
                         }
@@ -628,7 +634,7 @@
                 btn.textContent = "🎯";
                 showError("Unable to retrieve location coordinates.");
             },
-            { enableHighAccuracy: true, timeout: 8000 }
+            { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
         );
     });
 
@@ -663,11 +669,11 @@
     function clearLocation(type) {
         if (type === 'pickup') {
             pickupCoords = null;
-            pickupState = '';
+            pickupItem = null;
             if (pickupMarker) { map.removeObject(pickupMarker); pickupMarker = null; }
         } else {
             dropoffCoords = null;
-            dropoffState = '';
+            dropoffItem = null;
             if (dropoffMarker) { map.removeObject(dropoffMarker); dropoffMarker = null; }
         }
         resetCalculationDisplay();
@@ -679,7 +685,7 @@
         
         [pInput.value, dInput.value] = [dInput.value, pInput.value];
         [pickupCoords, dropoffCoords] = [dropoffCoords, pickupCoords];
-        [pickupState, dropoffState] = [dropoffState, pickupState];
+        [pickupItem, dropoffItem] = [dropoffItem, pickupItem];
         
         document.getElementById('clear-pickup').style.display = pInput.value ? 'block' : 'none';
         document.getElementById('clear-dropoff').style.display = dInput.value ? 'block' : 'none';
@@ -750,15 +756,11 @@
                                 (item.address.label && item.address.label.toLowerCase().includes('malaysia'))
                             );
 
-                            if (isMalaysia) {
-                                malaysianItems.push(item);
-                            } else {
-                                otherItems.push(item);
-                            }
+                            if (isMalaysia) malaysianItems.push(item);
+                            else otherItems.push(item);
                         });
 
                         const sortedItems = [...malaysianItems, ...otherItems];
-
                         if (sortedItems.length === 0) {
                             suggestionsBox.style.display = 'none';
                             return;
@@ -794,25 +796,6 @@
         });
     }
 
-    async function ensureStateInformation() {
-        const promises = [];
-        if (pickupCoords && !pickupState) {
-            promises.push(
-                fetch(`https://revgeocode.search.hereapi.com/v1/revgeocode?at=${pickupCoords.lat},${pickupCoords.lng}&lang=en-US&apiKey=${HERE_API_KEY}`)
-                    .then(res => res.json())
-                    .then(data => { if (data.items?.[0]?.address?.state) pickupState = data.items[0].address.state; })
-            );
-        }
-        if (dropoffCoords && !dropoffState) {
-            promises.push(
-                fetch(`https://revgeocode.search.hereapi.com/v1/revgeocode?at=${dropoffCoords.lat},${dropoffCoords.lng}&lang=en-US&apiKey=${HERE_API_KEY}`)
-                    .then(res => res.json())
-                    .then(data => { if (data.items?.[0]?.address?.state) dropoffState = data.items[0].address.state; })
-            );
-        }
-        await Promise.all(promises);
-    }
-
     function checkAndProcessRoute() {
         if (!pickupCoords || !dropoffCoords) return;
         
@@ -822,8 +805,7 @@
         
         routeAbortController = new AbortController();
 
-        currentRouteTimeout = setTimeout(async () => {
-            await ensureStateInformation();
+        currentRouteTimeout = setTimeout(() => {
             if (routeAbortController.signal.aborted) return;
 
             const params = {
@@ -832,7 +814,7 @@
                 'origin': `${pickupCoords.lat},${pickupCoords.lng}`,
                 'destination': `${dropoffCoords.lat},${dropoffCoords.lng}`,
                 'departureTime': new Date().toISOString(),
-                'return': 'polyline,summary,tolls'
+                'return': 'polyline,summary,tolls,elevation'
             };
 
             if (avoidTolls) {
@@ -849,7 +831,7 @@
                 const section = result.routes[0].sections[0];
                 const distanceKm = section.summary.length / 1000;
                 let durationMins = section.summary.duration / 60;
-
+                
                 let calculatedTollFee = 0;
                 if (!avoidTolls) {
                     if (section.tolls) {
@@ -861,6 +843,14 @@
                     }
                 }
 
+                let maxElevation = 0;
+                if (section.elevation && section.elevation.features && section.elevation.features.length > 0) {
+                    const elevations = section.elevation.features.map(f => f.geometry.coordinates);
+                    elevations.forEach(coord => {
+                        if (coord[2] && coord[2] > maxElevation) maxElevation = coord[2];
+                    });
+                }
+
                 if (routePolyline) map.removeObject(routePolyline);
                 const linestring = H.geo.LineString.fromFlexiblePolyline(section.polyline);
                 routePolyline = new H.map.Polyline(linestring, { style: { strokeColor: '#8e24aa', lineWidth: 5 } });
@@ -868,7 +858,7 @@
                 map.addObject(routePolyline);
                 map.getViewModel().setLookAtData({ bounds: routePolyline.getBoundingBox() });
 
-                processCalculations(distanceKm, durationMins, calculatedTollFee);
+                processCalculations(distanceKm, durationMins, calculatedTollFee, maxElevation);
             }, (error) => {
                 if (routeAbortController.signal.aborted) return;
                 console.error("HERE Routing API Error:", error);
@@ -877,84 +867,128 @@
         }, 200);
     }
 
-    function processCalculations(distance, duration, tollFee) {
-        // Determine whether trip belongs to Tier 1 (Klang Valley / Penang) or Tier 2 (Secondary Cities)
-        const isTier1 = isTier1Region(pickupState) || isTier1Region(dropoffState);
+    function processCalculations(distance, duration, tollFee, maxElevation) {
+        // 1. Distance Fare: Updated Rate to RM 1.45/km
+        const distanceFare = distance * 1.45;
 
-        // Assign parameters based on Tier specifications
-        const baseFare = isTier1 ? 7.50 : 4.50;
-        const perKmRate = isTier1 ? 1.30 : 1.00;
-        const perMinuteRate = isTier1 ? 0.50 : 0.25;
+        // 1b. 15% Driver Platform Deduction calculated strictly off Distance Fare
+        const deduction15 = distanceFare * 0.15;
 
-        const chargeableDistance = Math.max(0, distance - 3);
-        const rideDistanceFare = chargeableDistance * perKmRate;
-        const rideTimeFare = duration * perMinuteRate;
+        // 2. Urban Area / POI / Trip > 20km Surcharge Calculation (+RM 3.00)
+        let urbanSurcharge = 0;
+        let urbanLabel = "Urban / POI Surcharge (+RM3)";
+        const hasUrbanOrPOI = isUrbanOrPOI(pickupCoords, dropoffCoords, pickupItem, dropoffItem);
 
-        // Remote Pickup Distance Check (if pickup distance from a baseline is considered, or simulated via direct calculation)
-        let pickupFee = 0;
-        // As an example logic safeguard, if needed we can apply distance-based remote pickup check
+        if (hasUrbanOrPOI) {
+            urbanSurcharge = 3.00;
+            urbanLabel = "Urban / POI Surcharge (+RM3)";
+        } else if (distance > 20) {
+            urbanSurcharge = 3.00;
+            urbanLabel = "Long Trip Base Surcharge (>20km)";
+        }
+
+        // 3. Hill Surcharge: Bi-directional zone check OR max elevation > 800m
+        const zoneHillFee = getHighlandZoneFee(pickupCoords, dropoffCoords);
+        const isHighland = zoneHillFee > 0 || maxElevation > 800;
+        const hillSurcharge = isHighland ? Math.max(25.00, zoneHillFee) : 0;
+
+        // 4. Long-haul Driver Incentive (>= 100km): 25% from distance fare
+        let longHaulIncentive = 0;
+        if (distance >= 100) {
+            longHaulIncentive = distanceFare * 0.25;
+        }
+
+        const rawTotal = distanceFare + urbanSurcharge + tollFee + hillSurcharge + longHaulIncentive;
         
-        // Subtotal before Surge Multiplier & Tolls
-        const subtotal = (baseFare + rideDistanceFare + rideTimeFare + pickupFee) * customMultiplier;
-        const rawTotal = subtotal + tollFee;
-        
-        // Snap to 5 sen (0.05) rounding for realistic e-wallet / cash payment
-        const roundedTotal = Math.max(baseFare, Math.round(rawTotal * 20) / 20);
+        // Minimum Fare RM8 Rule
+        let exactTotal = Math.max(8.00, Math.round(rawTotal * 100) / 100);
+        const customerTotal = Math.round(exactTotal);
 
-        // Render UI Elements & Badges
-        document.getElementById('calc-tier-badge').textContent = isTier1 ? "🏙️ Tier 1: Klang Valley / Penang" : "🌳 Tier 2: Secondary City";
-        document.getElementById('pickup-fee-row').style.display = pickupFee > 0 ? 'flex' : 'none';
-        document.getElementById('multiplier-row').style.display = customMultiplier > 1.0 ? 'flex' : 'none';
+        // Driver Net Income calculation: Customer Total - 15% Distance Deduction
+        const driverNetIncome = Math.round((customerTotal - deduction15) * 100) / 100;
 
-        document.getElementById('total-fare').textContent = `RM ${Math.round(roundedTotal)}`;
+        // Display conditional rows
+        document.getElementById('urban-surcharge-row').style.display = urbanSurcharge > 0 ? 'flex' : 'none';
+        document.getElementById('urban-surcharge-label').textContent = urbanLabel;
+        document.getElementById('calc-urban-surcharge').textContent = `RM ${urbanSurcharge.toFixed(2)}`;
+
+        document.getElementById('long-haul-incentive-row').style.display = longHaulIncentive > 0 ? 'flex' : 'none';
+        document.getElementById('hill-surcharge-row').style.display = hillSurcharge > 0 ? 'flex' : 'none';
+
+        // Render UI Elements
+        document.getElementById('total-fare').textContent = `RM ${customerTotal}`;
+        document.getElementById('calc-deduction').textContent = `-RM ${deduction15.toFixed(2)}`;
+        document.getElementById('driver-net-fare').textContent = `RM ${driverNetIncome.toFixed(2)}`;
         document.getElementById('fare-distance').textContent = `${distance.toFixed(1)} km`;
         document.getElementById('fare-duration').textContent = duration < 60 ? `${Math.round(duration)} mins` : `${Math.floor(duration / 60)} hr ${Math.round(duration % 60)} mins`;
 
-        document.getElementById('calc-base-fare').textContent = `RM ${baseFare.toFixed(2)}`;
-        document.getElementById('calc-ride-distance-rate').textContent = `RM ${rideDistanceFare.toFixed(2)}`;
-        document.getElementById('calc-time-rate').textContent = `RM ${rideTimeFare.toFixed(2)}`;
+        document.getElementById('calc-distance-fare').textContent = `RM ${distanceFare.toFixed(2)}`;
         document.getElementById('calc-toll-fare').textContent = `RM ${tollFee.toFixed(2)}`;
-        document.getElementById('calc-pickup-fee').textContent = `RM ${pickupFee.toFixed(2)}`;
-        document.getElementById('calc-multiplier').textContent = `${customMultiplier.toFixed(2)}x`;
-        document.getElementById('calc-grand').textContent = `RM ${roundedTotal.toFixed(2)}`;
+        document.getElementById('calc-hill-surcharge').textContent = `RM ${hillSurcharge.toFixed(2)}`;
+        document.getElementById('calc-long-haul-incentive').textContent = `RM ${longHaulIncentive.toFixed(2)}`;
+        document.getElementById('calc-grand').textContent = `RM ${exactTotal.toFixed(2)}`;
 
-        // Save State for Receipt Generator
         lastCalculatedData = {
             pickup: document.getElementById('pickup').value || "Pickup Point",
             dropoff: document.getElementById('dropoff').value || "Drop-off Point",
             distance: distance.toFixed(1),
             duration: Math.round(duration),
-            total: roundedTotal.toFixed(2)
+            total: customerTotal.toString()
         };
 
         document.getElementById('result-card').style.display = 'block';
     }
 
-    // Format Receipt to WhatsApp-friendly message
     function copyReceiptToClipboard() {
         if (!lastCalculatedData) return;
 
-        const text = `🚗 *RIDE-HAILING FARE ESTIMATE*\n` +
+        const text = `🚗 *TRIP FARE RECEIPT ESTIMATE*\n` +
             `-----------------------------------\n` +
             `📍 *From:* ${lastCalculatedData.pickup}\n` +
             `🏁 *To:* ${lastCalculatedData.dropoff}\n` +
             `📏 *Distance:* ${lastCalculatedData.distance} km (${lastCalculatedData.duration} mins)\n` +
             `-----------------------------------\n` +
             `💰 *TOTAL FARE: RM ${lastCalculatedData.total}*\n` +
-            `_*(Includes base fare, distance, traffic time & tolls)*_\n` +
+            `_*(Fare include tolls)*_\n` +
             `-----------------------------------\n` +
-            `_Powered by Dual-Tier Win-Win Algorithm_`;
+            `_Fare generated via Rideshare MY_`;
 
-        navigator.clipboard.writeText(text).then(() => {
-            const shareBtn = document.querySelector('.share-btn');
-            const originalText = shareBtn.innerHTML;
-            shareBtn.innerHTML = "✅ Receipt Copied!";
-            shareBtn.style.backgroundColor = "#1b5e20";
-            setTimeout(() => {
-                shareBtn.innerHTML = originalText;
-                shareBtn.style.backgroundColor = "var(--whatsapp-green)";
-            }, 2000);
-        }).catch(err => console.error("Could not copy receipt:", err));
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text)
+                .then(() => showCopySuccess())
+                .catch(() => fallbackCopyText(text));
+        } else {
+            fallbackCopyText(text);
+        }
+    }
+
+    function fallbackCopyText(text) {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        textArea.style.top = "-999999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) showCopySuccess();
+        } catch (err) {
+            console.error('Copy fallback failed:', err);
+        }
+        document.body.removeChild(textArea);
+    }
+
+    function showCopySuccess() {
+        const shareBtn = document.getElementById('share-btn');
+        const originalText = shareBtn.innerHTML;
+        shareBtn.innerHTML = "✅ Receipt Copied!";
+        shareBtn.style.backgroundColor = "#1b5e20";
+        setTimeout(() => {
+            shareBtn.innerHTML = originalText;
+            shareBtn.style.backgroundColor = "var(--whatsapp-green)";
+        }, 2000);
     }
 </script>
 </body>
