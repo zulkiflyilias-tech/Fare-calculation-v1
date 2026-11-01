@@ -455,7 +455,7 @@
                     <span id="calc-hill-surcharge">RM 0.00</span>
                 </div>
                 <div class="detail-row" id="long-haul-incentive-row" style="display: none;">
-                    <span>Long-Haul Driver Incentive (+25%)</span>
+                    <span>Long-Haul Driver Incentive (+25%, Max RM100)</span>
                     <span id="calc-long-haul-incentive">RM 0.00</span>
                 </div>
 
@@ -895,10 +895,10 @@
         const isHighland = zoneHillFee > 0 || maxElevation > 800;
         const hillSurcharge = isHighland ? Math.max(25.00, zoneHillFee) : 0;
 
-        // 4. Long-haul Driver Incentive (>= 100km): 25% from distance fare
+        // 4. Long-haul Driver Incentive (>= 100km): 25% from distance fare, Capped at RM 100.00
         let longHaulIncentive = 0;
         if (distance >= 100) {
-            longHaulIncentive = distanceFare * 0.25;
+            longHaulIncentive = Math.min(100.00, distanceFare * 0.25);
         }
 
         const rawTotal = distanceFare + urbanSurcharge + tollFee + hillSurcharge + longHaulIncentive;
