@@ -109,7 +109,7 @@
             <!-- Booking Form Start -->
             <form id="bookingForm" onsubmit="handleBookingSubmit(event)" class="p-5 sm:p-8 space-y-8">
                 
-                <!-- SECTION 1: Passenger Info & Trip Route (Shared Fields) -->
+                <!-- SECTION 1: Passenger Info & Trip Route (Shared/Dynamic Fields) -->
                 <div>
                     <div class="flex items-center gap-2 mb-4">
                         <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 text-xs font-bold flex items-center justify-center">1</span>
@@ -145,12 +145,12 @@
                             </div>
                         </div>
 
-                        <!-- From / Pickup Location -->
-                        <div>
+                        <!-- From / Pickup Location (Dynamic based on Booking Type) -->
+                        <div id="fromWrapper">
                             <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5" for="fromLocation">
                                 Pickup Location (From) <span class="text-red-500">*</span>
                             </label>
-                            <div class="relative">
+                            <div class="relative" id="fromInputContainer">
                                 <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-emerald-500">
                                     <i class="fa-solid fa-location-dot"></i>
                                 </span>
@@ -159,12 +159,12 @@
                             </div>
                         </div>
 
-                        <!-- To / Drop-off Location -->
-                        <div>
+                        <!-- To / Drop-off Location (Dynamic based on Booking Type) -->
+                        <div id="toWrapper">
                             <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5" for="toLocation">
                                 Drop-off Location (To) <span class="text-red-500">*</span>
                             </label>
-                            <div class="relative">
+                            <div class="relative" id="toInputContainer">
                                 <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-rose-500">
                                     <i class="fa-solid fa-location-crosshairs"></i>
                                 </span>
@@ -467,6 +467,18 @@
             luggageSmall: 0
         };
 
+        // Major Malaysian Airports with Official Management-Approved Pick-up/Drop-off Points
+        const malaysianAirports = [
+            { name: "Kuala Lumpur International Airport Terminal 1 (KLIA T1)", location: "Sepang, Selangor (Departure Drop-off / Level 3 or Arrival Pick-up / Level 1)" },
+            { name: "Kuala Lumpur International Airport Terminal 2 (KLIA T2)", location: "Sepang, Selangor (Departure Gateway@KLIA2 or Arrival Pick-up Lane Bay)" },
+            { name: "Sultan Abdul Aziz Shah Airport (Subang Airport / SZB)", location: "Subang, Selangor (Main Terminal Ground Floor Pick-up/Drop-off Zone)" },
+            { name: "Penang International Airport (PEN)", location: "Bayan Lepas, Penang (Main Terminal Departure/Arrival Curb)" },
+            { name: "Langkawi International Airport (LGK)", location: "Padang Matsirat, Kedah (Main Terminal Front Entrance Curb)" },
+            { name: "Kota Kinabalu International Airport (BKI)", location: "Kota Kinabalu, Sabah (Terminal 1 Official Curb Zone)" },
+            { name: "Kuching International Airport (KCH)", location: "Kuching, Sarawak (Main Terminal Departure & Arrival Curb)" },
+            { name: "Senai International Airport (JHB)", location: "Senai, Johor (Main Terminal Ground Level Curb Zone)" }
+        ];
+
         // Initialize default datetime input to current time + 1 hour
         window.onload = function() {
             const now = new Date();
@@ -476,26 +488,94 @@
             validateNormalPax();
         };
 
-        // Switch Tab Logic
+        // Switch Tab Logic & Dynamic Route Inputs
         function switchBookingType(type) {
             bookingType = type;
             const tabNormal = document.getElementById('tab-normal');
             const tabAirport = document.getElementById('tab-airport');
             const normalFields = document.getElementById('normalFields');
             const airportFields = document.getElementById('airportFields');
+            
+            const fromWrapper = document.getElementById('fromInputContainer');
+            const toWrapper = document.getElementById('toInputContainer');
 
             if (type === 'normal') {
                 tabNormal.className = "tab-btn flex-1 py-3 px-4 rounded-xl font-semibold text-sm sm:text-base flex items-center justify-center gap-2.5 bg-white text-indigo-600 shadow-sm";
                 tabAirport.className = "tab-btn flex-1 py-3 px-4 rounded-xl font-semibold text-sm sm:text-base flex items-center justify-center gap-2.5 text-slate-500 hover:text-slate-700";
                 normalFields.classList.remove('hidden');
                 airportFields.classList.add('hidden');
+
+                // Render Normal Text Inputs
+                fromWrapper.innerHTML = `
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-emerald-500">
+                        <i class="fa-solid fa-location-dot"></i>
+                    </span>
+                    <input type="text" id="fromLocation" required placeholder="Enter pickup address or location" 
+                           class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all">
+                `;
+                toWrapper.innerHTML = `
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-rose-500">
+                        <i class="fa-solid fa-location-crosshairs"></i>
+                    </span>
+                    <input type="text" id="toLocation" required placeholder="Enter destination address" 
+                           class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all">
+                `;
+
                 validateNormalPax();
             } else {
                 tabAirport.className = "tab-btn flex-1 py-3 px-4 rounded-xl font-semibold text-sm sm:text-base flex items-center justify-center gap-2.5 bg-white text-indigo-600 shadow-sm";
                 tabNormal.className = "tab-btn flex-1 py-3 px-4 rounded-xl font-semibold text-sm sm:text-base flex items-center justify-center gap-2.5 text-slate-500 hover:text-slate-700";
                 airportFields.classList.remove('hidden');
                 normalFields.classList.add('hidden');
+
+                // Build Airport Select Options HTML
+                let optionsHTML = `<option value="" disabled selected>-- Select Approved Airport --</option>`;
+                malaysianAirports.forEach(apt => {
+                    optionsHTML += `<option value="${apt.name} (${apt.location})">${apt.name}</option>`;
+                });
+
+                // Render dynamic fields based on flight direction (Arrival vs Departure)
+                updateAirportRouteInputs(fromWrapper, toWrapper, optionsHTML);
                 validateAirportPax();
+            }
+        }
+
+        // Helper to adjust route inputs when toggling Arrival vs Departure for Airport Transfer
+        function updateAirportRouteInputs(fromContainer, toContainer, optionsHTML) {
+            if (flightType === 'Arrival') {
+                // Arrival: From Airport -> To Address
+                fromContainer.innerHTML = `
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-emerald-500 z-10">
+                        <i class="fa-solid fa-plane-arrival"></i>
+                    </span>
+                    <select id="fromLocation" required class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                        ${optionsHTML}
+                    </select>
+                `;
+                toContainer.innerHTML = `
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-rose-500">
+                        <i class="fa-solid fa-location-crosshairs"></i>
+                    </span>
+                    <input type="text" id="toLocation" required placeholder="Enter drop-off address (e.g. Hotel / Home)" 
+                           class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all">
+                `;
+            } else {
+                // Departure: From Address -> To Airport
+                fromContainer.innerHTML = `
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-emerald-500">
+                        <i class="fa-solid fa-location-dot"></i>
+                    </span>
+                    <input type="text" id="fromLocation" required placeholder="Enter pickup address (e.g. Hotel / Home)" 
+                           class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all">
+                `;
+                toContainer.innerHTML = `
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-rose-500 z-10">
+                        <i class="fa-solid fa-plane-departure"></i>
+                    </span>
+                    <select id="toLocation" required class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                        ${optionsHTML}
+                    </select>
+                `;
             }
         }
 
@@ -511,6 +591,18 @@
             } else {
                 btnDep.className = "py-2 text-xs sm:text-sm font-semibold rounded-lg bg-white text-indigo-600 shadow-sm flex items-center justify-center gap-1.5";
                 btnArr.className = "py-2 text-xs sm:text-sm font-semibold rounded-lg text-slate-500 hover:text-slate-700 flex items-center justify-center gap-1.5";
+            }
+
+            if (bookingType === 'airport') {
+                let optionsHTML = `<option value="" disabled selected>-- Select Approved Airport --</option>`;
+                malaysianAirports.forEach(apt => {
+                    optionsHTML += `<option value="${apt.name} (${apt.location})">${apt.name}</option>`;
+                });
+                updateAirportRouteInputs(
+                    document.getElementById('fromInputContainer'), 
+                    document.getElementById('toInputContainer'), 
+                    optionsHTML
+                );
             }
         }
 
@@ -655,14 +747,14 @@
                     <div class="flex items-start gap-3">
                         <i class="fa-solid fa-circle text-emerald-500 text-xs mt-1.5"></i>
                         <div>
-                            <span class="text-xs font-bold text-slate-400 block uppercase">Pickup Location</span>
+                            <span class="text-xs font-bold text-slate-400 block uppercase">Pickup Location ${bookingType === 'airport' && flightType === 'Arrival' ? '(Airport Approved Zone)' : ''}</span>
                             <span class="font-medium text-slate-800">${escapeHTML(from)}</span>
                         </div>
                     </div>
                     <div class="flex items-start gap-3">
                         <i class="fa-solid fa-location-dot text-rose-500 text-xs mt-1.5"></i>
                         <div>
-                            <span class="text-xs font-bold text-slate-400 block uppercase">Drop-off Location</span>
+                            <span class="text-xs font-bold text-slate-400 block uppercase">Drop-off Location ${bookingType === 'airport' && flightType === 'Departure' ? '(Airport Approved Zone)' : ''}</span>
                             <span class="font-medium text-slate-800">${escapeHTML(to)}</span>
                         </div>
                     </div>
@@ -753,7 +845,7 @@
 
             let msg = `*NEW E-HAILING BOOKING REQUEST*\n`;
             msg += `------------------------------------\n`;
-            msg += `*Booking Type:* ${s.type === 'normal' ? 'Normal Sedan Booking' : 'Airport Transfer'}\n`;
+            msg += `*Booking Type:* ${s.type === 'normal' ? 'Normal Sedan Booking' : 'Airport Transfer (' + s.flightType + ')'}\n`;
             msg += `*Passenger Name:* ${s.name}\n`;
             msg += `*Contact:* ${s.phone}\n`;
             msg += `*Pickup:* ${s.from}\n`;
@@ -763,7 +855,6 @@
             msg += `*Passengers:* ${s.adults} Adult(s), ${s.children} Child(ren)\n`;
 
             if (s.type === 'airport') {
-                msg += `*Flight Direction:* ${s.flightType}\n`;
                 msg += `*Flight No:* ${s.flightNo}\n`;
                 msg += `*Luggage:* ${s.luggageLarge} Large, ${s.luggageMedium} Medium, ${s.luggageSmall} Small\n`;
             }
