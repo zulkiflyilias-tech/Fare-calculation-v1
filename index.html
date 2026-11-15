@@ -209,7 +209,7 @@
                             <i class="fa-solid fa-car"></i>
                         </div>
                         <div class="text-xs sm:text-sm text-slate-600">
-                            <p class="font-semibold text-slate-800">Perodua Bezza Capacity Limits:</p>
+                            <p class="font-semibold text-slate-800">Perodua Bezza Capacity Limits <span class="text-indigo-600 font-normal">(Child: 12 years old & below)</span>:</p>
                             <ul class="list-disc list-inside mt-1 space-y-0.5 text-slate-500">
                                 <li>Maximum <strong>3 Adults</strong> (without children)</li>
                                 <li>OR <strong>2 Adults + 2 Children</strong> max</li>
@@ -232,7 +232,7 @@
                         </div>
                         <div>
                             <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5" for="normalChildren">
-                                Children
+                                Children <span class="text-[11px] font-normal text-slate-400">(12 yrs & below)</span>
                             </label>
                             <select id="normalChildren" onchange="validateNormalPax()" 
                                     class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all">
@@ -295,7 +295,7 @@
                             <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
                                 <i class="fa-solid fa-users text-indigo-500"></i> Passenger Count
                             </h3>
-                            <span class="text-[11px] text-indigo-600 font-semibold">Max 3 Adults OR 2 Adults + 2 Kids</span>
+                            <span class="text-[11px] text-indigo-600 font-semibold">Max 3 Adults OR 2 Adults + 2 Kids (12 yrs & below)</span>
                         </div>
                         
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -312,7 +312,7 @@
                             </div>
                             <div>
                                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5" for="airportChildren">
-                                    Children
+                                    Children <span class="text-[11px] font-normal text-slate-400">(12 yrs & below)</span>
                                 </label>
                                 <select id="airportChildren" onchange="validateAirportPax()" 
                                         class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
@@ -621,7 +621,7 @@
             document.getElementById(id).innerText = next;
         }
 
-        // Validation for Normal Pax (Sedan Limit: Adult 3 only OR 2 Adult + 2 Child max)
+        // Validation for Normal Pax (Sedan Limit: Adult 3 only OR 2 Adult + 2 Child max - age 12 & below)
         function validateNormalPax() {
             const adults = parseInt(document.getElementById('normalAdults').value, 10);
             const children = parseInt(document.getElementById('normalChildren').value, 10);
@@ -640,7 +640,7 @@
                 message = "Sedan limit exceeded: Maximum 3 Adults allowed.";
             } else if (adults === 2 && children > 2) {
                 isValid = false;
-                message = "Sedan limit exceeded: Maximum 2 Children with 2 Adults.";
+                message = "Sedan limit exceeded: Maximum 2 Children (12 years old & below) with 2 Adults.";
             }
 
             if (!isValid) {
@@ -674,7 +674,7 @@
                 message = "Sedan limit exceeded: Maximum 3 Adults allowed.";
             } else if (adults === 2 && children > 2) {
                 isValid = false;
-                message = "Sedan limit exceeded: Maximum 2 Children with 2 Adults.";
+                message = "Sedan limit exceeded: Maximum 2 Children (12 years old & below) with 2 Adults.";
             }
 
             if (!isValid) {
@@ -779,7 +779,7 @@
                         <h4 class="text-xs font-bold text-slate-400 uppercase mb-2">Passenger Composition</h4>
                         <div class="flex gap-2">
                             <span class="bg-slate-100 text-slate-700 px-3 py-1 rounded-lg text-xs font-medium">${adults} Adult(s)</span>
-                            <span class="bg-slate-100 text-slate-700 px-3 py-1 rounded-lg text-xs font-medium">${children} Child(ren)</span>
+                            <span class="bg-slate-100 text-slate-700 px-3 py-1 rounded-lg text-xs font-medium">${children} Child(ren) <span class="text-[10px] text-slate-500 font-normal">(12 yrs & below)</span></span>
                         </div>
                     </div>
                 `;
@@ -813,7 +813,7 @@
                             <h4 class="text-xs font-bold text-slate-400 uppercase mb-1.5">Passenger Breakdown</h4>
                             <div class="flex flex-wrap gap-2 text-xs">
                                 <span class="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg font-medium">${adults} Adult(s)</span>
-                                <span class="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg font-medium">${children} Child(ren)</span>
+                                <span class="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg font-medium">${children} Child(ren) <span class="text-[10px] text-slate-500 font-normal">(12 yrs & below)</span></span>
                             </div>
                         </div>
 
@@ -852,7 +852,7 @@
             msg += `*Drop-off:* ${s.to}\n`;
             msg += `*Date & Time:* ${s.dateTimeFormatted}\n`;
             msg += `------------------------------------\n`;
-            msg += `*Passengers:* ${s.adults} Adult(s), ${s.children} Child(ren)\n`;
+            msg += `*Passengers:* ${s.adults} Adult(s), ${s.children} Child(ren) (12 yrs & below)\n`;
 
             if (s.type === 'airport') {
                 msg += `*Flight No:* ${s.flightNo}\n`;
